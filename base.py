@@ -12,14 +12,16 @@ import time, StringIO
 import operator as op
 import re, types
 import subprocess
+from subprocess import CalledProcessError
 import numpy as np
 import pandas as pd
 import pylab as plt
 from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
+import utilities, peptides
+import genome, tepitope
 from matplotlib.ticker import MaxNLocator
-import utilities, peptides, genome, threading, tepitope
 
 home = os.path.expanduser("~")
 datadir = os.path.join(home, 'mhcdata')
@@ -39,25 +41,8 @@ iedbkeys = {'consensus3': ['Allele','Start','End','Sequence','consensus_percenti
             'netMHCIIpan_score','netMHCIIpan_percentile','Sturniolo core',
             'Sturniolo score','Sturniolo percentile','methods'],
         'NetMHCIIpan': ['Allele','Start','End','Core','Sequence','IC50']}
-
-#based on MTB proteome score dists, need to make this more general..
-globalcutoffs = {'tepitope': {9: {'HLA-DRB1*0801': 1.8, 'HLA-DRB3*0201': 1.72,
-                'HLA-DRB1*1101': 1.2, 'HLA-DRB1*1401': 1.83, 'HLA-DRB1*0301': 2.96,
-                'HLA-DRB1*0401': 1.4, 'HLA-DRB3*0101': 1.82, 'HLA-DRB1*1301': 2.21,
-                'BoLA-DRB3*0401': 2.2, 'BoLA-DRB3*2101': 1.56, 'BoLA-DRB3*3701': 1.63,
-                'BoLA-DRB3*4101': 2.0, 'BoLA-DRB3*6301': 2.09, 'BoLA-DRB3*2002': 1.67,
-                'BoLA-DRB3*3001': 1.95, 'BoLA-DRB3*1601': 1.27, 'BoLA-DRB3*1901': 2.25,
-                'BoLA-DRB3*1201': 2.12}},
-                 'netmhciipan': {9: {'DRB1*0801': 0.29, 'DRB1*1301': 0.16, 'DRB3*0101': 0.09,
-                  'DRB3*0201': 0.19, 'DRB1*0301': 0.08, 'DRB1*1101': 0.24,
-                  'DRB1*1401': 0.13, 'DRB1*0401': 0.11},
-                  11: {'DRB1*0801': 0.54, 'DRB1*1301': 0.41, 'DRB3*0101': 0.27,
-                 'DRB3*0201': 0.49, 'DRB1*0301': 0.29, 'DRB1*1101': 0.5,
-                 'DRB1*1401': 0.32, 'DRB1*0401': 0.3},
-                  15: {'DRB1*0801': 0.7, 'DRB1*1301': 0.66, 'DRB3*0101': 0.53,
-                 'DRB3*0201': 0.75, 'DRB1*0301': 0.65, 'DRB1*1101': 0.67,
-                 'DRB1*1401': 0.51, 'DRB1*0401': 0.55}}
-                 }
+iedbmhc1path = '/local/iedbmhc1/'
+iedbbcellpath = '/local/iedbbcell/'
 
 def first(x):
     return x.iloc[0]
@@ -162,6 +147,8 @@ def getPredictor(name='tepitope', **kwargs):
         return IEDBMHCIPredictor(**kwargs)
     elif name == 'iedbmhc2':
         return IEDBMHCIIPredictor(**kwargs)
+    elif name == 'bcell':
+        return BCellPredictor(**kwargs)
     elif name == 'tepitope':
         return TEpitopePredictor(**kwargs)
     elif name == 'threading':
@@ -190,55 +177,6 @@ def getSequence(seqfile):
     sequence = recs.seq.tostring()
     return sequence
 
-def signalP(infile=None,genome=None):
-    """Get signal peptide predictions"""
-    if genome != None:
-        seqfile = Genome.genbank2Fasta(genome)
-        tempfile = 'signalp_temp.txt'
-        cmd = 'signalp -t gram+ -f short %s > %s' %(seqfile,tempfile)
-        infile = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    sp = pd.read_csv(infile,delim_whitespace=True,comment='#',skiprows=2,
-                      names=['locus_tag','Cmax','cpos','Ymax','ypos','Smax',
-                            'spos','Smean','D','SP','Dmaxcut','net'])
-    #print sp[sp.SP=='Y']
-    return sp
-
-def tmhmm(infile=None,genome=None):
-    """Get TMhmm predictions"""
-    if genome != None:
-        seqfile = Genome.genbank2Fasta(genome)
-        tempfile = 'tmhmm_temp.txt'
-        cmd = 'tmhmm %s > %s' %(seqfile,tempfile)
-        infile = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    tmpred = pd.read_csv(infile,delim_whitespace=True,comment='#',
-                      names=['locus_tag','v','status','start','end'])
-    tmpred = tmpred.dropna()
-    print 'tmhmm predictions for %s proteins' %len(tmpred.groupby('locus_tag'))
-    lengths=[]
-    for i,row in tmpred.iterrows():
-        if row.status == 'TMhelix':
-            lengths.append(row.end-row.start)
-    #print np.mean(lengths), np.std(lengths)
-    return tmpred
-
-def netSurfP(infile=None, genome=None):
-    """NetsurfP predictions"""
-    if genome != None:
-        seqfile = Genome.genbank2Fasta(infile)
-        tempfile = 'netsurfp_temp.txt'
-        cmd = 'netsurfp -i %s > %s' %(seqfile,tempfile)
-        infile = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    names = ['class','aa','locus_tag', 'pos','rsa', 'asa','zscore']
-    pred = pd.read_csv(infile,delim_whitespace=True,comment='#',
-                        names=names)
-    pred = pred.dropna()
-    return pred
-
-def getTMRegions(tm, name):
-    df = tm[tm.locus_tag==name]
-    df = df[df.status=='TMhelix']
-    return zip(df.start,df.end)
-
 def getOverlappingBinders(B):
     for df in B:
         df.set_index('peptide',inplace=True)
@@ -253,11 +191,10 @@ def compareBindingData(exp, pred, seqkey, datakey, allele):
      seqkey: col name for sequences
      datakey col name for exp binding/score value"""
 
-    peptides = list(exp[seqkey])
-    Tepitope.alpha=10
+    peptides = list(exp[seqkey])    
     pred.predict(peptides=peptides, allele=allele)
     scorekey = pred.scorekey
-    data = pd.read_csv(os.path.join(Tepitope.tepitopedir,
+    data = pd.read_csv(os.path.join(tepitope.tepitopedir,
                         'predictions/HLA-DRB1*0101.csv'))
     pred.cutoff=0
     merged = pd.merge(pred.data, exp,
@@ -356,145 +293,6 @@ def comparePredictors(pred1, pred2,
     plt.show()
     return
 
-def plotBars(x, y, ind, ax, label=None,
-                color='b', ylim=None, xlabels=False):
-    """Bar plot showing scores over an index"""
-
-    bars = ax.bar(x,y,alpha=0.8,color=color,align='center',lw=0)
-    ax.set_xlim([min(ind) - 0.5, max(ind) + 0.5])
-    if label!=None:
-        ax.text(0.8,0.6,label,transform=ax.transAxes,fontsize=14)
-    if ylim!=None:
-        ax.set_ylim(ylim)
-    if xlabels == True:
-        ax.set_xticks(ind+0.5)
-        ax.set_xticklabels(df.index.tolist(),rotation=45)
-    return bars
-
-def plotGroups(grps, ycol, sortcol='pos', ylim=None,
-                xlabels=False, kind='bar', ax=None, label=None):
-    """Plot multiple dataframe groups"""
-
-    i=0
-    size=len(grps)
-    cmap = plt.cm.get_cmap('jet')
-    fig=None
-    if ax == None:
-        if size == 1:
-            fig = plt.figure()
-            grid = [fig.add_subplot(111)]
-        else:
-            fig, grid = plt.subplots(nrows=size, ncols=1, figsize=(12,6),
-                                     sharex=True, sharey=True)
-    currax=ax
-    for a, df in grps:
-        if ax==None:
-            currax = grid[i]
-        c = cmap(float(i)/(size))
-        if label == None: l=a
-        else: l=label
-        plotScores(df,ycol,currax,sortcol=sortcol,label=l,color=c,
-                   ylim=ylim,xlabels=xlabels,kind=kind)
-        currax.yaxis.set_major_locator(MaxNLocator(3))
-        i+=1
-    return fig
-
-def plotPerAllele(P, names=None, path='plots', kind='bar'):
-    """Plot predictions for each protein per allele"""
-
-    df = P.data
-    scorekey = P.scorekey
-    for name,protdf in df.groupby('name'):
-        if names != None and name not in names:
-            continue
-        grps = protdf.groupby('allele')
-        if P.cutoff < 0:
-            highest = min(protdf[scorekey])
-        else:
-            highest = max(protdf[scorekey])
-        lims = (P.cutoff,highest)
-        f = plotGroups(grps,scorekey,ylim=lims,kind=kind)
-        plt.tight_layout(h_pad=0.5)
-        #f.suptitle(name,fontsize=16)
-        filename = os.path.join(path,name+'_%s.png' %P.name)
-        f.savefig(filename, dpi=80)
-    return filename
-
-def plotRegions(locs, ax,color='g',**kwargs):
-    """Draw boxes to highlight areas on a plotted sequence"""
-
-    if locs==None:
-        return
-    from matplotlib.patches import Rectangle
-    for i in locs:
-        x1=min(i)-0.5; x2=max(i)-0.5
-        y1,y2 = ax.get_ylim()
-        ax.add_patch(Rectangle((x1, y1), x2-x1+1, y2,color=color,
-                    **kwargs))
-    return
-
-def plotHeatMap(pred, name):
-    fig=plt.figure()
-    ax=fig.add_subplot(111)
-    p = pred.reshape(name)
-    p=p.sort('pos')
-    x = p.drop(['peptide','pos','mean'],1)
-    r = x.transpose()
-    plt.pcolor(r)
-    return
-
-def plotMultipleScores(predictors, names, **kwargs):
-    """Plot multiple proteins"""
-
-    for n in names:
-        print n
-        f=plotPredictorScores(predictors, n, **kwargs)
-    return
-
-def plotPredictorScores(predictors, name, cldist=7, n=2,
-                        path='plots', save=True, dpi=80, **kwargs):
-    """Plot multiple predictors in same plot"""
-
-    size = len(predictors)
-    if size == 1:
-        fig = plt.figure(figsize=(10,5))
-        grid = [fig.add_subplot(111)]
-    else:
-        fig, grid = plt.subplots(nrows=size, ncols=1, figsize=(10,6),
-                                 sharex=True)
-    i=0
-    for P in predictors:
-        ax=grid[i]
-        P.plotBinders(name, ax=ax, n=n, **kwargs)
-        i+=1
-    ax.xaxis.set_major_locator(MaxNLocator(20))
-    plt.tight_layout()
-    print fig
-    if save == True:
-        filename = os.path.join(path,'%s.png' %name)
-        fig.savefig(filename, dpi=dpi)
-        plt.close(fig)
-    else:
-        filename = ''
-    return fig, filename
-
-def splitPredictionsFile(infile):
-    """Split predictions into one file per protein"""
-
-    path = os.path.splitext(infile)[0]
-    if not os.path.exists(path):
-        os.mkdir(path)
-    res = pd.read_msgpack(infile,iterator=True)
-    print 'read %s' %infile
-    for df in res:
-        if type(df) is not pd.DataFrame:
-           continue
-        name = df.name.values[0]
-        outfile = os.path.join(path, name+'.mpk')
-        print outfile
-        pd.to_msgpack(outfile,df)
-    return
-
 def getNearest(df):
     """Get nearest binder"""
     grps = df.groupby('name')
@@ -521,12 +319,60 @@ def getBinders(preds,n=3):
             b[m] = binders
     return b
 
-def getStandardmhc1Name(name):
+def getScoreDistributions(method, path):
+    """Get global score distributions and save quantile values for each allele
+       Assumes all the files in path represent related proteins"""
+
+    files = glob.glob(os.path.join(path, '*.mpk'))
+    results = []
+    P = getPredictor(method)
+    key = P.scorekey
+    #if method == 'iedbmhc1':
+    #    P.data = pd.read_msgpack(files[0])
+    #    key = P.getScoreKey()
+    print key
+    for f in files[:200]:
+        df = pd.read_msgpack(f)
+        #df = df.dropna()
+        x = df.pivot_table(index='peptide', columns='allele', values=key)
+        #print x[:5]
+        results.append(x)
+    result = pd.concat(results)
+    percs = np.arange(0.01,1,0.01)
+    bins = result.quantile(percs)
+    #reverse is best values are lower
+    if P.operator == '<':
+        bins.index = pd.Series(bins.index).apply(lambda x: 1-x)
+    outfile = os.path.join(path,'quantiles.csv')
+    print outfile
+    bins.to_csv(outfile,float_format='%.3f')
+    df= pd.read_csv(outfile,index_col=0)
+    print df.ix[0.96]
+    return
+
+def getStandardMHCI(name):
     """Taken from iedb mhc1 utils.py"""
     temp = name.strip().split('-')
     length = temp[-1]
     mhc = '-'.join(temp[0:-1])
     return mhc
+
+def getDRBList(a):
+    """Get DRB list in standard format"""
+    s = pd.Series(a)
+    s = s[s.str.contains('DRB')]
+    s = s.apply(lambda x:'HLA-'+x.replace('_','*'))
+    return list(s)
+
+def getDQPList(a):
+    """Get DRB list in standard format"""
+    s = pd.Series(a)
+    s = s[s.str.contains('DQ')]
+    s = s.apply(lambda x:x.replace('_','*'))
+    return list(s)
+
+def getStandardMHCII(x):
+    return 'HLA'+x.replace('_','*')
 
 class Predictor(object):
     """Base class to handle generic predictor methods, usually these will
@@ -564,24 +410,25 @@ class Predictor(object):
         return
 
     def evaluate(self, df, key, value, operator='<'):
-        """Evaluate binders depending on less than or greater than a
-           cutoff"""
+        """Evaluate binders less than or greater than value, the cutoff"""
         if operator == '<':
             return df[df[key] <= value]
         else:
             return df[df[key] >= value]
 
     def getBinders(self, method='cutoff', q=0.01, data=None):
-        """Return top % ranked or using cutoff"""
+        """Return top % ranked or using cutoff, usually we pass
+        data to this method which can be for one protein or lots of them"""
+
         if not data is None:
             df = data
         else:
             df = self.data
-        #print df
         key = self.scorekey
         op = self.operator
         if method == 'cutoff':
-            #evaluate per allele in case we have tailored cutoffs
+            #this allows us to use global allele based cutoffs
+            #must be set first as an attribute
             res = []
             for a,g in df.groupby('allele'):
                 if self.allelecutoffs.has_key(a):
@@ -591,7 +438,6 @@ class Predictor(object):
                 b = self.evaluate(g, key, cutoff, op)
                 res.append(b)
             return pd.concat(res)
-            #return self.evaluate(df, key,self.cutoff,op)
         elif method == 'rank':
             #get top ranked % per protein
             res=[]
@@ -631,12 +477,9 @@ class Predictor(object):
             final = g.agg({self.scorekey:max,'name':first,'peptide':first,'pos':first,
                             'allele':first})
             final = final.reset_index().sort('pos')
-            #name = df.head(1).name.max()
             #print merged.sort('pos')
             #print final
             return final
-        #if not s.empty:
-        #    return pd.merge(p,s,how='right',on=['peptide','pos','name'])
         else:
             return pd.DataFrame()
 
@@ -681,13 +524,7 @@ class Predictor(object):
         if type(alleles) is not types.ListType:
             alleles = [alleles]
         self.length = length
-        if save == True:
-            fname = 'epit_%s_%s_%s.mpk' %(label,self.name,length)
-            fname = os.path.join(path,fname)
-            print 'results will be saved to %s' %os.path.abspath(fname)
-            meta = {'method':self.name, 'length':self.length}
-            pd.to_msgpack(fname, meta)
-        recs = Genome.getCDS(recs)
+        recs = genome.getCDS(recs)
         if names != None:
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())
@@ -699,17 +536,15 @@ class Predictor(object):
             print name
             res = []
             for a in alleles:
+                #print a
                 df = self.predict(sequence=seq,length=length,
                                     allele=a,name=name)
                 if df is not None:
                     res.append(df)
             res = pd.concat(res)
             if save == True:
-                pd.to_msgpack(fname, res, append=True)
-            if save == False and len(df)>0:
-                results.append(res)
-        if save == False and len(results)>0:
-            self.data = pd.concat(results)
+                fname = os.path.join(path, name+'.mpk')
+                pd.to_msgpack(fname, res)
         return
 
     def save(self, label, singlefile=True):
@@ -752,12 +587,12 @@ class Predictor(object):
         df = self.data
         if name != None:
             df = df[df.name==name]
-        p = df.pivot(index='peptide', columns='allele', values=self.scorekey)
+        p = df.pivot_table(index='peptide', columns='allele', values=self.scorekey)
         p = p.reset_index()
         x = list(df.groupby('allele'))[0][1]
         p = p.merge(x[['pos','peptide']],on='peptide')
         p['mean'] = p.mean(1)
-        p=p.sort('mean',ascending=False)
+        p=p.sort('mean',ascending=self.rankascending)
         return p
 
     def getNames(self):
@@ -782,6 +617,62 @@ class Predictor(object):
                 hits+=1
             total+=1
         print '%s/%s correct' %(hits,total)
+        return
+
+    def benchmarkKnownAntigens(self, expdata=None):
+        """Test ability to rank known epitiopes/binders in antigen sequences"""
+        if expdata==None:
+            #expdata = pd.read_csv(os.path.join(datadir,'expdata/bovine_responder_jones.csv'))
+            expdata = pd.read_csv(os.path.join(datadir,'expdata/SYF.csv'))
+        R=[]
+        for name,row in expdata.dropna().iterrows():
+            true = row['peptide']
+            protseq = row['sequence']
+            if protseq == np.NaN or len(true)<15 or len(true)>20:
+                continue
+            a = row['allele']
+            if a == 'bola':
+                #a='BoLA-DRB3*1601'
+                a='HLA-DRB1*0101'
+            df = self.predict(protseq,allele=a,length=9,name=true)
+            if len(df)==0: continue
+            print a,true
+            self.cutoff=0
+            b = self.getBinders()
+            #print b
+            def instring(x):
+                if x in true: return True
+                else: return False
+            found = df[df.peptide.apply(instring)]
+            #print found
+            #if len(found)==0:
+            #    continue
+            toprank = found['rank'].values[0]
+            #meanrank = np.mean(found['score'].values[:5])
+            sc = found[self.scorekey].max()
+            #locs = b['pos'].values
+            #print getClusters(b)
+            bnd = len(b[b.peptide.apply(instring)])
+            freq = 0#row['freq']
+            #rank = df[df.peptide==true]['rank'].values[0]
+            R.append([a, true, toprank, sc, bnd, freq, len(protseq)])
+            #plotPerAllele(self, path='benchmark')
+        R=pd.DataFrame(R,columns=['allele','peptide','toprank','score','binders','freq','length'])
+        R['percentile'] = R.toprank/R.length*100
+        #print R
+        R.hist('percentile',by=R.allele)
+        x=R.groupby('allele').agg({'percentile':np.mean,'score':np.mean})
+        x.plot(kind='bar',subplots=True)
+        #print x
+        '''fig=plt.figure(figsize=(10,10))
+        ax=fig.add_subplot(221)
+        R.plot(x='toprank',y='freq',kind='scatter',ax=ax,alpha=0.6)
+        ax=fig.add_subplot(222)
+        R.plot(x='meansc',y='freq',kind='scatter',ax=ax,alpha=0.6)
+        ax=fig.add_subplot(223)
+        R.plot(x='binders',y='freq',kind='scatter',ax=ax,alpha=0.6)'''
+        plt.tight_layout()
+        plt.show()
         return
 
     def plotBinders(self, name, cldist=7, n=2, tmregions=None,
@@ -853,15 +744,15 @@ class NetMHCIIPanPredictor(Predictor):
         self.name = 'netmhciipan'
         self.colnames = ['pos','HLA','peptide','Identity','Pos','Core',
                          '1-log50k(aff)','Affinity','Rank']
-        self.scorekey = '1-log50k(aff)'
-        self.cutoff = 0.2
-        self.operator = '>'
-        self.rankascending = 0
+        self.scorekey = 'Affinity' #'1-log50k(aff)'
+        self.cutoff = 500
+        self.operator = '<'
+        self.rankascending = 1
 
     def readResult(self, res):
         """Read results from netMHCIIpan"""
         data=[]
-        res = res.split('\n')[43:]
+        res = res.split('\n')[19:]
         ignore=['Protein','pos','']
         for r in res:
             if r.startswith('-'): continue
@@ -877,23 +768,26 @@ class NetMHCIIPanPredictor(Predictor):
         df['name'] = name
         df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
         df=df.drop(['Pos','Identity','Rank'],1)
+        df=df.dropna()
         self.getRanking(df)
         self.data = df
         return
 
     def runSequence(self, seq, length, allele):
         seqfile = createTempSeqfile(seq)
-        cmd = 'netMHCIIpan -s -l %s -a %s %s' %(length, allele, seqfile)
+        cmd = 'netMHCIIpan -s -length %s -a %s -f %s' %(length, allele, seqfile)
+        print cmd
         temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         rows = self.readResult(temp)
         df = pd.DataFrame(rows)
         return df
 
     def predict(self, sequence=None, peptides=None, length=11,
-                    allele='HLA-DRB1*01:01', name='',
+                    allele='HLA-DRB1*0101', name='',
                     pseudosequence=None):
         """Call netMHCIIpan command line"""
 
+        #assume allele names are in standard format HLA-DRB1*0101
         allele = allele.split('-')[1].replace('*','_')
         if peptides != None:
             res = pd.DataFrame()
@@ -908,30 +802,42 @@ class NetMHCIIPanPredictor(Predictor):
         #print self.data[self.data.columns[:7]][:5]
         return self.data
 
+    def getAlleleList(self):
+        """Get available alleles"""
+        cmd = 'netMHCIIpan -list'
+        temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        alleles=temp.split('\n')[34:]
+        #print sorted(list(set([getStandardmhc1Name(i) for i in alleles])))
+        return alleles
+
 class IEDBMHCIPredictor(Predictor):
     """Using IEDB tools method, requires iedb-mhc1 tools"""
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc1'
-        self.scorekey = 'percentile_rank'
-        self.cutoff = 3.0
+        self.scorekey = 'ic50'
+        self.methods = {'ANN':'ann_ic50','IEDB_recommended':'smm_ic50',
+                         'Consensus (ANN,SMM)':'ann_ic50','NetMHCpan':'netmhcpan_ic50'}
+        self.cutoff = 500
         self.operator = '<'
         self.rankascending = 1
-        self.methods = ['ann','arb','comblib_sidney2008','consensus',
-                        'IEDB_recommended','netmhcpan','smm']
-        self.path = '/local/iedbmhc1/'
+        self.iedbmethod = 'IEDB_recommended'
+        self.path = iedbmhc1path
 
     def predict(self, sequence=None, peptides=None, length=11,
-                   allele='HLA-A*01:01', method='IEDB_recommended', name=''):
+                   allele='HLA-A*01:01', name=''):
         """Use iedb MHCII python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
 
         seqfile = createTempSeqfile(sequence)
         cmd = os.path.join(self.path,'src/predict_binding.py')
-        cmd = cmd+' %s %s %s %s' %(method,allele,length,seqfile)
+        cmd = cmd+' %s %s %s %s' %(self.iedbmethod,allele,length,seqfile)
+        #print cmd
         try:
-            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-        except Exception as e:
+            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash',
+                stderr=subprocess.STDOUT)
+        except CalledProcessError as e:
+            print e
             return None
         self.prepareData(temp, name)
         return self.data
@@ -939,10 +845,10 @@ class IEDBMHCIPredictor(Predictor):
     def prepareData(self, rows, name):
 
         df = pd.read_csv(StringIO.StringIO(rows),sep="\t")
-        extracols = ['ann_ic50','ann_rank','smm_ic50','smm_rank',
-                    'comblib_sidney2008_score','comblib_sidney2008_rank',
-                    'netmhcpan_rank','percentile_rank']
-        df = df.drop(extracols,1)
+        if len(df)==0:
+            return
+        df = df.replace('-',np.nan)
+        df = df.dropna(axis=1,how='all')
         df.reset_index(inplace=True)
         df.rename(columns={'index':'pos',
                            'percentile_rank':'method',
@@ -950,11 +856,18 @@ class IEDBMHCIPredictor(Predictor):
                            inplace=True)
         df['core'] = df.peptide
         df['name'] = name
-        df.sort_index(by=['percentile_rank'], ascending=True, inplace=True)
+        key = self.getScoreKey(df)
+        df['ic50'] = df[key]
+        self.data = df
         self.getRanking(df)
         self.data = df
-        #print self.data[:10]
         return
+
+    def getScoreKey(self, data):
+        """Get iedbmhc1 score key from data"""
+        m = data['method'].head(1).squeeze()
+        key = self.methods[m]
+        return key
 
     def getMHCIList(self):
         """Get available alleles from model_list file and
@@ -962,7 +875,7 @@ class IEDBMHCIPredictor(Predictor):
         afile = os.path.join(self.path,'data/MHCI_mhcibinding20130222/consensus/model_list.txt')
         df = pd.read_csv(afile,sep='\t',names=['name','x'])
         alleles = list(df['name'])
-        alleles = sorted(list(set([getStandardmhc1Name(i) for i in alleles])))
+        alleles = sorted(list(set([getStandardMHCI(i) for i in alleles])))
         return alleles
 
 class IEDBMHCIIPredictor(Predictor):
@@ -1010,73 +923,113 @@ class IEDBMHCIIPredictor(Predictor):
         return self.data
 
 class TEpitopePredictor(Predictor):
-    """Predictor using Tepitope QM method"""
+    """Predictor using tepitope QM method"""
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'tepitope'
-        self.pssms = Tepitope.getPSSMs()
+        self.pssms = tepitope.getPSSMs()
         self.cutoff = 2
         self.operator = '>'
         self.rankascending = 0
 
-    def predict(self, sequence=None, peptides=None, length=11,
+    def predict(self, sequence=None, peptides=None, length=9,
                     allele='HLA-DRB1*0101', name='',
                     pseudosequence=None):
 
         self.sequence = sequence
         if not allele in self.pssms:
             #print 'computing virtual matrix for %s' %allele
-            try:
-                m = Tepitope.createVirtualPSSM(allele)
-            except:
+            #try:
+            m = tepitope.createVirtualPSSM(allele)
+            if m is None:
                 return pd.DataFrame()
         else:
             m = self.pssms[allele]
         m = m.transpose().to_dict()
-        result = Tepitope.getScores(m, sequence, peptides, length)
+        result = tepitope.getScores(m, sequence, peptides, length)
         df = self.prepareData(result, name, allele)
         self.data = df
         #print df[:12]
         return df
 
-class ThreadingPredictor(Predictor):
-    """Predictor using basic threading, templates should have peptides
-       with length 9,11,13 or 15"""
-    def __init__(self, data=None, template=None):
+class BCellPredictor(Predictor):
+    """Using IEDB tools methods, requires iedb bcell tools.
+       see http://tools.immuneepitope.org/bcell """
+
+    def __init__(self, data=None):
         Predictor.__init__(self, data=data)
-        self.name = 'threading'
-        self.cutoff = -5
-        self.templatecontacts = {}
-        self.rankascending = 1
+        self.name = 'iedbmhc1'
+        self.scorekey = 'Score'
+        self.methods = ['Chou-Fasman', 'Emini', 'Karplus-Schulz',
+                        'Kolaskar-Tongaonkar', 'Parker', 'Bepipred']
+        self.cutoff = 0.9
+        self.operator = '>'
+        self.rankascending = 0
+        self.iedbmethod = 'Bepipred'
+        self.path = iedbbcellpath
 
-    def predictProteins(self, recs, **kwargs):
-        #pre-calculate the template interactions for each allele
-        alleles = kwargs['alleles']
-        self.templatecontacts = Threading.preCalculateContacts(alleles)
-        Predictor.predictProteins(self, recs=recs, **kwargs)
-        return
+    def predict(self, sequence=None, peptides=None, window=None, name=''):
+        """Uses code from iedb predict_binding.py """
 
-    def predict(self, sequence=None, peptides=None, length=9,
-                 allele='HLA-DRB1*0101', name=''):
-        """Predict threading scores using available strutural templates"""
-
-        self.sequence = sequence
-        #print allele
-        tc = self.templatecontacts
-        if allele not in tc:
-            template = Threading.getTemplateStructure(allele)
-            if template == None:
-                template = Threading.modelAlleleStructure(allele)
-
-            inter = Threading.getPocketContacts(template)
-            tc[allele] = inter
+        value = self.iedbmethod
+        currpath=os.getcwd()
+        os.chdir(self.path)
+        sys.path.append(self.path)
+        from src.BCell import BCell
+        bcell = BCell()
+        filepath = os.path.join(self.path,'bcell_scales.pickle')
+        picklefile = open(filepath, 'rb')
+        scale_dict = pickle.load(picklefile)
+        bcell.scale_dict = scale_dict[value]
+        if window==None:
+            window = bcell.window
+        center = "%d" %round(int(window)/2.0)
+        if value == 'Emini':
+            results = bcell.emini_method(value, sequence, window, center)
+        elif value == 'Karplus-Schulz':
+            results = bcell.karplusshulz_method(value, sequence, window, center)
+        elif value == 'Kolaskar-Tongaonkar':
+            results = bcell.kolaskartongaonkar_method(value, sequence, window, center)
+        elif value == 'Bepipred':
+            results = bcell.bepipred_method(value, sequence, window, center)
         else:
-            inter = tc[allele]
-        result = Threading.getScores(sequence, peptides,
-                                     inter=inter, length=length)
-        df = self.prepareData(result, name, allele)
-        self.data = df
-        #print df
+            results = bcell.classical_method(value, sequence, window, center)
+
+        threshold = round(results[1][0], 3)
+        temp=results[0]
+        self.prepareData(temp, name)
+        os.chdir(currpath)
         return self.data
 
+    def prepareData(self, temp, name):
+
+        df = pd.read_csv(temp,sep=",")
+        if len(df)==0:
+            return
+        #df = df.replace('-',np.nan)
+        df = df.dropna(axis=1,how='all')
+        #df.reset_index(inplace=True)
+        df['name'] = name
+        self.data = df
+        #print df
+        return
+
+    def predictProteins(self, recs, names=None, save=False,
+                        label='', path='', **kwargs):
+        """Get predictions for a set of proteins - no alleles so we override
+        the base method for this too. """
+
+        recs = genome.getCDS(recs)
+        if names != None:
+            recs = recs[recs.locus_tag.isin(names)]
+        proteins = list(recs.iterrows())
+        for i,row in proteins:
+            seq = row['translation']
+            name = row['locus_tag']
+            #print name
+            res = self.predict(sequence=seq,name=name)
+            if save == True:
+                fname = os.path.join(path, name+'.mpk')
+                pd.to_msgpack(fname, res)
+        return
 
