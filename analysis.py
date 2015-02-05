@@ -20,7 +20,7 @@ import pandas as pd
 import subprocess
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
-import base, genome, tepitope, utilities
+import base, sequtils, tepitope, utilities
 
 home = os.path.expanduser("~")
 genomespath = os.path.join(home, 'epitopedata')
@@ -66,7 +66,7 @@ def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
     #entrez_query = "mycobacterium[orgn]"
     #db = '/local/blast/nr'
     #SeqIO.write(SeqRecord(Seq(seq)), 'tempseq.faa', "fasta")
-    #genome.doLocalBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=100, evalue=expect)
+    #sequtils.doLocalBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=100, evalue=expect)
 
     try:
         print 'running blast..'
@@ -81,7 +81,7 @@ def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
     savefile.close()
     result_handle = open("my_blast.xml")
 
-    df = genome.getBlastResults(result_handle)
+    df = sequtils.getBlastResults(result_handle)
     df['accession'] = df.subj.apply(lambda x: x.split('|')[3])
     df['definition'] = df.subj.apply(lambda x: x.split('|')[4])
     df = df.drop(['subj','positive','query_length','score'],1)
@@ -95,9 +95,9 @@ def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
 def getAlignedBlastResults(df,aln=None):
     """Get gapped alignment from blast records"""
 
-    genome.dataframe2Fasta(df, idkey='accession', seqkey='sequence',
+    sequtils.dataframe2Fasta(df, idkey='accession', seqkey='sequence',
                         productkey='definition', outfile='blast_found.faa')
-    aln = genome.muscleAlignment("blast_found.faa")
+    aln = sequtils.muscleAlignment("blast_found.faa")
     alnrows = [[a.id,str(a.seq)] for a in aln]
     alndf = pd.DataFrame(alnrows,columns=['accession','seq'])
     res = df.merge(alndf, on='accession')
@@ -157,7 +157,7 @@ def testgenomeanalysis(label,gname,method):
     path = os.path.join(datadir, '%s/%s/%s' %(label,gname,method))
     #path='test'
     gfile = os.path.join(genomespath,'%s.gb' %gname)
-    g = genome.genbank2Dataframe(gfile, cds=True)
+    g = sequtils.genbank2Dataframe(gfile, cds=True)
     b = getAllBinders(path, method=method, n=5)
     P = base.getPredictor(method)
     res = b.groupby('name').agg({P.scorekey:[np.mean,np.size,np.max]}).sort()
@@ -190,7 +190,7 @@ def testFeatures():
     """test feature handling"""
 
     fname = os.path.join(datadir,'MTB-H37Rv.gb')
-    df = genome.genbank2Dataframe(fname, cds=True)
+    df = sequtils.genbank2Dataframe(fname, cds=True)
     df = df.set_index('locus_tag')
     keys = df.index
     name='Rv0011c'
@@ -214,7 +214,7 @@ def testrun(gname):
     method = 'tepitope'#'iedbmhc1'#'netmhciipan'
     path='test'
     gfile = os.path.join(genomespath,'%s.gb' %gname)
-    df = genome.genbank2Dataframe(gfile, cds=True)
+    df = sequtils.genbank2Dataframe(gfile, cds=True)
     #names = list(df.locus_tag[:1])
     names=['VP24']
     alleles1 = ["HLA-A*02:02", "HLA-A*11:01", "HLA-A*32:07", "HLA-B*15:17", "HLA-B*51:01",
@@ -236,12 +236,12 @@ def testrun(gname):
 def testBcell(gname):
     path='test'
     gfile = os.path.join(genomespath,'%s.gb' %gname)
-    df = genome.genbank2Dataframe(gfile, cds=True)
+    df = sequtils.genbank2Dataframe(gfile, cds=True)
     names=['VP24']
     P = base.getPredictor('bcell')
     P.iedbmethod='Chou-Fasman'
     P.predictProteins(df,names=names,save=True,path=path)
-    print P.data 
+    print P.data
     return
 
 def testconservation(label,gname):
@@ -250,7 +250,7 @@ def testconservation(label,gname):
     tag='VP24'
     pd.set_option('max_colwidth', 800)
     gfile = os.path.join(genomespath,'%s.gb' %gname)
-    g = genome.genbank2Dataframe(gfile, cds=True)
+    g = sequtils.genbank2Dataframe(gfile, cds=True)
     res = g[g['locus_tag']==tag]
     seq = res.translation.head(1).squeeze()
     print seq
@@ -261,9 +261,9 @@ def testconservation(label,gname):
     alnrows = alnrows[alnrows['perc_ident']>=60]
     seqs=[SeqRecord(Seq(a.sequence),a.accession) for i,a in alnrows.iterrows()]
     print seqs[:2]
-    genome.distanceTree(seqs=seqs)#,ref=seqs[0])
-    #genome.ETETree(seqs, ref, metric)
-    #df = genome.getFastaProteins("blast_found.faa",idindex=3)
+    sequtils.distanceTree(seqs=seqs)#,ref=seqs[0])
+    #sequtils.ETETree(seqs, ref, metric)
+    #df = sequtils.getFastaProteins("blast_found.faa",idindex=3)
     '''method='tepitope'
     P = base.getPredictor(method)
     P.predictSequences(df,seqkey='sequence')
@@ -272,7 +272,7 @@ def testconservation(label,gname):
 
 def test():
     gname = 'ebolavirus'
-    label = 'test'    
+    label = 'test'
 
     testrun(gname)
     #testBcell(gname)
