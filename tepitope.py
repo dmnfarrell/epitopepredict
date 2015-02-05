@@ -16,7 +16,7 @@ from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import PDB
-import peptides, utilities, genome
+import peptides, utilities
 
 refalleles = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0402',
            'HLA-DRB1*0404', 'HLA-DRB1*0701','HLA-DRB1*0801','HLA-DRB1*1101',

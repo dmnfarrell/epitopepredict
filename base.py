@@ -20,7 +20,7 @@ from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 import utilities, peptides
-import genome, tepitope
+import sequtils, tepitope
 from matplotlib.ticker import MaxNLocator
 
 home = os.path.expanduser("~")
@@ -153,8 +153,6 @@ def getPredictor(name='tepitope', **kwargs):
         return TEpitopePredictor(**kwargs)
     elif name == 'threading':
         return ThreadingPredictor(**kwargs)
-    elif name == 'modeller':
-        return ModellerPredictor(**kwargs)
     else:
         print 'no such predictor %s' %name
         return
@@ -191,7 +189,7 @@ def compareBindingData(exp, pred, seqkey, datakey, allele):
      seqkey: col name for sequences
      datakey col name for exp binding/score value"""
 
-    peptides = list(exp[seqkey])    
+    peptides = list(exp[seqkey])
     pred.predict(peptides=peptides, allele=allele)
     scorekey = pred.scorekey
     data = pd.read_csv(os.path.join(tepitope.tepitopedir,
@@ -524,7 +522,7 @@ class Predictor(object):
         if type(alleles) is not types.ListType:
             alleles = [alleles]
         self.length = length
-        recs = genome.getCDS(recs)
+        recs = sequtils.getCDS(recs)
         if names != None:
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())
@@ -1019,7 +1017,7 @@ class BCellPredictor(Predictor):
         """Get predictions for a set of proteins - no alleles so we override
         the base method for this too. """
 
-        recs = genome.getCDS(recs)
+        recs = sequtils.getCDS(recs)
         if names != None:
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())

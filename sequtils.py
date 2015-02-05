@@ -211,63 +211,6 @@ def getBlastResults(handle=None, filename=None, n=80):
     df['perc_ident'] = df.identity/df.query_length*100
     return df
 
-def combineGenomes():
-    """Combine multiple genbank genomes into one for blastdb"""
-    path = os.getcwd()
-    new = open('all_genomes.faa','wb')
-    for f in glob.glob('*.gb'):
-        print f
-        of = genbank2Fasta(f)
-        data = open(of,"rb").read()
-        new.write(data)
-    new.close()
-    return
-
-def blastGenomes():
-    """Blast genomes against a local db"""
-    path = os.getcwd()
-    database = 'all_genomes'
-    for f in glob.glob('*.faa'):
-        if 'all_genomes' in f: continue
-        if os.path.exists(os.path.splitext(f)[0]+'.xml.gz'):
-            continue
-        doLocalBlast(database, f, compress=True)
-    return
-
-def analyseGenomesBlast():
-    """Analyse results of multi genome blasts"""
-
-    path = os.getcwd()
-    blastresults = glob.glob('*.xml.gz')
-    data=[]
-    for f in blastresults:
-        print f
-        g = os.path.splitext(f)[0][:-4]
-        df = getBlastResults(filename=f)
-        df['genome'] = g
-        data.append(df)
-    result = pd.concat(data)
-    pd.to_msgpack('blast_results.mpk',result)
-    return
-
-def analyseRvGenome():
-    genome = genbank2Dataframe('MTB-H37Rv.gb', cds=True)
-    def first(x):
-        return x.iloc[0]
-    res = pd.read_msgpack('blast_results.mpk')
-    #x=res.groupby('query').agg({'perc_ident':np.max,'genome':first})
-    #x.hist(by='genome')
-    #plt.show()
-    #find core genome for Rv
-    outgrps = ['M.abscessus-ATCC19977','M.vanbaalenii-PYR-1']
-    ref = res[res.genome=='MTB-H37Rv']
-    print dict(list(ref.groupby('query')))['Rv1585c']
-    x=ref.groupby('query').agg({'subj':np.size})
-    print x[x.subj<=3]
-    x.hist('subj')
-    #plt.show()
-    return
-
 def testblast():
     database = 'all_genomes'
     f='test.faa'

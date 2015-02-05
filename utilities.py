@@ -19,7 +19,6 @@ from Bio.SeqRecord import SeqRecord
 from Bio import PDB
 
 home = os.path.expanduser("~")
-datadir = os.path.join(home, 'mhcdata')
 
 def compress(filename, remove=False):
     """Compress a file with gzip"""
@@ -328,12 +327,6 @@ def getCSVData(filename, key):
         order.append(k)
     fields = cr.fieldnames
     return data, order
-
-def getKnownMHCIIStructures():
-    """Get MHC data"""
-    path = os.path.join(datadir, 'expdata/known_MHCII_structures.csv')
-    data, order = getCSVData(path, 'pdbid')
-    return data
 
 def fetchPDB(name, path):
     """Fetch a pdb and save to path"""
