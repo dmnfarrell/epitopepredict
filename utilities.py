@@ -8,7 +8,7 @@
 
 import os, math, csv, string
 import shutil
-import Image, ImageFont, ImageDraw
+#import Image, ImageFont, ImageDraw
 import ConfigParser
 import numpy as np
 import pandas as pd

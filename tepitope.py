@@ -27,7 +27,7 @@ bola = ['BoLA-DRB3*2005','BoLA-DRB3*1601','BoLA-DRB3*3301',
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 tepitopedir = os.path.join(path,'tepitope')
 home = os.path.expanduser("~")
-datadir = os.path.join(home, 'mhcdata')
+datadir = os.path.join(path, 'mhcdata')
 expdatadir = os.path.join(datadir, 'expdata')
 AAcodes3 = {'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
         'D':'ASP', 'N':'ASN', 'H':'HIS', 'W':'TRP', 'F':'PHE', 'Y':'TYR', \
