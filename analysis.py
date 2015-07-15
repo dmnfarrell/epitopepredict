@@ -23,6 +23,7 @@ from Bio.SeqRecord import SeqRecord
 import base, sequtils, tepitope, utilities
 
 home = os.path.expanduser("~")
+#fix paths!
 genomespath = os.path.join(home, 'epitopedata')
 datadir = os.path.join(home, 'testpredictions')
 
@@ -153,7 +154,9 @@ def findClusters(binders, method, dist=None, minsize=3):
     print
     return x
 
-def testgenomeanalysis(label,gname,method):
+def genomeAnalysis(datadir,label,gname,method):
+    """this method should be made independent of web app paths etc"""
+
     path = os.path.join(datadir, '%s/%s/%s' %(label,gname,method))
     #path='test'
     gfile = os.path.join(genomespath,'%s.gb' %gname)
@@ -161,30 +164,22 @@ def testgenomeanalysis(label,gname,method):
     b = getAllBinders(path, method=method, n=5)
     P = base.getPredictor(method)
     res = b.groupby('name').agg({P.scorekey:[np.mean,np.size,np.max]}).sort()
-
     res.columns = res.columns.get_level_values(1)
-
     res = res.merge(g[['locus_tag','length','gene','product','order']],
                             left_index=True,right_on='locus_tag')
     res['perc'] = res['size']/res.length*100
     res = res.sort('perc',ascending=False)
 
-    #fig=plt.figure(figsize=(6,6))
-    #ax=fig.add_subplot(111)
-    #b.hist(P.scorekey,bins=30,alpha=0.8,ax=ax)
-    #res.sort('order').plot(kind='bar',x='order',y='perc',ax=ax)
-    #plt.show()
     top = b.groupby('peptide').agg({P.scorekey:np.mean,'allele':np.max,
                     'name': lambda x: x}).reset_index()
     top = top.sort(P.scorekey,ascending=P.rankascending)
-    print b
     cl = findClusters(b, method, dist=9, minsize=3)
     if cl is not None:
         gc = cl.groupby('name').agg({'density':np.max})
         res = res.merge(gc,left_on='locus_tag',right_index=True)
-    print res[:10]
+    #print res[:10]
 
-    return
+    return res
 
 def testFeatures():
     """test feature handling"""
