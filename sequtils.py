@@ -214,19 +214,19 @@ def getBlastResults(handle=None, filename=None, n=80):
 def testblast():
     database = 'all_genomes'
     f='test.faa'
-    #doLocalBlast(database, f, compress=True)
     df=getBlastResults(filename='test.xml.gz')
     print df[:5]
     return
 
-def getFastaProteins(infile,idindex=0):
+def fasta2Dataframe(infile,idindex=0):
     """Get fasta proteins into dataframe"""
 
     recs = SeqIO.parse(infile,'fasta')
-    keys = ['name','sequence','description']
-    data = [(r.name.split('|')[idindex],r.seq.tostring(),r.description) for r in recs]
+    keys = ['locus_tag','translation']
+    data = [(r.name,str(r.seq)) for r in recs]
     df = pd.DataFrame(data,columns=(keys))
-    df.set_index(['name'],inplace=True)
+    df['type'] = 'CDS'
+    #df.set_index(['name'],inplace=True)
     return df
 
 def convertSequenceFormat(infile, format='embl'):

@@ -10,7 +10,7 @@ import sys, os, shutil, string, types
 import csv, glob, pickle, itertools
 import re
 import time, random
-import collections
+from collections import OrderedDict
 from operator import itemgetter
 #import matplotlib
 #matplotlib.use('agg')
@@ -20,6 +20,7 @@ import pandas as pd
 import subprocess
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
+from Bio import SeqIO
 import base, sequtils, tepitope, utilities
 
 home = os.path.expanduser("~")
@@ -92,21 +93,21 @@ def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
     #df = getAlignedBlastResults(df)
     return df
 
-def getAlignedBlastResults(df,aln=None):
-    """Get gapped alignment from blast records"""
+def getAlignedBlastResults(df,aln=None,idkey='accession',productkey='definition'):
+    """Get gapped alignment from blast results """
 
-    sequtils.dataframe2Fasta(df, idkey='accession', seqkey='sequence',
-                        productkey='definition', outfile='blast_found.faa')
+    sequtils.dataframe2Fasta(df, idkey=idkey, seqkey='sequence',
+                        productkey=productkey, outfile='blast_found.faa')
     aln = sequtils.muscleAlignment("blast_found.faa")
     alnrows = [[a.id,str(a.seq)] for a in aln]
     alndf = pd.DataFrame(alnrows,columns=['accession','seq'])
-    res = df.merge(alndf, on='accession')
+    #res = df.merge(alndf, left_index=True, right_index=True)
+    res = df.merge(alndf, on=['accession'])
     res = res.drop('sequence',1)
     #get rid of duplicate hits
     #res.drop_duplicates(subset=['definition','seq'], inplace=True)
     res = res.sort('identity',ascending=False)
     print '%s hits, %s filtered' %(len(df), len(res))
-    print res[['accession','definition']][-20:]
     return res
 
 def setBlastLink(df):
@@ -269,6 +270,47 @@ def testconservation(label,gname):
     P.predictSequences(df,seqkey='sequence')
     b = P.getBinders()'''
     return
+
+def getLocalOrthologs(seq, db):
+    """Get alignment for a protein using local blast db"""
+
+    SeqIO.write(SeqRecord(Seq(seq)), 'tempseq.faa', "fasta")
+    sequtils.doLocalBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=30)
+    result_handle = open("my_blast.xml")
+    df = sequtils.getBlastResults(result_handle)
+    return df
+
+def findConservedPeptides(pb,alnrows):
+    """find conserved binders"""
+
+    f=[]
+    for i,a in alnrows.iterrows():
+        seq = a.sequence
+        found = [seq.find(j) for j in pb.peptide]
+        f.append(found)
+    s = pd.DataFrame(f,columns=pb.peptide,index=alnrows.accession)
+    s = s.replace(-1,np.nan)
+    res = s.count()
+    return res
+
+def getPredictions(path,tag,q=0.96):
+    """Get predictions from file system"""
+
+    q=round(q,2)
+    preds = OrderedDict()
+    cutoffs = {}
+    methods = ['tepitope']
+    for m in methods:
+        filename = os.path.join(path, m, tag+'.mpk')
+        print filename
+
+        if not os.path.exists(filename):
+            continue
+        df = pd.read_msgpack(filename)
+        pred = base.getPredictor(name=m, data=df)
+        cutoffs[m] = pred.allelecutoffs = getCutoffs(path, m, q)
+        preds[m] = pred
+    return preds, cutoffs
 
 def test():
     gname = 'ebolavirus'
