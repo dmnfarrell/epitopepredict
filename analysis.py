@@ -275,37 +275,37 @@ def getLocalOrthologs(seq, db):
     df = sequtils.getBlastResults(result_handle)
     return df
 
-def findConservedPeptides(pb,alnrows):
+def findConservedPeptides(pb,recs):
     """find conserved binders"""
 
     f=[]
-    for i,a in alnrows.iterrows():
-        seq = a.sequence
+    if type(pb) is pd.Series:
+        pb = pd.DataFrame([pb])
+    for i,a in recs.iterrows():
+        seq = a.sequence.replace('-','')
+        #print a.accession,seq[190:220]
         found = [seq.find(j) for j in pb.peptide]
         f.append(found)
-    s = pd.DataFrame(f,columns=pb.peptide,index=alnrows.accession)
+    #print f
+    s = pd.DataFrame(f,columns=pb.peptide,index=recs.accession)
     s = s.replace(-1,np.nan)
     res = s.count()
     return res
 
-def getPredictions(path,tag,q=0.96):
+def getPredictions(path,tag,method='tepitope',q=0.96):
     """Get predictions from file system"""
 
     q=round(q,2)
-    preds = OrderedDict()
+    #preds = OrderedDict()
     cutoffs = {}
-    methods = ['tepitope']
-    for m in methods:
-        filename = os.path.join(path, m, tag+'.mpk')
-        print filename
-
-        if not os.path.exists(filename):
-            continue
-        df = pd.read_msgpack(filename)
-        pred = base.getPredictor(name=m, data=df)
-        cutoffs[m] = pred.allelecutoffs = getCutoffs(path, m, q)
-        preds[m] = pred
-    return preds, cutoffs
+    filename = os.path.join(path, tag+'.mpk')
+    if not os.path.exists(filename):
+        return
+    df = pd.read_msgpack(filename)
+    pred = base.getPredictor(name=method, data=df)
+    cutoffs = pred.allelecutoffs = getCutoffs(path, method, q)
+    pred = pred
+    return pred
 
 def test():
     gname = 'ebolavirus'

@@ -167,15 +167,15 @@ def doLocalBlast(database, query, output=None, maxseqs=10, evalue=0.001,
     start = time.time()
     if output == None:
         output = os.path.splitext(query)[0]+'.xml'
-    print output
+    #print output
     from Bio.Blast.Applications import NcbiblastxCommandline
     cline = NcbiblastxCommandline(query=query,  cmd='blastp', max_target_seqs=maxseqs,
                                  db=database, outfmt=5, out=output,
                                  evalue=evalue, num_threads=3)
-    print cline
+    #print cline
     stdout, stderr = cline()
     end = time.time()
-    print 'BLAST done. took %s seconds' %(round(end-start,2))
+    #print 'BLAST done. took %s seconds' %(round(end-start,2))
     if compress == True:
         utilities.compress(output, remove=True)
     return
