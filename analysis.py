@@ -28,6 +28,25 @@ home = os.path.expanduser("~")
 genomespath = os.path.join(home, 'epitopedata')
 datadir = os.path.join(home, 'testpredictions')
 
+def plotheatmap(df, ax=None, cmap='Blues'):
+
+    if ax==None:
+        fig=plt.figure()
+        ax=fig.add_subplot(111)
+    else:
+        fig = ax.get_figure()
+    df = df._get_numeric_data()
+    hm=ax.pcolor(df,cmap=cmap)
+    #fig.colorbar(hm, ax=ax)
+    ax.set_xticks(np.arange(0.5, len(df.columns)))
+    ax.set_yticks(np.arange(0.5, len(df.index)))
+    ax.set_xticklabels(df.columns, minor=False, fontsize=10,rotation=45)
+    ax.set_yticklabels(df.index, minor=False, fontsize=8)
+    ax.set_ylim(0, len(df.index))
+    hm.set_clim(0,1)
+    plt.tight_layout()
+    return
+
 def getAllBinders(path, method='tepitope', n=3, cutoff=0.95):
     """Get all binders from a set of proteins in path"""
 
@@ -275,22 +294,19 @@ def getLocalOrthologs(seq, db):
     df = sequtils.getBlastResults(result_handle)
     return df
 
-def findConservedPeptides(pb,recs):
-    """find conserved binders"""
+def findConservedPeptide(peptide, recs):
+    """Find sequences where a peptide is conserved"""
 
     f=[]
-    if type(pb) is pd.Series:
-        pb = pd.DataFrame([pb])
     for i,a in recs.iterrows():
         seq = a.sequence.replace('-','')
-        #print a.accession,seq[190:220]
-        found = [seq.find(j) for j in pb.peptide]
+        found = seq.find(peptide)
         f.append(found)
-    #print f
-    s = pd.DataFrame(f,columns=pb.peptide,index=recs.accession)
+    s = pd.DataFrame(f,columns=['found'],index=recs.accession)
     s = s.replace(-1,np.nan)
+    #print s
     res = s.count()
-    return res
+    return s
 
 def getPredictions(path,tag,method='tepitope',q=0.96):
     """Get predictions from file system"""
