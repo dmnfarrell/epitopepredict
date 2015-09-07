@@ -245,6 +245,7 @@ def getCDS(df):
 
 def fastaFormatfromFeature(feature):
     """Get fasta formatted sequence from a genome feature"""
+
     name = feature.qualifiers['locus_tag'][0]
     if not feature.qualifiers.has_key('translation'):
         return ''

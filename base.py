@@ -25,6 +25,7 @@ from matplotlib.ticker import MaxNLocator
 
 home = os.path.expanduser("~")
 datadir = os.path.join(home, 'mhcdata')
+predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2']
 iedbmethods = ['arbpython','comblib','consensus3','IEDB_recommended',
                'NetMHCIIpan','nn_align','smm_align','tepitope']
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
@@ -141,6 +142,8 @@ def dbscan(B=None, x=None, dist=7, minsize=4):
     return clusts
 
 def getPredictor(name='tepitope', **kwargs):
+    """Get a predictor"""
+
     if name == 'netmhciipan':
         return NetMHCIIPanPredictor(**kwargs)
     elif name == 'iedbmhc1':
@@ -841,6 +844,7 @@ class IEDBMHCIPredictor(Predictor):
         return self.data
 
     def prepareData(self, rows, name):
+        """Prepare data from results"""
 
         df = pd.read_csv(StringIO.StringIO(rows),sep="\t")
         if len(df)==0:
@@ -863,6 +867,7 @@ class IEDBMHCIPredictor(Predictor):
 
     def getScoreKey(self, data):
         """Get iedbmhc1 score key from data"""
+
         m = data['method'].head(1).squeeze()
         key = self.methods[m]
         return key
@@ -870,6 +875,7 @@ class IEDBMHCIPredictor(Predictor):
     def getMHCIList(self):
         """Get available alleles from model_list file and
             convert to standard names"""
+
         afile = os.path.join(self.path,'data/MHCI_mhcibinding20130222/consensus/model_list.txt')
         df = pd.read_csv(afile,sep='\t',names=['name','x'])
         alleles = list(df['name'])
@@ -878,6 +884,7 @@ class IEDBMHCIPredictor(Predictor):
 
 class IEDBMHCIIPredictor(Predictor):
     """Using IEDB mhcii method, requires iedb-mhc2 tools"""
+
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc2'
@@ -1030,4 +1037,3 @@ class BCellPredictor(Predictor):
                 fname = os.path.join(path, name+'.mpk')
                 pd.to_msgpack(fname, res)
         return
-
