@@ -17,7 +17,7 @@ class PredictorTests(unittest.TestCase):
     """Basic tests for predictor"""
 
     def setUp(self):
-        genbankfile = 'zaire-ebolavirus.gb'
+        genbankfile = 'testing/zaire-ebolavirus.gb'
         self.df = sequtils.genbank2Dataframe(genbankfile, cds=True)
         self.testdir = 'testing'
         if not os.path.exists(self.testdir):
