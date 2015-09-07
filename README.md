@@ -21,7 +21,7 @@ Clone the git repository into your Python path or run `pip install mhcpredict`.
 ### Usage
 ```
 #import
-from mhcpredict import base,genome,analysis
+from mhcpredict import base,sequtils,analysis
 #get data
 df = Genome.genbank2Dataframe(genbankfile, cds=True)
 #create class
