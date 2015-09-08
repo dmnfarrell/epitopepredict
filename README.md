@@ -32,7 +32,7 @@ from mhcpredict import base, sequtils, analysis
 print base.predictors 
 
 #get data in genbank format into a dataframe
-df = Genome.genbank2Dataframe(genbankfile, cds=True)
+df = sequtils.genbank2Dataframe(genbankfile, cds=True)
 #get data in fasta format
 df = sequtils.fasta2Dataframe(fastafile)
 
