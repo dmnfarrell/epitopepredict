@@ -18,25 +18,36 @@ This library provides a standardized programmatic interface for executing severa
 
 * pandas
 * biopython
-* 
 
 ### Installation
 
 Clone the git repository into your Python path. Not yet available on pypi.
+To use netMHCIIpan you need in install and added the path of the executable to your PATH. If you get the following error: `bash: /local/bin/netMHCIIpan: /bin/tcsh: bad interpreter:`, it means you are missing tcsh and should install it with your package manager.
 
-### Usage
+### Example usage
 ```
 #import
-from mhcpredict import base,sequtils,analysis
-#get data
+from mhcpredict import base, sequtils, analysis
+#get list of predictors
+print base.predictors 
+
+#get data in genbank format into a dataframe
 df = Genome.genbank2Dataframe(genbankfile, cds=True)
-#create class
+#get data in fasta format
+df = sequtils.fasta2Dataframe(fastafile)
+
+#create tepitope predictor
 P = base.getPredictor('tepitope')
+
 #run prediction for 2 alleles and save results to savepath
 alleles = ["HLA-DRB1*0101", "HLA-DRB1*0305"]
 P.predictProteins(df,length=11,alleles=alleles,save=True,path=savepath)
-#use previous results
-pred = pd.read_msgpack(file)
+#read previous results
+res = pd.read_msgpack(file)
+#set this data for the predictor
+#assumes the data is for the right predictor, need to add checks...
+P.data = res
+
 #get binders
 P.getBinders(data=pred)
 #get binders for an entire set of saved results
