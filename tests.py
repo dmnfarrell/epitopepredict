@@ -36,6 +36,20 @@ class PredictorTests(unittest.TestCase):
         P.getBinders(data=P.data)
         return
 
+    def testnetMHCIIpan(self):
+        """netMHCIIpan test"""
+
+        #requires netmHCIIpan is installed
+        df = self.df
+        P = base.getPredictor('netmhciipan')
+        alleles = ["HLA-DRB1*0101"]
+        names = ['ZEBOVgp1']
+        print P
+        P.predictProteins(df, length=11, alleles=alleles, names=names,
+                          save=True, path=self.testdir)
+        P.getBinders(data=P.data)
+        return
+
     '''def testIEDB(self):
         """IEDB MHCI test"""
 
@@ -59,6 +73,17 @@ class PredictorTests(unittest.TestCase):
         P.predictProteins(df, names=names, save=True, path=self.testdir)
         return
 
+    def testFasta(self):
+        """Test fasta predictions"""
+
+        fastafile = 'testing/zaire-ebolavirus.faa'
+        df = sequtils.fasta2Dataframe(fastafile)
+        alleles = ["HLA-DRB1*0101"]
+        P = base.getPredictor('tepitope')
+        P.predictProteins(df, length=11, alleles=alleles,
+                          save=True, path=self.testdir)
+        return
+
     def testLoad(self):
         """Test re-loading predictions"""
 
@@ -68,7 +93,7 @@ class PredictorTests(unittest.TestCase):
         P.data = pred
         return
 
-    def testAnalsis(self):
+    def testAnalysis(self):
         """Test analysis methods"""
 
         #get binders for an entire set of saved results

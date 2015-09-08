@@ -25,7 +25,7 @@ from matplotlib.ticker import MaxNLocator
 
 home = os.path.expanduser("~")
 datadir = os.path.join(home, 'mhcdata')
-predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2']
+predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','bcell']
 iedbmethods = ['arbpython','comblib','consensus3','IEDB_recommended',
                'NetMHCIIpan','nn_align','smm_align','tepitope']
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
@@ -154,8 +154,6 @@ def getPredictor(name='tepitope', **kwargs):
         return BCellPredictor(**kwargs)
     elif name == 'tepitope':
         return TEpitopePredictor(**kwargs)
-    elif name == 'threading':
-        return ThreadingPredictor(**kwargs)
     else:
         print 'no such predictor %s' %name
         return
