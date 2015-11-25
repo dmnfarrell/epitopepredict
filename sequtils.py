@@ -313,7 +313,9 @@ def genbank2Dataframe(infile, cds=False, quiet=True):
     """Get genome records from a genbank file into a dataframe
       returns a dataframe with a row for each cds/entry"""
 
-    genome = SeqIO.read(infile,'genbank')
+    #genome = SeqIO.read(infile,'genbank')
+    recs = list(SeqIO.parse(infile,'genbank'))
+    genome = recs[0]
     #preprocess features
     allfeat = []
     for (item, f) in enumerate(genome.features):

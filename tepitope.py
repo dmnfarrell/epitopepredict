@@ -183,7 +183,7 @@ def pickpocket(ind, allele):
 
     alnindex = dict([(a.id,a) for a in drbaln])
     if allele not in alnindex:
-        print 'no such allele'
+        #print 'no such allele'
         return
     ind=ind-1
     #get query pseudosequence

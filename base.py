@@ -532,7 +532,7 @@ class Predictor(object):
             st=time.time()
             seq = row['translation']
             name = row['locus_tag']
-            print name
+            #print name
             res = []
             for a in alleles:
                 #print a
@@ -544,6 +544,7 @@ class Predictor(object):
             if save == True:
                 fname = os.path.join(path, name+'.mpk')
                 pd.to_msgpack(fname, res)
+	print 'predictions done for %s proteins' %len(proteins)
         return
 
     def save(self, label, singlefile=True):
