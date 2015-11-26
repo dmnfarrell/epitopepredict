@@ -47,8 +47,8 @@ def plotheatmap(df, ax=None, cmap='Blues'):
     plt.tight_layout()
     return
 
-def getAllBinders(path, method='tepitope', n=3, cutoff=0.95):
-    """Get all binders from a set of proteins in path"""
+def getAllBinders(path, method='tepitope', n=3, cutoff=0.95, promiscuous=True):
+    """Get all promiscuous binders from a set of proteins in path"""
 
     print 'getting binders..'
     binders = []
@@ -61,7 +61,10 @@ def getAllBinders(path, method='tepitope', n=3, cutoff=0.95):
     P.allelecutoffs = getCutoffs(path, method, cutoff, overwrite=True)
     for f in files:
         df = pd.read_msgpack(f)
-        b = P.getPromiscuousBinders(data=df,n=n)
+        if promiscuous== True:
+            b = P.getPromiscuousBinders(data=df,n=n)
+        else:
+            b = P.getBinders(data=df)
         #print b[:5]
         binders.append(b)
     result = pd.concat(binders)
@@ -93,6 +96,22 @@ def getNmer(df, n=20, key='peptide'):
         return s
     df['nmer'] = df.apply(getseq,1)
     return df
+
+def getOverlappingBinders(binders1, binders2, label='overlap'):
+    """Overlap for binders with any set of peptides with start/end cols"""
+
+    new=[]
+    def overlap(x,b):
+        f = b[(b.pos>x.start) & (b.pos<x.end)]
+        #print x.locus_tag,x.start,x.end,x.peptide,len(f) #,f.peptide,f.pos
+        return len(f)
+    for n,df in binders1.groupby('name'):
+        b = binders2[binders2.name==n]
+        df[label] = df.apply(lambda r: overlap(r,b),axis=1)
+        new.append(df)
+    result = pd.concat(new)
+    print '%s with overlapping binders' %len(result[result[label]>0])
+    return result
 
 def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
     """Fetch orthologous sequences using blast and return the records
