@@ -776,7 +776,7 @@ class NetMHCIIPanPredictor(Predictor):
     def runSequence(self, seq, length, allele):
         seqfile = createTempSeqfile(seq)
         cmd = 'netMHCIIpan -s -length %s -a %s -f %s' %(length, allele, seqfile)
-        print cmd
+        #print cmd
         temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         rows = self.readResult(temp)
         df = pd.DataFrame(rows)

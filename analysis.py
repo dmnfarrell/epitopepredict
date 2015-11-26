@@ -65,6 +65,8 @@ def getAllBinders(path, method='tepitope', n=3, cutoff=0.95):
         #print b[:5]
         binders.append(b)
     result = pd.concat(binders)
+    result['start'] = result.pos
+    result['end'] = result.pos+result.peptide.str.len()
     return result
 
 def getCutoffs(path, method, q=0.98, overwrite=False):
@@ -76,6 +78,21 @@ def getCutoffs(path, method, q=0.98, overwrite=False):
     quantiles = pd.read_csv(quantfile,index_col=0)
     cutoffs = dict(quantiles.ix[q])
     return cutoffs
+
+def getNmer(df, n=20, key='peptide'):
+    """Get 20mer peptide"""
+
+    def getseq(x):
+        n=20
+        size=len(x[key])
+        if size<n:
+            o = int((n-size)/2.0)+1
+            s = x[key][x.start-o:x.end+o][:20]
+        else:
+            s = x[key][x.start:x.end]
+        return s
+    df['nmer'] = df.apply(getseq,1)
+    return df
 
 def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
     """Fetch orthologous sequences using blast and return the records
@@ -337,4 +354,3 @@ def test():
 if __name__ == '__main__':
     pd.set_option('display.width', 600)
     test()
-
