@@ -409,7 +409,7 @@ class Predictor(object):
         """Add a ranking column according to scorekey"""
         s=self.scorekey
         df['rank'] = df[s].rank(method='min',ascending=self.rankascending)
-        df.sort_index(by=['rank','name','allele'], ascending=True, inplace=True)
+        df.sort_values(by=['rank','name','allele'], ascending=True, inplace=True)
         return
 
     def evaluate(self, df, key, value, operator='<'):
@@ -479,7 +479,7 @@ class Predictor(object):
             g = final.groupby('core')
             final = g.agg({self.scorekey:max,'name':first,'peptide':first,'pos':first,
                             'allele':first})
-            final = final.reset_index().sort('pos')
+            final = final.reset_index().sort_values('pos')
             #print merged.sort('pos')
             #print final
             return final
@@ -524,14 +524,17 @@ class Predictor(object):
           recs: a pandas DataFrame with cds data
           returns a dataframe of predictions over multiple proteins"""
 
-        if type(alleles) is not types.ListType:
+        if type(alleles) is types.StringType:
             alleles = [alleles]
+        elif type(alleles) is pd.Series:
+            alleles = alleles.tolist()
         self.length = length
         recs = sequtils.getCDS(recs)
         if names != None:
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())
         results=[]
+        a = 0
         for i,row in proteins:
             st=time.time()
             seq = row['translation']
@@ -544,11 +547,14 @@ class Predictor(object):
                                     allele=a,name=name)
                 if df is not None:
                     res.append(df)
+                    a+=1
             res = pd.concat(res)
             if save == True:
+                if not os.path.exists(path):
+                    os.mkdir(path)
                 fname = os.path.join(path, name+'.mpk')
                 pd.to_msgpack(fname, res)
-        print 'predictions done for %s proteins' %len(proteins)
+        print 'predictions done for %s proteins in %s alleles' %(len(proteins),a)
         return
 
     def save(self, label, singlefile=True):
