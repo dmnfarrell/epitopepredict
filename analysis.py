@@ -82,7 +82,7 @@ def getCutoffs(path, method, q=0.98, overwrite=False):
     cutoffs = dict(quantiles.ix[q])
     return cutoffs
 
-def getNmer(df, n=20, key='peptide'):
+def getNmer(df, n=20, key='translation'):
     """Get 20mer peptide"""
 
     def getseq(x):
@@ -94,8 +94,8 @@ def getNmer(df, n=20, key='peptide'):
         else:
             s = x[key][x.start:x.end]
         return s
-    df['nmer'] = df.apply(getseq,1)
-    return df
+    x = df.apply(getseq,1)
+    return x
 
 def getOverlappingBinders(binders1, binders2, label='overlap'):
     """Overlap for binders with any set of peptides with start/end cols"""
@@ -179,7 +179,8 @@ def alignment2Dataframe(aln):
     df = pd.DataFrame(alnrows,columns=['name','seq'])
     return df
 
-def findClusters(binders, method, dist=None, minsize=3):
+def findClusters(binders, method, dist=None, minsize=3,
+                 genome=None):
     """Get clusters of binders for all predictions"""
 
     C=[]
@@ -200,11 +201,16 @@ def findClusters(binders, method, dist=None, minsize=3):
 
     if len(C)==0:
         print 'no clusters'
-        return
+        return pd.DataFrame()
     x = pd.DataFrame(C,columns=['name','start','end','binders'])
     x['clustersize'] = (x.end-x.start)
     x['density'] = x.binders/(x.end-x.start)
     x['method'] = method
+
+    if genome is not None:
+        temp = x.merge(genome[['locus_tag','gene','translation']],
+                    left_on='name',right_on='locus_tag')
+        x['peptide'] = getNmer(temp)
     x = x.sort(['binders','density'],ascending=False)
     print '%s clusters found in %s proteins' %(len(x),len(x.groupby('name')))
     print
