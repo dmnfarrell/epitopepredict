@@ -1,7 +1,7 @@
 
 ### Background
 
-**mhcpredict** provides a standardized programmatic interface for executing several MHC binding prediction methods. The results from each method can then be processed and visualized in a consistent manner. The Tepitope module implements the TEPITOPEPan method and requires no external program to run. netMHCIIpan must be downloaded separately from the website and installed on your system. The process is quite simple. The same applies for the IEDB tools. Both of these tools are free for academic use.
+**epitopepredict** provides a standardized programmatic interface for executing several epitope prediction methods. Currently this largely consists of interfaces to several MHC binding prediction, the results of which can then be processed and visualized in a consistent manner. Many MHC binding predictors have been developed but usually not in an open source manner. The Tepitope module implements the TEPITOPEPan method is provided as a 'built in' method. netMHCIIpan must be downloaded separately from the website and installed on your system. The process is quite simple. The same applies for the IEDB tools. Both of these tools are free for academic use. It is hoped that other epitope predictors will be integrated.
 
 ####Supported methods:
 
@@ -22,7 +22,7 @@ To use netMHCIIpan you need in install and added the path of the executable to y
 
 ### Methodology
 
-Predictors for each method inherit from the Predictor class and all implement a predict method for scoring a single sequence. This may wrap methods from other modules and/or call command line predictors. For example the TepitopePredictor uses the mhcpredict.tepitope module. This method should return a Pandas DataFrame. The predictProteins method is used for multiple proteins contained in a dataframe of sequences in a standard format. This is created from a genbank or fasta file (see examples below). For large numbers of sequences predictProteins should be called with save=True so that the results are saved as each protein is completed to avoid memory issues, since many alleles might be called for each protein. Results are saved with one file per protein in msgpack format.
+Predictors for each method inherit from the Predictor class and all implement a predict method for scoring a single sequence. This may wrap methods from other modules and/or call command line predictors. For example the TepitopePredictor uses the epitopepredict.tepitope module. This method should return a Pandas DataFrame. The predictProteins method is used for multiple proteins contained in a dataframe of sequences in a standard format. This is created from a genbank or fasta file (see examples below). For large numbers of sequences predictProteins should be called with save=True so that the results are saved as each protein is completed to avoid memory issues, since many alleles might be called for each protein. Results are saved with one file per protein in msgpack format.
 
 The results are of the following form and are returned sorted by the score column.
 
@@ -46,7 +46,7 @@ where name is the protein identifier from the input file (a locus tag for exampl
 
 ```
 #import
-from mhcpredict import base, sequtils, analysis
+from epitopepredict import base, sequtils, analysis
 #get list of predictors
 print base.predictors 
 
