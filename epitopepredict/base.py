@@ -20,7 +20,6 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 import utilities, peptides
 import sequtils, tepitope
-#from matplotlib.ticker import MaxNLocator
 
 home = os.path.expanduser("~")
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
@@ -125,6 +124,7 @@ def getClusters(B, clustlen=25, cutoff=0.05):
 def dbscan(B=None, x=None, dist=7, minsize=4):
     """Density-Based Spatial clustering. Finds core samples of
       high density and expands clusters from them."""
+
     from sklearn.cluster import DBSCAN
     if B is not None:
         if len(B)==0:
@@ -221,6 +221,7 @@ def compareBindingData(exp, pred, seqkey, datakey, allele):
 
 def compareProteins(df, pred, exp, scorefield):
     """Compare whole antigen scores to % best binders per protein"""
+
     binders=[]
     names = []
     cds = df[df.type=='CDS']
@@ -298,6 +299,7 @@ def comparePredictors(pred1, pred2,
 
 def getNearest(df):
     """Get nearest binder"""
+
     grps = df.groupby('name')
     new = []
     def closest(x,g):
@@ -313,6 +315,7 @@ def getNearest(df):
 
 def getBinders(preds,n=3):
     """Get binders for multiple predictors"""
+
     b={}
     for m in preds:
         pred = preds[m]
@@ -381,6 +384,7 @@ class Predictor(object):
     """Base class to handle generic predictor methods, usually these will
        wrap methods from other modules and/or call command line predictors.
        Subclass for specific functionality"""
+
     def __init__(self, data=None):
         self.data = data
         self.name = ''
@@ -534,27 +538,24 @@ class Predictor(object):
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())
         results=[]
-        a = 0
         for i,row in proteins:
-            st=time.time()
+            st = time.time()
             seq = row['translation']
             name = row['locus_tag']
-            #print name
+            #print i,name
             res = []
             for a in alleles:
-                #print a
                 df = self.predict(sequence=seq,length=length,
                                     allele=a,name=name)
                 if df is not None:
                     res.append(df)
-                    a+=1
             res = pd.concat(res)
             if save == True:
                 if not os.path.exists(path):
                     os.mkdir(path)
                 fname = os.path.join(path, name+'.mpk')
                 pd.to_msgpack(fname, res)
-        print 'predictions done for %s proteins in %s alleles' %(len(proteins),a)
+        print 'predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles))
         return
 
     def save(self, label, singlefile=True):

@@ -211,7 +211,7 @@ def findClusters(binders, method, dist=None, minsize=3,
         temp = x.merge(genome[['locus_tag','gene','translation']],
                     left_on='name',right_on='locus_tag')
         x['peptide'] = getNmer(temp)
-    x = x.sort(['binders','density'],ascending=False)
+    x = x.sort_values(by=['binders','density'],ascending=False)
     print '%s clusters found in %s proteins' %(len(x),len(x.groupby('name')))
     print
     return x
