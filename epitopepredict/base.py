@@ -234,7 +234,7 @@ def compareProteins(df, pred, exp, scorefield):
         binders.append(pred.getBinders(method='cutoff'))
     return
 
-def getMatchingPredictions(pred1, pred2, method='cutoff'):
+'''def getMatchingPredictions(pred1, pred2, method='cutoff'):
     """Compare 2 predictors binders"""
 
     data1 = pred1.getBinders(method=method)
@@ -295,7 +295,7 @@ def comparePredictors(pred1, pred2,
     venn2([set(b1), set(b2)], set_labels = (pred1.name,pred2.name))
     f.suptitle('%s vs. %s' %(pred1.name,pred2.name),fontsize=16)
     plt.show()
-    return
+    return'''
 
 def getNearest(df):
     """Get nearest binder"""
@@ -403,6 +403,7 @@ class Predictor(object):
     def prepareData(self, result, name, allele):
         """Put raw prediction data into DataFrame and rank,
            override for custom processing"""
+
         df = pd.DataFrame(result, columns=['peptide','core','pos','score'])
         df['name'] = name
         df['allele'] = allele
@@ -411,21 +412,29 @@ class Predictor(object):
 
     def getRanking(self, df):
         """Add a ranking column according to scorekey"""
+
         s=self.scorekey
         df['rank'] = df[s].rank(method='min',ascending=self.rankascending)
         df.sort_values(by=['rank','name','allele'], ascending=True, inplace=True)
         return
 
     def evaluate(self, df, key, value, operator='<'):
-        """Evaluate binders less than or greater than value, the cutoff"""
+        """Evaluate binders less than or greater than value - the cutoff"""
+
         if operator == '<':
             return df[df[key] <= value]
         else:
             return df[df[key] >= value]
 
     def getBinders(self, method='cutoff', q=0.01, data=None):
-        """Return top % ranked or using cutoff, usually we pass
-        data to this method which can be for one protein or lots of them"""
+        """
+        Get the top scoring percentile or using cutoff.
+        Args:
+            data: binding predictions for one or more proteins
+            q: quantile threshold for selecting global cutoffs
+        Returns:
+            pandas DataFrame of all binders
+        """
 
         if not data is None:
             df = data
@@ -455,7 +464,14 @@ class Predictor(object):
             return pd.concat(res)
 
     def getPromiscuousBinders(self, n=3, method='cutoff', data=None, name=None):
-        """Return only top binders present in at least n alleles"""
+        """
+        Get top scoring binders present in at least n alleles.
+        Args:
+            n: number of alleles
+            method: method to use for
+        Returns:
+            pandas DataFrame with binders
+        """
 
         if data is None:
             data = self.data
@@ -463,6 +479,7 @@ class Predictor(object):
             self.data = data
         if name != None:
             data = self.data[self.data.name==name]
+        #get binders using this data
         df = self.getBinders(method, data=data)
         grps = df.groupby(['peptide','pos','name'])
         if self.operator == '<':
@@ -492,6 +509,7 @@ class Predictor(object):
 
     def getUniqueCores(self, binders=False):
         """Get only unique cores"""
+
         if binders == True:
             df = self.getBinders()
         else:
@@ -504,7 +522,7 @@ class Predictor(object):
         return cores
 
     def predictSequences(self, data, seqkey='peptide', length=11,
-                        alleles=['HLA-DRB1*0101'], save=False):
+                        alleles=[], save=False):
         results=[]
         for i,row in data.iterrows():
             seq = row[seqkey]
@@ -523,10 +541,17 @@ class Predictor(object):
         return results
 
     def predictProteins(self, recs, length=11, names=None,
-                         alleles=[], save=False, label='', path=''):
+                         alleles=[], path=None):
         """Get predictions for a set of proteins and/or over multiple alleles
-          recs: a pandas DataFrame with cds data
-          returns a dataframe of predictions over multiple proteins"""
+          Args:
+            recs: protein sequences in a pandas DataFrame
+            length: length of peptides to predict
+            names: names of proteins to use from sequences
+            alleles: allele list
+            path: if results are to be saved to disk provide a path, otherwise results
+            for all proteins are stored in the data attribute of the predictor
+          Returns:
+            a dataframe of predictions over multiple proteins"""
 
         if type(alleles) is types.StringType:
             alleles = [alleles]
@@ -537,7 +562,7 @@ class Predictor(object):
         if names != None:
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())
-        results=[]
+        results = []
         for i,row in proteins:
             st = time.time()
             seq = row['translation']
@@ -550,12 +575,20 @@ class Predictor(object):
                 if df is not None:
                     res.append(df)
             res = pd.concat(res)
-            if save == True:
+            if path is not None and path != '':
                 if not os.path.exists(path):
                     os.mkdir(path)
                 fname = os.path.join(path, name+'.mpk')
                 pd.to_msgpack(fname, res)
+            else:
+                results.append(res)
         print 'predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles))
+        if path is None:
+            #if no path we keep assign results to the data object
+            #assumes we have enough memory
+            self.data = pd.concat(results)
+        else:
+            print 'results saved to %s' %os.path.abspath(path)
         return
 
     def save(self, label, singlefile=True):
@@ -595,6 +628,7 @@ class Predictor(object):
 
     def reshape(self, name=None):
         """Return pivoted data over alleles for summary use"""
+
         df = self.data
         if name != None:
             df = df[df.name==name]

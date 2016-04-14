@@ -48,7 +48,18 @@ def plotheatmap(df, ax=None, cmap='Blues'):
     return
 
 def getAllBinders(path, method='tepitope', n=3, cutoff=0.95, promiscuous=True):
-    """Get all promiscuous binders from a set of proteins in path"""
+    """
+    Get all promiscuous binders from a set of binding results stored in a directory.
+
+    Args:
+        path: The file path with all the binding prediction results
+        method: Prediction method
+        n: minimum number of alleles if using promiscuous binders
+        promiscuous: whether to return only promiscuous binders
+
+    Returns:
+        A dataframe with all binders matching the required critieria
+    """
 
     print 'getting binders..'
     binders = []
@@ -72,8 +83,16 @@ def getAllBinders(path, method='tepitope', n=3, cutoff=0.95, promiscuous=True):
     result['end'] = result.pos+result.peptide.str.len()
     return result
 
-def getCutoffs(path, method, q=0.98, overwrite=False):
-    """Get global cutoffs for predictions in path"""
+def getCutoffs(path,  method, data=None, q=0.98, overwrite=False):
+    """
+    Get global cutoffs for predictions in path
+    Args:
+        path: The file path with all the binding prediction results
+        method: Prediction method
+        q: percentile level of score to select cutoffs
+    Returns:
+        A dictionary with cutoff values per allele
+    """
 
     quantfile = os.path.join(path,'quantiles.csv')
     if not os.path.exists(quantfile) or overwrite==True:
