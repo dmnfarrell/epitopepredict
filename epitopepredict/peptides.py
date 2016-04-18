@@ -11,7 +11,7 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
 from Bio.Alphabet import IUPAC
-import utilities
+from . import utilities
 
 AAletters = ['A', 'C', 'E', 'D', 'G', 'F', 'I', 'H', 'K', 'M', 'L', 'N', 'Q', 'P',\
              'S', 'R', 'T', 'W', 'V', 'Y']
@@ -51,7 +51,7 @@ def createFragments(protfile=None, seq=None, length=9, overlap=1, quiet=True):
         if i+length>len(seq): continue
         frags.append(seq[i:i+length])
     if quiet == False:
-        print 'created %s fragments of length %s' %(len(frags),length)
+        print ('created %s fragments of length %s' %(len(frags),length))
     if protfile != None:
         cw =  csv.writer(open('%s_fragments' %protfile,'w'))
         for f in frags:
@@ -84,7 +84,7 @@ def getAllFragments(exp, length=11):
     cw=csv.writer(open('all_fragments.csv','w'))
     for i in allseqs:
         cw.writerow([i])
-    print 'got %s fragments' %len(allseqs)
+    print ('got %s fragments' %len(allseqs))
     return allseqs
 
 def getAASubstitutions(template):

@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 """
-    MHC Epitope analysis
+    epitopepredict analysis methods for workflows
     Created September 2013
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import sys, os, shutil, string, types
 import csv, glob, pickle, itertools
 import re
@@ -21,7 +22,7 @@ import subprocess
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
-import base, sequtils, tepitope, utilities
+from . import base, sequtils, tepitope, utilities
 
 home = os.path.expanduser("~")
 #fix paths!
@@ -47,59 +48,115 @@ def plotheatmap(df, ax=None, cmap='Blues'):
     plt.tight_layout()
     return
 
-def getAllBinders(path, method='tepitope', n=3, cutoff=0.95, promiscuous=True):
-    """
-    Get all promiscuous binders from a set of binding results stored in a directory.
+'''def compareBindingData(exp, pred, seqkey, datakey, allele):
+    """Compare to experimental binding data in a csv file.
+     pred: the predictor
+     seqkey: col name for sequences
+     datakey col name for exp binding/score value"""
 
-    Args:
-        path: The file path with all the binding prediction results
-        method: Prediction method
-        n: minimum number of alleles if using promiscuous binders
-        promiscuous: whether to return only promiscuous binders
+    peptides = list(exp[seqkey])
+    pred.predict(peptides=peptides, allele=allele)
+    scorekey = pred.scorekey
+    data = pd.read_csv(os.path.join(tepitope.tepitopedir,
+                        'predictions/HLA-DRB1*0101.csv'))
+    pred.cutoff=0
+    merged = pd.merge(pred.data, exp,
+                  left_on='peptide', right_on=seqkey,
+                  suffixes=['_1', '_2'])
+    def cutoff(x,c,func):
+        if func(x,c): return 1
+        else: return 0
 
-    Returns:
-        A dataframe with all binders matching the required critieria
-    """
+    merged['pred'] = merged[scorekey].apply(lambda x:cutoff(x,pred.cutoff,op.gt))
+    merged['exp'] = merged[datakey].apply(lambda x:cutoff(x,.426,op.gt))
+    #print merged['exp']
+    P=merged[scorekey]
+    E=merged[datakey]
+    from sklearn import metrics
+    auc = metrics.roc_auc_score(merged['exp'],merged['pred'])
 
-    print 'getting binders..'
-    binders = []
-    m=method
-    if m=='bcell': return #not applicable
-    l=9
-    P = base.getPredictor(m)
-    files = glob.glob(os.path.join(path, '*.mpk'))
-    #get allele specific cutoffs
-    P.allelecutoffs = getCutoffs(path, method, cutoff, overwrite=True)
-    for f in files:
-        df = pd.read_msgpack(f)
-        if promiscuous== True:
-            b = P.getPromiscuousBinders(data=df,n=n)
-        else:
-            b = P.getBinders(data=df)
-        #print b[:5]
-        binders.append(b)
-    result = pd.concat(binders)
-    result['start'] = result.pos
-    result['end'] = result.pos+result.peptide.str.len()
-    return result
+    print '%s, %s samples' %(allele,len(E))
+    print auc
+    print Predict.aucCrossValidation(merged['exp'].values,merged['pred'].values)
+    return
 
-def getCutoffs(path,  method, data=None, q=0.98, overwrite=False):
-    """
-    Get global cutoffs for predictions in path
-    Args:
-        path: The file path with all the binding prediction results
-        method: Prediction method
-        q: percentile level of score to select cutoffs
-    Returns:
-        A dictionary with cutoff values per allele
-    """
+def compareProteins(df, pred, exp, scorefield):
+    """Compare whole antigen scores to % best binders per protein"""
 
-    quantfile = os.path.join(path,'quantiles.csv')
-    if not os.path.exists(quantfile) or overwrite==True:
-        base.getScoreDistributions(method, path)
-    quantiles = pd.read_csv(quantfile,index_col=0)
-    cutoffs = dict(quantiles.ix[q])
-    return cutoffs
+    binders=[]
+    names = []
+    cds = df[df.type=='CDS']
+    for i,row in list(cds.iterrows())[:10]:
+        seq = row['translation']
+        name = row['locus_tag']
+        print name,seq
+        names.append(name)
+        pred.predict(sequence=seq)
+        binders.append(pred.getBinders(method='cutoff'))
+    return
+
+def getMatchingPredictions(pred1, pred2, method='cutoff'):
+    """Compare 2 predictors binders"""
+
+    data1 = pred1.getBinders(method=method)
+    data2 = pred2.getBinders(method=method)
+    #data1 = pred1.data
+    #data2 = pred2.data
+    merged = pd.merge(data1, data2,
+                      left_on=['peptide','name'], right_on=['peptide','name'],
+                      suffixes=['_1', '_2'])
+    union = pd.merge(data1, data2, how='outer',
+                      left_on=['peptide','name'], right_on=['peptide','name'])
+
+    #merged = merged[merged.core_1==merged.core_2]
+    #print merged[:20]
+    k1 = pred1.scorekey; k2 = pred2.scorekey
+    if k1 == k2:
+        k1 += '_1'
+        k2 += '_2'
+    x=merged[k1]
+    y=merged[k2]
+
+    print '%s/%s shared binders' %(len(merged),len(union))
+    return merged, x, y
+
+def comparePredictors(pred1, pred2,
+                      names=None, allele='HLA-DRB1*0101'):
+    """Compare 2 predictors with various metrics and plot output.
+       Input is a dataframe with sequence records"""
+
+    from matplotlib_venn import venn2
+    import pylab as plt
+    f = plt.figure(figsize=(10,10))
+    ax = f.add_subplot(221)
+
+    binders1 = pred1.getBinders('cutoff')
+    binders2 = pred2.getBinders('cutoff')
+    names = dict(list(pred1.data.groupby('name'))).keys()
+
+    #get merged binders
+    m,x,y = getMatchingPredictions(pred1, pred2, method='cutoff')
+
+    ax.plot(x,y,'o',ms=3,alpha=0.5)
+    ax.set_xlabel(pred1.name)
+    ax.set_ylabel(pred2.name)
+    ind=np.arange(len(names))
+    b1 = list(binders1.peptide)
+    b2 = list(binders2.peptide)
+    #print list(set(names1) & set(names2))
+    groups1 = dict(list(binders1.groupby('name')))
+    groups2 = dict(list(binders2.groupby('name')))
+    prots1 = groups1.keys()
+    prots2 = groups2.keys()
+
+    ax1 = f.add_subplot(222)
+    ax1.set_title('proteins overlap')
+    venn2([set(prots1), set(prots2)], set_labels = (pred1.name,pred2.name))
+    ax3=f.add_subplot(212)
+    venn2([set(b1), set(b2)], set_labels = (pred1.name,pred2.name))
+    f.suptitle('%s vs. %s' %(pred1.name,pred2.name),fontsize=16)
+    plt.show()
+    return'''
 
 def getNmer(df, n=20, key='translation'):
     """Get 20mer peptide"""
@@ -129,7 +186,7 @@ def getOverlappingBinders(binders1, binders2, label='overlap'):
         df[label] = df.apply(lambda r: overlap(r,b),axis=1)
         new.append(df)
     result = pd.concat(new)
-    print '%s with overlapping binders' %len(result[result[label]>0])
+    print ('%s with overlapping binders' %len(result[result[label]>0]))
     return result
 
 def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
@@ -145,12 +202,12 @@ def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
     #sequtils.doLocalBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=100, evalue=expect)
 
     try:
-        print 'running blast..'
+        print ('running blast..')
         result_handle = NCBIWWW.qblast("blastp", "nr", seq, expect=expect,
                               hitlist_size=500,entrez_query=equery)
         time.sleep(2)
     except:
-        print 'blast timeout'
+        print ('blast timeout')
         return
     savefile = open("my_blast.xml", "w")
     savefile.write(result_handle.read())
@@ -161,10 +218,10 @@ def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
     df['accession'] = df.subj.apply(lambda x: x.split('|')[3])
     df['definition'] = df.subj.apply(lambda x: x.split('|')[4])
     df = df.drop(['subj','positive','query_length','score'],1)
-    print len(df)
+    print (len(df))
     df.drop_duplicates(subset=['definition'], inplace=True)
     df = df[df['perc_ident']!=100]
-    print len(df)
+    print (len(df))
     #df = getAlignedBlastResults(df)
     return df
 
@@ -182,7 +239,7 @@ def getAlignedBlastResults(df,aln=None,idkey='accession',productkey='definition'
     #get rid of duplicate hits
     #res.drop_duplicates(subset=['definition','seq'], inplace=True)
     res = res.sort('identity',ascending=False)
-    print '%s hits, %s filtered' %(len(df), len(res))
+    print ('%s hits, %s filtered' %(len(df), len(res)))
     return res
 
 def setBlastLink(df):
@@ -204,11 +261,11 @@ def findClusters(binders, method, dist=None, minsize=3,
 
     C=[]
     grps = list(binders.groupby('name'))
-    print '%s proteins with binders' %len(grps)
+    print ('%s proteins with binders' %len(grps))
     length = len(binders.head(1).peptide.max())
     if dist==None:
         dist = length+1
-        print 'using dist for clusters: %s' %dist
+        print ('using dist for clusters: %s' %dist)
     for n,b in grps:
         if len(b)==0: continue
         clusts = base.dbscan(b,dist=dist,minsize=minsize)
@@ -219,7 +276,7 @@ def findClusters(binders, method, dist=None, minsize=3,
             C.append([n,min(c),max(c)+length,len(c)])
 
     if len(C)==0:
-        print 'no clusters'
+        print ('no clusters')
         return pd.DataFrame()
     x = pd.DataFrame(C,columns=['name','start','end','binders'])
     x['clustersize'] = (x.end-x.start)
@@ -231,7 +288,7 @@ def findClusters(binders, method, dist=None, minsize=3,
                     left_on='name',right_on='locus_tag')
         x['peptide'] = getNmer(temp)
     x = x.sort_values(by=['binders','density'],ascending=False)
-    print '%s clusters found in %s proteins' %(len(x),len(x.groupby('name')))
+    print ('%s clusters found in %s proteins' %(len(x),len(x.groupby('name'))))
     print
     return x
 
@@ -275,8 +332,8 @@ def testFeatures():
     prod = row['product']
     rec = SeqRecord(Seq(seq),id=name,description=prod)
     fastafmt = rec.format("fasta")
-    print fastafmt
-    print row.to_dict()
+    print (fastafmt)
+    print (row.to_dict())
     ind = keys.get_loc(name)
     previous = keys[ind-1]
     if ind<len(keys)-1:
@@ -300,7 +357,7 @@ def testrun(gname):
     P = base.getPredictor(method)
     P.iedbmethod='IEDB_recommended' #'netmhcpan'
     P.predictProteins(df,length=11,alleles=alleles2,names=names,
-                        save=True,path=path)
+                        save=True, path=path)
     f = os.path.join('test', names[0]+'.mpk')
     df = pd.read_msgpack(f)
     P.data=df
@@ -317,7 +374,7 @@ def testBcell(gname):
     P = base.getPredictor('bcell')
     P.iedbmethod='Chou-Fasman'
     P.predictProteins(df,names=names,save=True,path=path)
-    print P.data
+    print (P.data)
     return
 
 def testconservation(label,gname):
@@ -329,14 +386,14 @@ def testconservation(label,gname):
     g = sequtils.genbank2Dataframe(gfile, cds=True)
     res = g[g['locus_tag']==tag]
     seq = res.translation.head(1).squeeze()
-    print seq
+    print (seq)
     #alnrows = getOrthologs(seq)
     #alnrows.to_csv('blast_%s.csv' %tag)
     alnrows = pd.read_csv('blast_%s.csv' %tag,index_col=0)
     alnrows.drop_duplicates(subset=['accession'], inplace=True)
     alnrows = alnrows[alnrows['perc_ident']>=60]
     seqs=[SeqRecord(Seq(a.sequence),a.accession) for i,a in alnrows.iterrows()]
-    print seqs[:2]
+    print (seqs[:2])
     sequtils.distanceTree(seqs=seqs)#,ref=seqs[0])
     #sequtils.ETETree(seqs, ref, metric)
     #df = sequtils.getFastaProteins("blast_found.faa",idindex=3)

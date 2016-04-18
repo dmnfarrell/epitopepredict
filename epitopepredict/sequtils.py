@@ -6,6 +6,7 @@
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import sys, os, shutil, string, types
 import csv, glob, pickle, operator
 import time, re
@@ -17,14 +18,14 @@ from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
-import utilities
+from  . import utilities
 
 featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
                'product', 'note', 'translation','pseudo','start','end']
 typecolors = ['blue','green','brown','orange','purple','lightblue','yellow','red']
 
 
-def drawFeatures(tracks, highlight=[], filename=None,
+'''def drawFeatures(tracks, highlight=[], filename=None,
                 color=None, pagesize=(600,200),name=''):
     """Draw gene features in multiple tracks for general comparison"""
 
@@ -87,6 +88,7 @@ def drawFeatures2(tks, highlight=[], filename=None, color=None, **kwargs):
     panel.save(filename+'.png')
     panel.close()
     return filename+'.png'
+'''
 
 def drawGenomeMap(infile, filename=None):
     """Draw whole circular genome"""
@@ -148,7 +150,7 @@ def ETETree(seqs, ref, metric):
         if metric[node.name]<=cutoff:
             return True
     matches = filter(func, t.traverse())
-    print len(matches), "nodes have distance <=%s" %cutoff
+    print (len(matches), "nodes have distance <=%s" %cutoff)
     nst1 = NodeStyle()
     nst1["bgcolor"] = "Yellow"
     for n in matches:
@@ -182,7 +184,7 @@ def doLocalBlast(database, query, output=None, maxseqs=10, evalue=0.001,
 
 def parseBlastRec(rec):
     """Parse blast record alignment(s)"""
-    if len(rec.alignments) == 0 : print 'no alignments'
+    if len(rec.alignments) == 0 : print('no alignments')
     recs=[]
     qry = rec.query.split()[0]
     #print rec.query_length
@@ -215,7 +217,7 @@ def testblast():
     database = 'all_genomes'
     f='test.faa'
     df=getBlastResults(filename='test.xml.gz')
-    print df[:5]
+    print (df[:5])
     return
 
 def fasta2Dataframe(infile,idindex=0):
@@ -231,10 +233,10 @@ def fasta2Dataframe(infile,idindex=0):
 
 def convertSequenceFormat(infile, format='embl'):
     informat = os.path.splitext(infile)[1][1:]
-    print 'input format: %s' %informat
-    print 'output format: %s' %format
+    print ('input format: %s' %informat)
+    print ('output format: %s' %format)
     count = SeqIO.convert(infile, informat, 'converted', format)
-    print "Converted %i records" %count
+    print ("Converted %i records" %count)
     return
 
 def getCDS(df):
@@ -276,18 +278,18 @@ def getORFs(sequence, treshold):
                 end_codon_index = indx
                 length = end_codon_index - start_codon_index
                 if length >= treshold * 3:
-                    print length, start_codon_index,end_codon_index
+                    print(length, start_codon_index,end_codon_index)
                     orfs.append(start_codon_index)
                     if length % 3 != 0:
-                        print "it's going to complain"
+                        print("it's going to complain")
                     #print len(sequence)-end_codon_index-3
                     snippet = Seq(sequence[start_codon_index:end_codon_index])
-                    print snippet
+                    print(snippet)
                     try:
                         protein = Seq.translate(snippet, table=11, cds=True)
-                        print "%i %s" % (length/3, protein)
-                    except Exception, e:
-                        print e
+                        print("%i %s" % (length/3, protein))
+                    except Exception as e:
+                        print(e)
                         pass
                 start_codon_found = False
         start_codon_index = 0
@@ -326,8 +328,8 @@ def genbank2Dataframe(infile, cds=False, quiet=True):
         d['start'] = f.location.start
         d['end'] = f.location.end
         for i in featurekeys:
-            if x.has_key(i):
-                if type(x[i]) is types.ListType:
+            if i in x:
+                if type(x[i]) is list:
                     d[i] = x[i][0]
                 else:
                     d[i] = x[i]
@@ -337,10 +339,10 @@ def genbank2Dataframe(infile, cds=False, quiet=True):
     df['length'] = df.translation.str.len()
     df = checkTags(df)
     if quiet == False:
-        print '---- %s summary ----' %infile
+        print('---- %s summary ----' %infile)
         s = genbankSummary(df)
         for i in s:
-            print i,':',s[i]
+            print (i,':',s[i])
     if cds == True:
         df = getCDS(df)
         df['order'] = range(1,len(df)+1)
@@ -415,7 +417,7 @@ def indexGenbankFeatures(gb_record, feature_type, qualifier):
 
     answer = dict()
     for (index, feature) in enumerate(gb_record.features):
-        print index, feature
+        print (index, feature)
         if feature.type==feature_type:
             if qualifier in feature.qualifiers:
                 values = feature.qualifiers[qualifier]
@@ -423,8 +425,8 @@ def indexGenbankFeatures(gb_record, feature_type, qualifier):
                     values = [values]
                 for value in values:
                     if value in answer:
-                        print "WARNING - Duplicate key %s for %s features %i and %i" \
-                           % (value, feature_type, answer[value], index)
+                        print ("WARNING - Duplicate key %s for %s features %i and %i" \
+                           % (value, feature_type, answer[value], index))
                     else:
                         answer[value] = index
     return answer
@@ -458,7 +460,7 @@ def getTranslation(feature, genome, cds=True):
     e=None
     try:
         protein = seq.translate(table=trtable,cds=cds,to_stop=True)
-        #print 'protein seq:',protein
+        #print ('protein seq:',protein)
     except Exception as e:
         protein = ''
     return protein, e
@@ -481,7 +483,7 @@ def clustalAlignment(filename=None, seqs=None, command="clustalw"):
     name = os.path.splitext(filename)[0]
     from Bio.Align.Applications import ClustalwCommandline
     cline = ClustalwCommandline(command, infile=filename)
-    #print 'performing clustal alignment..'
+    #print ('performing clustal alignment..')
     stdout, stderr = cline()
     align = AlignIO.read(name+'.aln', 'clustal')
     return align
@@ -518,8 +520,8 @@ def showAlignment(aln, diff=False, offset=0):
     start=0; end=80
     #offset=28
     lbls = np.arange(start,end,10)-offset
-    print ('%-20s' %'name'),''.join([('%-10s' %i) for i in lbls])
-    print ('%20s' %ref.id), ref.seq[start:end]
+    print (('%-20s' %'name'),''.join([('%-10s' %i) for i in lbls]))
+    print (('%20s' %ref.id), ref.seq[start:end])
     if diff == True:
         for a in aln[1:]:
             diff=''
@@ -528,10 +530,10 @@ def showAlignment(aln, diff=False, offset=0):
                     diff+=j
                 else:
                     diff+='-'
-            print ('%20s' %a.id), diff[start:end]
+            print (('%20s' %a.id), diff[start:end])
     else:
         for a in aln[1:]:
-            print ('%20s' %a.id), a.seq[start:end]
+            print (('%20s' %a.id), a.seq[start:end])
     return
 
 def getIdentity(aln):
@@ -579,17 +581,6 @@ def getFeatureQualifier(f, qualifier):
         fq = None
     return fq
 
-
-def translateSixFrame(seq):
-    """Translate seq in 6 frames"""
-    from cogent import DNA
-    from cogent.core.genetic_code import DEFAULT as standard_code
-    translations = standard_code.sixframes(seq)
-    stops_frame1 = standard_code.getStopIndices(seq, start=0)
-    print translations
-    return
-
-
 def main():
     from optparse import OptionParser
     parser = OptionParser()
@@ -599,7 +590,6 @@ def main():
 
     if opts.test == True:
         testblast()
-
 
 if __name__ == '__main__':
     main()

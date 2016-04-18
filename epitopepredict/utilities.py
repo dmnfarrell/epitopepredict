@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
 """
-    Utilities for docking/peptide stuff.
+    Utilities for epitopepredict
     Created March 2013
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import os, math, csv, string
 import shutil
 #import Image, ImageFont, ImageDraw
-import ConfigParser
+from configparser import ConfigParser
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -19,6 +20,26 @@ from Bio.SeqRecord import SeqRecord
 from Bio import PDB
 
 home = os.path.expanduser("~")
+
+def venndiagram(names,labels,ax=None):
+    """Plot a venn diagram"""
+
+    from matplotlib_venn import venn2,venn3
+    import pylab as plt
+    f=None
+    if ax==None:
+        f=plt.figure(figsize=(4,4))
+        ax=f.add_subplot(111)
+    if len(names)==2:
+        n1,n2=names
+        v = venn2([set(n1), set(n2)], set_labels=labels)
+    elif len(names)==3:
+        n1,n2,n3=names
+        v = venn3([set(n1), set(n2), set(n3)], set_labels=labels)
+    ax.axis('off')
+    #f.patch.set_visible(False)
+    ax.set_axis_off()
+    return f
 
 def compress(filename, remove=False):
     """Compress a file with gzip"""
@@ -59,7 +80,7 @@ def copyfile(source, dest, newname=None):
 def copyfiles(path, files):
     for f in files:
         src = os.path.join(path, f)
-        print src
+        print (src)
         if not os.path.exists(src):
             return False
         shutil.copy(src, f)
@@ -84,13 +105,14 @@ def getSymmetricDataFrame(m):
 
 def parseConfig(conffile=None):
     """Parse the config file"""
+
     f = open(conffile,'r')
     cp = ConfigParser.ConfigParser()
     try:
         cp.read(conffile)
-    except Exception,e:
-        print 'failed to read config file! check format'
-        print 'Error returned:', e
+    except Exception as e:
+        print ('failed to read config file! check format')
+        print ('Error returned:', e)
         return
     obj = setAttributesfromConfigParser(cp)
     return obj
@@ -156,7 +178,7 @@ def findFilefromString(files, string):
 def findFiles(path, ext='txt'):
     """List files in a dir of a specific type"""
     if not os.path.exists(path):
-        print 'no such directory: %s' %path
+        print ('no such directory: %s' %path)
         return []
     files=[]
     for dirname, dirnames, filenames in os.walk(path):
@@ -168,7 +190,7 @@ def findFiles(path, ext='txt'):
 
 def findFolders(path):
     if not os.path.exists(path):
-        print 'no such directory: %s' %path
+        print ('no such directory: %s' %path)
         return []
     dirs = []
     for dirname, dirnames, filenames in os.walk(path):
@@ -296,7 +318,7 @@ def drawBoxes():
     for e in exp:
         seq=e[0]
         i = seqstr.find(seq)
-        print e,i
+        print (e,i)
         #epos.append(i)
         if e[1] > 0.5:
             polygon = Rectangle((i,2), 1,0.5, color='r')
@@ -379,7 +401,7 @@ def saveStructure(structure, filename):
     return filename
 
 def removeChains(pdbfile, start=3):
-    print pdbfile
+    print (pdbfile)
     parser = PDB.PDBParser(QUIET=True)
     structure = parser.get_structure(pdbfile, pdbfile)
     model = structure[0]
@@ -398,7 +420,7 @@ def preparePDB(pdbfile, start=3):
     """Prepare an MHC pdb for use in docking by removing unused atoms,
        combining A+B chains and renumbering chain C"""
 
-    print pdbfile
+    print (pdbfile)
     parser = PDB.PDBParser(QUIET=True)
     structure = parser.get_structure(pdbfile, pdbfile)
     model = structure[0]
@@ -465,7 +487,7 @@ def prepareNmer(pdbfile, length=9, start=3, chain='C'):
     name = os.path.splitext(pdbfile)[0]
     filename = name+'%smer.pdb' %length
     w.save(filename)
-    print 'saved n-mer file %s' %filename
+    print ('saved n-mer file %s' %filename)
     return filename
 
 def miscFixes(pdbfile):
@@ -499,7 +521,7 @@ def filterIEDBFile(filename, field, search):
     cols = ['PubMed ID','Author','Journal','Year','T Cell ID','MHC Allele Name',
                 'Epitope Linear Sequence','Epitope Source Organism Name']
     y = X[X[field].str.contains(search)]
-    print y[cols]
+    print (y[cols])
     y.to_csv('filtered.csv',cols=cols)
     return y
 

@@ -6,9 +6,10 @@
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import sys, os, shutil, string
 import csv, glob, pickle
-import time, StringIO
+import time, io
 import operator as op
 import re, types
 import subprocess
@@ -18,8 +19,7 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
-import utilities, peptides
-import sequtils, tepitope
+from . import utilities, peptides, sequtils, tepitope
 
 home = os.path.expanduser("~")
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
@@ -57,27 +57,9 @@ def getIEDBRequest(seq, alleles='HLA-DRB1*01:01', method='consensus3'):
               'sequence_text' : seq,
               'allele' : alleles }
     r=requests.post(url,data=values)
-    df=pd.read_csv(StringIO.StringIO(r.content),sep='\t')
+    df=pd.read_csv(io.StringIO(r.content),sep='\t')
     #df=df.drop(['nn_align_core','nn_align_ic50','nn_align_rank'])
     return df
-
-def venndiagram(names,labels,ax=None):
-    from matplotlib_venn import venn2,venn3
-    import pylab as plt
-    f=None
-    if ax==None:
-        f=plt.figure(figsize=(4,4))
-        ax=f.add_subplot(111)
-    if len(names)==2:
-        n1,n2=names
-        v = venn2([set(n1), set(n2)], set_labels=labels)
-    elif len(names)==3:
-        n1,n2,n3=names
-        v = venn3([set(n1), set(n2), set(n3)], set_labels=labels)
-    ax.axis('off')
-    #f.patch.set_visible(False)
-    ax.set_axis_off()
-    return f
 
 def getOverlapping(index, s, length=9, cutoff=25):
     """Get all mutually overlapping kmers within a cutoff area"""
@@ -158,11 +140,11 @@ def getPredictor(name='tepitope', **kwargs):
     elif name == 'tepitope':
         return TEpitopePredictor(**kwargs)
     else:
-        print 'no such predictor %s' %name
+        print ('no such predictor %s' %name)
         return
 
 def createTempSeqfile(sequences, seqfile='tempseq.fa'):
-    if type(sequences) is types.StringType:
+    if isinstance(sequences, str):
         sequences=[sequences]
     out = open(seqfile, 'w')
     i=1
@@ -182,120 +164,10 @@ def getSequence(seqfile):
 def getOverlappingBinders(B):
     for df in B:
         df.set_index('peptide',inplace=True)
-    print B
+    print (B)
     x = pd.concat(B,join='inner')
     #x =  x[['pos']].sort('pos')
     return x
-
-def compareBindingData(exp, pred, seqkey, datakey, allele):
-    """Compare to experimental binding data in a csv file.
-     pred: the predictor
-     seqkey: col name for sequences
-     datakey col name for exp binding/score value"""
-
-    peptides = list(exp[seqkey])
-    pred.predict(peptides=peptides, allele=allele)
-    scorekey = pred.scorekey
-    data = pd.read_csv(os.path.join(tepitope.tepitopedir,
-                        'predictions/HLA-DRB1*0101.csv'))
-    pred.cutoff=0
-    merged = pd.merge(pred.data, exp,
-                  left_on='peptide', right_on=seqkey,
-                  suffixes=['_1', '_2'])
-    def cutoff(x,c,func):
-        if func(x,c): return 1
-        else: return 0
-
-    merged['pred'] = merged[scorekey].apply(lambda x:cutoff(x,pred.cutoff,op.gt))
-    merged['exp'] = merged[datakey].apply(lambda x:cutoff(x,.426,op.gt))
-    #print merged['exp']
-    P=merged[scorekey]
-    E=merged[datakey]
-    from sklearn import metrics
-    auc = metrics.roc_auc_score(merged['exp'],merged['pred'])
-
-    print '%s, %s samples' %(allele,len(E))
-    print auc
-    print Predict.aucCrossValidation(merged['exp'].values,merged['pred'].values)
-    return
-
-def compareProteins(df, pred, exp, scorefield):
-    """Compare whole antigen scores to % best binders per protein"""
-
-    binders=[]
-    names = []
-    cds = df[df.type=='CDS']
-    for i,row in list(cds.iterrows())[:10]:
-        seq = row['translation']
-        name = row['locus_tag']
-        print name,seq
-        names.append(name)
-        pred.predict(sequence=seq)
-        binders.append(pred.getBinders(method='cutoff'))
-    return
-
-'''def getMatchingPredictions(pred1, pred2, method='cutoff'):
-    """Compare 2 predictors binders"""
-
-    data1 = pred1.getBinders(method=method)
-    data2 = pred2.getBinders(method=method)
-    #data1 = pred1.data
-    #data2 = pred2.data
-    merged = pd.merge(data1, data2,
-                      left_on=['peptide','name'], right_on=['peptide','name'],
-                      suffixes=['_1', '_2'])
-    union = pd.merge(data1, data2, how='outer',
-                      left_on=['peptide','name'], right_on=['peptide','name'])
-
-    #merged = merged[merged.core_1==merged.core_2]
-    #print merged[:20]
-    k1 = pred1.scorekey; k2 = pred2.scorekey
-    if k1 == k2:
-        k1 += '_1'
-        k2 += '_2'
-    x=merged[k1]
-    y=merged[k2]
-
-    print '%s/%s shared binders' %(len(merged),len(union))
-    return merged, x, y
-
-def comparePredictors(pred1, pred2,
-                      names=None, allele='HLA-DRB1*0101'):
-    """Compare 2 predictors with various metrics and plot output.
-       Input is a dataframe with sequence records"""
-
-    from matplotlib_venn import venn2
-    import pylab as plt
-    f = plt.figure(figsize=(10,10))
-    ax = f.add_subplot(221)
-
-    binders1 = pred1.getBinders('cutoff')
-    binders2 = pred2.getBinders('cutoff')
-    names = dict(list(pred1.data.groupby('name'))).keys()
-
-    #get merged binders
-    m,x,y = getMatchingPredictions(pred1, pred2, method='cutoff')
-
-    ax.plot(x,y,'o',ms=3,alpha=0.5)
-    ax.set_xlabel(pred1.name)
-    ax.set_ylabel(pred2.name)
-    ind=np.arange(len(names))
-    b1 = list(binders1.peptide)
-    b2 = list(binders2.peptide)
-    #print list(set(names1) & set(names2))
-    groups1 = dict(list(binders1.groupby('name')))
-    groups2 = dict(list(binders2.groupby('name')))
-    prots1 = groups1.keys()
-    prots2 = groups2.keys()
-
-    ax1 = f.add_subplot(222)
-    ax1.set_title('proteins overlap')
-    venn2([set(prots1), set(prots2)], set_labels = (pred1.name,pred2.name))
-    ax3=f.add_subplot(212)
-    venn2([set(b1), set(b2)], set_labels = (pred1.name,pred2.name))
-    f.suptitle('%s vs. %s' %(pred1.name,pred2.name),fontsize=16)
-    plt.show()
-    return'''
 
 def getNearest(df):
     """Get nearest binder"""
@@ -313,7 +185,7 @@ def getNearest(df):
     df = pd.concat(new)
     return df
 
-def getBinders(preds,n=3):
+'''def getBinders(preds,n=3):
     """Get binders for multiple predictors"""
 
     b={}
@@ -323,24 +195,76 @@ def getBinders(preds,n=3):
         if len(binders)>0:
             binders = binders.sort('pos')
             b[m] = binders
-    return b
+    return b'''
 
-def getScoreDistributions(method, path):
+def getBindersfromPath(predictor, path, n=3, cutoff=0.95, promiscuous=True):
+    """
+    Get all binders from a set of binding results stored in a directory.
+
+    Args:
+        path: The file path with all the binding prediction results
+        method: Prediction method
+        n: minimum number of alleles if using promiscuous binders
+        promiscuous: whether to return only promiscuous binders
+
+    Returns:
+        A dataframe with all binders matching the required critieria
+    """
+
+    print ('getting binders..')
+    binders = []
+    #m=method
+    #if m=='bcell': return #not applicable
+    l=9
+    P = predictor
+    files = glob.glob(os.path.join(path, '*.mpk'))
+    #get allele specific cutoffs
+    P.allelecutoffs = getCutoffs(P, path, cutoff, overwrite=True)
+    for f in files:
+        df = pd.read_msgpack(f)
+        if promiscuous== True:
+            b = P.getPromiscuousBinders(data=df,n=n)
+        else:
+            b = P.getBinders(data=df)
+        #print b[:5]
+        binders.append(b)
+    result = pd.concat(binders)
+    result['start'] = result.pos
+    result['end'] = result.pos+result.peptide.str.len()
+    return result
+
+def getCutoffs(predictor, path, data=None, q=0.98, overwrite=False):
+    """
+    Get global cutoffs for predictions in path
+    Args:
+        path: The file path with all the binding prediction results
+        method: Prediction method
+        q: percentile level of score to select cutoffs
+    Returns:
+        A dictionary with cutoff values per allele
+    """
+
+    quantfile = os.path.join(path,'quantiles.csv')
+    if not os.path.exists(quantfile) or overwrite==True:
+        getScoreDistributions(predictor, path)
+    quantiles = pd.read_csv(quantfile,index_col=0)
+    cutoffs = dict(quantiles.ix[q])
+    return cutoffs
+
+def getScoreDistributions(predictor, path):
     """Get global score distributions and save quantile values for each allele
        Assumes all the files in path represent related proteins"""
 
     files = glob.glob(os.path.join(path, '*.mpk'))
     results = []
-    P = getPredictor(method)
+    P = predictor
     key = P.scorekey
-    #if method == 'iedbmhc1':
-    #    P.data = pd.read_msgpack(files[0])
-    #    key = P.getScoreKey()
-    print key
+    print (P, key)
     for f in files[:200]:
         df = pd.read_msgpack(f)
         #df = df.dropna()
         x = df.pivot_table(index='peptide', columns='allele', values=key)
+        print (x)
         #print x[:5]
         results.append(x)
     result = pd.concat(results)
@@ -350,10 +274,10 @@ def getScoreDistributions(method, path):
     if P.operator == '<':
         bins.index = pd.Series(bins.index).apply(lambda x: 1-x)
     outfile = os.path.join(path,'quantiles.csv')
-    print outfile
+    print (outfile)
     bins.to_csv(outfile,float_format='%.3f')
     df= pd.read_csv(outfile,index_col=0)
-    print df.ix[0.96]
+    print (df.ix[0.96])
     return
 
 def getStandardMHCI(name):
@@ -394,6 +318,9 @@ class Predictor(object):
         #can specify per allele cutoffs here
         self.allelecutoffs = {}
         return
+
+    def __repr__(self, ):
+        return '%s predictor' %self.name
 
     def predict(self, sequence, peptide):
         """Does the actual scoring. Must override this.
@@ -447,7 +374,7 @@ class Predictor(object):
             #must be set first as an attribute
             res = []
             for a,g in df.groupby('allele'):
-                if self.allelecutoffs.has_key(a):
+                if a in self.allelecutoffs:
                     cutoff = self.allelecutoffs[a]
                 else:
                     cutoff = self.cutoff
@@ -527,7 +454,7 @@ class Predictor(object):
         for i,row in data.iterrows():
             seq = row[seqkey]
             if len(seq)<=length: continue
-            #print i,seq
+            #print (i,seq)
             res=[]
             for a in alleles:
                df = self.predict(sequence=seq,length=length,
@@ -553,7 +480,7 @@ class Predictor(object):
           Returns:
             a dataframe of predictions over multiple proteins"""
 
-        if type(alleles) is types.StringType:
+        if type(alleles) is str:
             alleles = [alleles]
         elif type(alleles) is pd.Series:
             alleles = alleles.tolist()
@@ -582,13 +509,13 @@ class Predictor(object):
                 pd.to_msgpack(fname, res)
             else:
                 results.append(res)
-        print 'predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles))
+        print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
         if path is None:
             #if no path we keep assign results to the data object
             #assumes we have enough memory
             self.data = pd.concat(results)
         else:
-            print 'results saved to %s' %os.path.abspath(path)
+            print ('results saved to %s' %os.path.abspath(path))
         return
 
     def save(self, label, singlefile=True):
@@ -596,7 +523,7 @@ class Predictor(object):
 
         if singlefile == True:
             fname = 'epit_%s_%s_%s.mpk' %(label,self.name,self.length)
-            print 'saving as %s' %fname
+            print ('saving as %s' %fname)
             meta = {'method':self.name, 'length':self.length}
             pd.to_msgpack(fname, meta)
             for i,g in self.data.groupby('name'):
@@ -604,7 +531,7 @@ class Predictor(object):
         else:
             #save one file per protein/name
             path = os.path.join(label,self.name)
-            print 'saving to %s' %path
+            print ('saving to %s' %path)
             if not os.path.exists(path):
                 os.makedirs(path)
             for name,df in self.data.groupby('name'):
@@ -657,11 +584,11 @@ class Predictor(object):
             if len(df)==0: continue
             rank = df[df.peptide==nativecore]['rank'].values[0]
             #print df
-            print allele,df.iloc[0].peptide,nativecore,rank,df.iloc[0][self.scorekey]
+            print (allele,df.iloc[0].peptide,nativecore,rank,df.iloc[0][self.scorekey])
             if rank==1:
                 hits+=1
             total+=1
-        print '%s/%s correct' %(hits,total)
+        print ('%s/%s correct' %(hits,total))
         return
 
     def benchmarkKnownAntigens(self, expdata=None):
@@ -683,7 +610,7 @@ class Predictor(object):
                 a='HLA-DRB1*0101'
             df = self.predict(protseq,allele=a,length=9,name=true)
             if len(df)==0: continue
-            print a,true
+            print (a,true)
             self.cutoff=0
             b = self.getBinders()
             #print b
@@ -797,7 +724,8 @@ class NetMHCIIPanPredictor(Predictor):
         self.rankascending = 1
 
     def readResult(self, res):
-        """Read results from netMHCIIpan"""
+        """Read raw results from netMHCIIpan output"""
+
         data=[]
         res = res.split('\n')[19:]
         ignore=['Protein','pos','']
@@ -821,6 +749,8 @@ class NetMHCIIPanPredictor(Predictor):
         return
 
     def runSequence(self, seq, length, allele):
+        """Run netmhciipan for a single sequence"""
+
         seqfile = createTempSeqfile(seq)
         cmd = 'netMHCIIpan -s -length %s -a %s -f %s' %(length, allele, seqfile)
         #print cmd
@@ -860,7 +790,7 @@ class NetMHCIIPanPredictor(Predictor):
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         except:
-            print 'netmhciipan not installed?'
+            print('netmhciipan not installed?')
             return []
         alleles=temp.split('\n')[34:]
         #print sorted(list(set([getStandardmhc1Name(i) for i in alleles])))
@@ -888,7 +818,7 @@ class IEDBMHCIPredictor(Predictor):
         seqfile = createTempSeqfile(sequence)
         path = iedbmhc1path
         if not os.path.exists(path):
-            print 'iedb mhcI tools not found'
+            print ('iedb mhcI tools not found')
             return
         cmd = os.path.join(path,'src/predict_binding.py')
         cmd = cmd+' %s %s %s %s' %(self.iedbmethod,allele,length,seqfile)
@@ -896,7 +826,7 @@ class IEDBMHCIPredictor(Predictor):
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash',
                 stderr=subprocess.STDOUT)
         except CalledProcessError as e:
-            print e
+            print (e)
             return
         self.prepareData(temp, name)
         return self.data
@@ -904,7 +834,7 @@ class IEDBMHCIPredictor(Predictor):
     def prepareData(self, rows, name):
         """Prepare data from results"""
 
-        df = pd.read_csv(StringIO.StringIO(rows),sep="\t")
+        df = pd.read_csv(io.StringIO(rows),sep="\t")
         if len(df)==0:
             return
         df = df.replace('-',np.nan)
@@ -955,7 +885,7 @@ class IEDBMHCIIPredictor(Predictor):
         #self.path = '/local/iedbmhc2/'
 
     def prepareData(self, rows, name):
-        df = pd.read_csv(StringIO.StringIO(rows),delimiter=r"\t")
+        df = pd.read_csv(io.StringIO(rows),delimiter=r"\t")
         extracols = ['Start','End','comblib_percentile','smm_percentile','nn_percentile',
                 'Sturniolo core',' Sturniolo score',' Sturniolo percentile']
         df = df.drop(extracols,1)
@@ -976,14 +906,14 @@ class IEDBMHCIIPredictor(Predictor):
         seqfile = createTempSeqfile(sequence)
         path = iedbmhc2path
         if not os.path.exists(path):
-            print 'iedb mhcII tools not found'
+            print ('iedb mhcII tools not found')
             return
         cmd = os.path.join(path,'mhc_II_binding.py')
         cmd = cmd+' %s %s %s' %(method,allele,seqfile)
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         except:
-            print 'allele %s not available?' %allele
+            print ('allele %s not available?' %allele)
             return
         self.prepareData(temp, name)
         #print self.data
@@ -1078,7 +1008,7 @@ class BCellPredictor(Predictor):
         #df.reset_index(inplace=True)
         df['name'] = name
         self.data = df
-        #print df
+        #print (df)
         return
 
     def predictProteins(self, recs, names=None, save=False,
@@ -1093,7 +1023,7 @@ class BCellPredictor(Predictor):
         for i,row in proteins:
             seq = row['translation']
             name = row['locus_tag']
-            #print name
+            #print (name)
             res = self.predict(sequence=seq,name=name)
             if save == True:
                 fname = os.path.join(path, name+'.mpk')

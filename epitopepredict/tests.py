@@ -6,10 +6,11 @@
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import sys, os
 import pandas as pd
 import unittest
-import base, analysis, sequtils
+from . import base, analysis, sequtils
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
@@ -30,9 +31,9 @@ class PredictorTests(unittest.TestCase):
         df = self.df
         P = base.getPredictor('tepitope')
         alleles = ["HLA-DRB1*0101", "HLA-DRB1*0305"]
-        print P
+        print (P)
         P.predictProteins(df, length=11, alleles=alleles,
-                          save=True, path=self.testdir)
+                          path=self.testdir)
         P.getBinders(data=P.data)
         return
 
@@ -44,9 +45,9 @@ class PredictorTests(unittest.TestCase):
         P = base.getPredictor('netmhciipan')
         alleles = ["HLA-DRB1*0101"]
         names = ['ZEBOVgp1']
-        print P
+        print (P)
         P.predictProteins(df, length=11, alleles=alleles, names=names,
-                          save=True, path=self.testdir)
+                          path=self.testdir)
         P.getBinders(data=P.data)
         return
 
@@ -55,12 +56,12 @@ class PredictorTests(unittest.TestCase):
 
         df = self.df
         P = base.getPredictor('iedbmhc1')
-        print P
+        print (P)
         alleles = ["HLA-A*02:02", "HLA-A*11:01",
                    "HLA-B*15:17", "HLA-B*51:01",
                    "HLA-C*04:01", "HLA-E*01:03"]
         P.predictProteins(df, length=11, alleles=alleles,
-                          save=True, path=self.testdir)
+                           path=self.testdir)
         return'''
 
     def testBcell(self):
@@ -70,7 +71,7 @@ class PredictorTests(unittest.TestCase):
         names = ['VP24']
         P = base.getPredictor('bcell')
         P.iedbmethod='Chou-Fasman'
-        P.predictProteins(df, names=names, save=True, path=self.testdir)
+        P.predictProteins(df, names=names, path=self.testdir)
         return
 
     def testFasta(self):
@@ -80,8 +81,7 @@ class PredictorTests(unittest.TestCase):
         df = sequtils.fasta2Dataframe(fastafile)
         alleles = ["HLA-DRB1*0101"]
         P = base.getPredictor('tepitope')
-        P.predictProteins(df, length=11, alleles=alleles,
-                          save=True, path=self.testdir)
+        P.predictProteins(df, length=11, alleles=alleles, path=self.testdir)
         return
 
     def testLoad(self):

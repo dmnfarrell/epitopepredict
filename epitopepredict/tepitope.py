@@ -6,6 +6,7 @@
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import os, string, csv, glob
 import time
 from operator import itemgetter
@@ -16,7 +17,7 @@ from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import PDB
-import peptides, utilities
+from . import peptides, utilities
 
 refalleles = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0402',
            'HLA-DRB1*0404', 'HLA-DRB1*0701','HLA-DRB1*0801','HLA-DRB1*1101',
@@ -152,7 +153,7 @@ def convertAlleleNames(seqfile):
             found.append(a)
             s = SeqRecord(r.seq, id=a, description='')
             new.append(s)
-            print a, r.description
+            print (a, r.description)
     filename = 'convertednames.fa'
     SeqIO.write(new, filename, 'fasta')
     return filename
@@ -165,8 +166,8 @@ def getAlignments(file1, file2):
     allrecs = recs2 + recs1
     alnfile = 'queryaln.fa'
     SeqIO.write(allrecs, alnfile, 'fasta')
-    print 'doing multiple sequence alignment for %s recs' %len(allrecs)
-    aln = Genome.muscleAlignment(alnfile)
+    print ('doing multiple sequence alignment for %s recs' %len(allrecs))
+    aln = sequtils.muscleAlignment(alnfile)
     return aln
 
 def similarityScore(blosum, r, q):
@@ -235,7 +236,8 @@ def allelenumber(x):
     return int(x.split('*')[1])
 
 def getAlleles():
-    """Get all alleles covered """
+    """Get all alleles covered"""
+
     df=pd.read_csv(os.path.join(tepitopedir ,'alleles.txt'))
     a= df['allele']
     return list(a)
@@ -329,9 +331,9 @@ def compareAlleles(alleles1, alleles2, alnindex, reduced=True):
     #plt.show()
     #plt.clf()
     print
-    print 'most similar alleles:'
+    print ('most similar alleles:')
     h = df[df['nearest']<0.25]
-    print h[['nearest','mean']].sort()
+    print (h[['nearest','mean']].sort())
     h = h.drop(['mean','nearest'],axis=1)
     h = h.reindex_axis(h.mean().order().index, axis=1)
     plotheatmap(h)
@@ -342,7 +344,7 @@ def compareAlleles(alleles1, alleles2, alnindex, reduced=True):
         if r not in found:
             found.append(r)
     for i in sorted(pseqs):
-        print '%-15s' %i, pseqs[i]
+        print ('%-15s' %i, pseqs[i])
     #distanceTree(seqs=[SeqRecord(Seq(pseqs[i]),i) for i in found], ref=refalleles[0])
     #ETETree(seqs=[SeqRecord(Seq(pseqs[i]),i) for i in found],
     #        ref=refalleles[0],metric=dict(df['nearest']))
@@ -382,7 +384,7 @@ def benchmark():
             m = pssms[allele]
             m = m.transpose().to_dict()
             sc = sorted(sc, key=itemgetter(1),reverse=True)
-            print i,allele,peptide,nativecore,sc[0]
+            print (i,allele,peptide,nativecore,sc[0])
 
     allele = 'HLA-DRB1*0101'
     m = pssms[allele]
