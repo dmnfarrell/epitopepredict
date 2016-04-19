@@ -143,6 +143,13 @@ def getPredictor(name='tepitope', **kwargs):
         print ('no such predictor %s' %name)
         return
 
+def getLength(data):
+    """Get peptide length of a dataframe of predictions"""
+
+    if len(data)>0:
+        return len(data.head(1).peptide.max())
+    return
+
 def createTempSeqfile(sequences, seqfile='tempseq.fa'):
     if isinstance(sequences, str):
         sequences=[sequences]
@@ -197,7 +204,7 @@ def getNearest(df):
             b[m] = binders
     return b'''
 
-def getBindersfromPath(predictor, path, n=3, cutoff=0.95, promiscuous=True):
+def getBindersfromPath(method, path, n=3, cutoff=0.95, promiscuous=True):
     """
     Get all binders from a set of binding results stored in a directory.
 
@@ -216,12 +223,17 @@ def getBindersfromPath(predictor, path, n=3, cutoff=0.95, promiscuous=True):
     #m=method
     #if m=='bcell': return #not applicable
     l=9
-    P = predictor
-    files = glob.glob(os.path.join(path, '*.mpk'))
+    P = getPredictor(method)
+    files = glob.glob(os.path.join(path, '*.csv'))
     #get allele specific cutoffs
     P.allelecutoffs = getCutoffs(P, path, cutoff, overwrite=True)
+    key = P.scorekey
     for f in files:
-        df = pd.read_msgpack(f)
+        #df = pd.read_msgpack(f)
+        df = pd.read_csv(f, index_col=0)
+        if not key in df.columns:
+            continue
+        #print (df[:3])
         if promiscuous== True:
             b = P.getPromiscuousBinders(data=df,n=n)
         else:
@@ -255,16 +267,19 @@ def getScoreDistributions(predictor, path):
     """Get global score distributions and save quantile values for each allele
        Assumes all the files in path represent related proteins"""
 
-    files = glob.glob(os.path.join(path, '*.mpk'))
+    files = glob.glob(os.path.join(path, '*.csv'))
     results = []
     P = predictor
     key = P.scorekey
-    print (P, key)
     for f in files[:200]:
-        df = pd.read_msgpack(f)
-        #df = df.dropna()
+        #df = pd.read_msgpack(f)
+        df = pd.read_csv(f, index_col=0)
+        if not key in df.columns:
+            continue
+        #print (df[:3])
+        #print (df.info())
         x = df.pivot_table(index='peptide', columns='allele', values=key)
-        print (x)
+        #print (x)
         #print x[:5]
         results.append(x)
     result = pd.concat(results)
@@ -319,8 +334,13 @@ class Predictor(object):
         self.allelecutoffs = {}
         return
 
-    def __repr__(self, ):
-        return '%s predictor' %self.name
+    def __repr__(self):
+
+        if (self.data is None) or len(self.data) == 0:
+            return '%s predictor' %self.name
+        else:
+            n = len(self.data.name.unique())
+            return '%s predictor with results in %s proteins' %(self.name, n)
 
     def predict(self, sequence, peptide):
         """Does the actual scoring. Must override this.
@@ -367,6 +387,7 @@ class Predictor(object):
             df = data
         else:
             df = self.data
+        print(df)
         key = self.scorekey
         op = self.operator
         if method == 'cutoff':
@@ -400,12 +421,17 @@ class Predictor(object):
             pandas DataFrame with binders
         """
 
+        print (data)
         if data is None:
-            data = self.data
-        else:
-            self.data = data
+            if self.data is None:
+                print ('no prediction data available')
+                return
+            else:
+                data = self.data
+
         if name != None:
-            data = self.data[self.data.name==name]
+            data = data[data.name==name]
+
         #get binders using this data
         df = self.getBinders(method, data=data)
         grps = df.groupby(['peptide','pos','name'])
@@ -422,7 +448,7 @@ class Predictor(object):
 
         if not s.empty:
             final = pd.merge(p,s,how='right',on=['peptide','pos','name'])
-            l = self.getLength()
+            l = getLength(data)
             #if l > 9:
             g = final.groupby('core')
             final = g.agg({self.scorekey:max,'name':first,'peptide':first,'pos':first,
@@ -448,7 +474,7 @@ class Predictor(object):
         #print cores
         return cores
 
-    def predictSequences(self, data, seqkey='peptide', length=11,
+    '''def predictSequences(self, data, seqkey='peptide', length=11,
                         alleles=[], save=False):
         results=[]
         for i,row in data.iterrows():
@@ -462,10 +488,10 @@ class Predictor(object):
                res.append(df)
             res = pd.concat(res)
             results.append(res)
-            if save==True:
-                pd.to_msgpack('predictions_%s.mpk' %self.name, res, append=True)
+            #if save==True:
+            #    pd.to_msgpack('predictions_%s.mpk' %self.name, res, append=True)
         self.data = pd.concat(results)
-        return results
+        return results'''
 
     def predictProteins(self, recs, length=11, names=None,
                          alleles=[], path=None):
@@ -505,8 +531,10 @@ class Predictor(object):
             if path is not None and path != '':
                 if not os.path.exists(path):
                     os.mkdir(path)
-                fname = os.path.join(path, name+'.mpk')
-                pd.to_msgpack(fname, res)
+                #fname = os.path.join(path, name+'.mpk')
+                #pd.to_msgpack(fname, res)
+                fname = os.path.join(path, name+'.csv')
+                res.to_csv(fname)
             else:
                 results.append(res)
         print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
@@ -516,6 +544,12 @@ class Predictor(object):
             self.data = pd.concat(results)
         else:
             print ('results saved to %s' %os.path.abspath(path))
+        return
+
+    def load(self, filename):
+        """Load results for one or more proteins"""
+
+        self.data = pd.read_csv(filename, index_col=0)
         return
 
     def save(self, label, singlefile=True):
@@ -535,14 +569,9 @@ class Predictor(object):
             if not os.path.exists(path):
                 os.makedirs(path)
             for name,df in self.data.groupby('name'):
-                outfile = os.path.join(path, name+'.mpk')
-                pd.to_msgpack(outfile,df)
-        return
-
-    def getLength(self):
-        """Get peptide length of current set of predictions"""
-        if len(self.data)>0:
-            return len(self.data.head(1).peptide.max())
+                outfile = os.path.join(path, name+'.csv')
+                #pd.to_msgpack(outfile,df)
+                df.to_csv(outfile)
         return
 
     def summary(self):
@@ -739,7 +768,8 @@ class NetMHCIIPanPredictor(Predictor):
 
     def prepareData(self, df, name):
 
-        df = df.convert_objects(convert_numeric=True)
+        #df = df.convert_objects(convert_numeric=True)
+        df = df.apply(pd.to_numeric, errors='ignore')
         df['name'] = name
         df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
         df=df.drop(['Pos','Identity','Rank'],1)
@@ -1026,6 +1056,9 @@ class BCellPredictor(Predictor):
             #print (name)
             res = self.predict(sequence=seq,name=name)
             if save == True:
-                fname = os.path.join(path, name+'.mpk')
-                pd.to_msgpack(fname, res)
+                #fname = os.path.join(path, name+'.mpk')
+                #pd.to_msgpack(fname, res)
+                fname = os.path.join(path, name+'.csv')
+                res.to_csv(fname)
+
         return

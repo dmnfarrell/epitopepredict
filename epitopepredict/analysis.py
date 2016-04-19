@@ -257,13 +257,20 @@ def alignment2Dataframe(aln):
 
 def findClusters(binders, method, dist=None, minsize=3,
                  genome=None):
-    """Get clusters of binders for all predictions"""
+    """
+    Get clusters of binders for a set of binders.
+    Args:
+        binders: dataframe of binders
+        method: prediction method
+        dist: distance over which to apply clustering
+        minsize : minimum cluster size to count
+    """
 
     C=[]
     grps = list(binders.groupby('name'))
     print ('%s proteins with binders' %len(grps))
     length = len(binders.head(1).peptide.max())
-    if dist==None:
+    if dist == None:
         dist = length+1
         print ('using dist for clusters: %s' %dist)
     for n,b in grps:
@@ -283,6 +290,7 @@ def findClusters(binders, method, dist=None, minsize=3,
     x['density'] = x.binders/(x.end-x.start)
     x['method'] = method
 
+    #do we need this?
     if genome is not None:
         temp = x.merge(genome[['locus_tag','gene','translation']],
                     left_on='name',right_on='locus_tag')
