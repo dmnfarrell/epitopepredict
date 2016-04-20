@@ -373,7 +373,7 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, method='cutoff', q=0.01, data=None):
+    def getBinders(self, method='cutoff', q=0.01, data=None, name=None):
         """
         Get the top scoring percentile or using cutoff.
         Args:
@@ -383,18 +383,22 @@ class Predictor(object):
             pandas DataFrame of all binders
         """
 
-        if not data is None:
-            df = data
-        else:
-            df = self.data
-        print(df)
+        if data is None:
+            if self.data is None:
+                print ('no prediction data available')
+                return
+            else:
+                data = self.data
+        if name != None:
+            data = data[data.name==name]
+
         key = self.scorekey
         op = self.operator
         if method == 'cutoff':
             #this allows us to use global allele based cutoffs
             #must be set first as an attribute
             res = []
-            for a,g in df.groupby('allele'):
+            for a,g in data.groupby('allele'):
                 if a in self.allelecutoffs:
                     cutoff = self.allelecutoffs[a]
                 else:
@@ -405,7 +409,7 @@ class Predictor(object):
         elif method == 'rank':
             #get top ranked % per protein
             res=[]
-            for i,g in df.groupby('name'):
+            for i,g in data.groupby('name'):
                 value = g['rank'].quantile(q=q)
                 b = g[g['rank'] <= value]
                 res.append(b)
@@ -417,24 +421,20 @@ class Predictor(object):
         Args:
             n: number of alleles
             method: method to use for
+            data: a dataframe of prediction data, optional
+            name: name of the proteins to use, optional
         Returns:
             pandas DataFrame with binders
         """
 
-        print (data)
         if data is None:
-            if self.data is None:
-                print ('no prediction data available')
-                return
-            else:
-                data = self.data
+            data = self.data
+        #get binders using the provided or current prediction data
+        b = self.getBinders(method, data=data, name=name)
 
-        if name != None:
-            data = data[data.name==name]
-
-        #get binders using this data
-        df = self.getBinders(method, data=data)
-        grps = df.groupby(['peptide','pos','name'])
+        if b is None or len(b) == 0:
+            return pd.DataFrame()
+        grps = b.groupby(['peptide','pos','name'])
         if self.operator == '<':
             func = min
         else:
@@ -448,7 +448,7 @@ class Predictor(object):
 
         if not s.empty:
             final = pd.merge(p,s,how='right',on=['peptide','pos','name'])
-            l = getLength(data)
+            l = getLength(b)
             #if l > 9:
             g = final.groupby('core')
             final = g.agg({self.scorekey:max,'name':first,'peptide':first,'pos':first,
@@ -510,6 +510,8 @@ class Predictor(object):
             alleles = [alleles]
         elif type(alleles) is pd.Series:
             alleles = alleles.tolist()
+        if len(alleles) == 0:
+            return
         self.length = length
         recs = sequtils.getCDS(recs)
         if names != None:
@@ -768,8 +770,8 @@ class NetMHCIIPanPredictor(Predictor):
 
     def prepareData(self, df, name):
 
-        #df = df.convert_objects(convert_numeric=True)
-        df = df.apply(pd.to_numeric, errors='ignore')
+        df = df.convert_objects(convert_numeric=True)
+        #df = df.apply(pd.to_numeric)#, errors='ignore')
         df['name'] = name
         df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
         df=df.drop(['Pos','Identity','Rank'],1)
@@ -864,7 +866,7 @@ class IEDBMHCIPredictor(Predictor):
     def prepareData(self, rows, name):
         """Prepare data from results"""
 
-        df = pd.read_csv(io.StringIO(rows),sep="\t")
+        df = pd.read_csv(io.BytesIO(rows),sep="\t")
         if len(df)==0:
             return
         df = df.replace('-',np.nan)
