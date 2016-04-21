@@ -63,6 +63,7 @@ def getIEDBRequest(seq, alleles='HLA-DRB1*01:01', method='consensus3'):
 
 def getOverlapping(index, s, length=9, cutoff=25):
     """Get all mutually overlapping kmers within a cutoff area"""
+
     g=[s]
     vals = [i for i in range(s, s+cutoff) if i in index]
     for i in range(len(vals)-1):
@@ -150,7 +151,15 @@ def getLength(data):
         return len(data.head(1).peptide.max())
     return
 
+def getCoords(df):
+    """Get start end coords from position and length of peptides"""
+
+    df['start'] = df.pos
+    df['end'] = df.pos + df.peptide.str.len()
+    return df
+
 def createTempSeqfile(sequences, seqfile='tempseq.fa'):
+
     if isinstance(sequences, str):
         sequences=[sequences]
     out = open(seqfile, 'w')
@@ -164,17 +173,18 @@ def createTempSeqfile(sequences, seqfile='tempseq.fa'):
 
 def getSequence(seqfile):
     """Get sequence from fasta file"""
+
     recs = list(SeqIO.parse(seqfile, 'fasta'))[0]
     sequence = recs.seq.tostring()
     return sequence
 
-def getOverlappingBinders(B):
+'''def getOverlappingBinders(B):
     for df in B:
         df.set_index('peptide',inplace=True)
     print (B)
     x = pd.concat(B,join='inner')
     #x =  x[['pos']].sort('pos')
-    return x
+    return x'''
 
 def getNearest(df):
     """Get nearest binder"""
@@ -218,7 +228,7 @@ def getBindersfromPath(method, path, n=3, cutoff=0.95, promiscuous=True):
         A dataframe with all binders matching the required critieria
     """
 
-    print ('getting binders..')
+    #print ('getting binders..')
     binders = []
     #m=method
     #if m=='bcell': return #not applicable
@@ -229,7 +239,6 @@ def getBindersfromPath(method, path, n=3, cutoff=0.95, promiscuous=True):
     P.allelecutoffs = getCutoffs(P, path, cutoff, overwrite=True)
     key = P.scorekey
     for f in files:
-        #df = pd.read_msgpack(f)
         df = pd.read_csv(f, index_col=0)
         if not key in df.columns:
             continue
@@ -241,13 +250,11 @@ def getBindersfromPath(method, path, n=3, cutoff=0.95, promiscuous=True):
         #print b[:5]
         binders.append(b)
     result = pd.concat(binders)
-    result['start'] = result.pos
-    result['end'] = result.pos+result.peptide.str.len()
     return result
 
 def getCutoffs(predictor, path, data=None, q=0.98, overwrite=False):
     """
-    Get global cutoffs for predictions in path
+    Estimate global cutoffs for predictions
     Args:
         path: The file path with all the binding prediction results
         method: Prediction method
@@ -289,10 +296,10 @@ def getScoreDistributions(predictor, path):
     if P.operator == '<':
         bins.index = pd.Series(bins.index).apply(lambda x: 1-x)
     outfile = os.path.join(path,'quantiles.csv')
-    print (outfile)
+    #print (outfile)
     bins.to_csv(outfile,float_format='%.3f')
     df= pd.read_csv(outfile,index_col=0)
-    print (df.ix[0.96])
+    #print (df.ix[0.96])
     return
 
 def getStandardMHCI(name):
@@ -548,10 +555,20 @@ class Predictor(object):
             print ('results saved to %s' %os.path.abspath(path))
         return
 
-    def load(self, filename):
+    def load(self, filename=None, path=None):
         """Load results for one or more proteins"""
 
-        self.data = pd.read_csv(filename, index_col=0)
+        if filename != None:
+            self.data = pd.read_csv(filename, index_col=0)
+        elif path != None:
+            files = glob.glob(os.path.join(path, '*.csv'))
+            res = []
+            for f in files:
+                df = pd.read_csv(f, index_col=0)
+                if not self.scorekey in df.columns:
+                    continue
+                res.append(df)
+            self.data = pd.concat(res)
         return
 
     def save(self, label, singlefile=True):
@@ -602,8 +619,9 @@ class Predictor(object):
         grp = self.data.groupby('name')
         return sorted(dict(list(grp)).keys())
 
-    def benchmark(self):
+    '''def benchmark(self):
         """Benchmark on known cores"""
+
         hits=0; total=0
         templates = Threading.templates
         for allele,row in templates.iterrows():
@@ -669,16 +687,16 @@ class Predictor(object):
         x=R.groupby('allele').agg({'percentile':np.mean,'score':np.mean})
         x.plot(kind='bar',subplots=True)
         #print x
-        '''fig=plt.figure(figsize=(10,10))
+        fig=plt.figure(figsize=(10,10))
         ax=fig.add_subplot(221)
         R.plot(x='toprank',y='freq',kind='scatter',ax=ax,alpha=0.6)
         ax=fig.add_subplot(222)
         R.plot(x='meansc',y='freq',kind='scatter',ax=ax,alpha=0.6)
         ax=fig.add_subplot(223)
-        R.plot(x='binders',y='freq',kind='scatter',ax=ax,alpha=0.6)'''
+        R.plot(x='binders',y='freq',kind='scatter',ax=ax,alpha=0.6)
         plt.tight_layout()
         plt.show()
-        return
+        return'''
 
     def plotBinders(self, name, cldist=7, n=2, tmregions=None,
                     legend=False, figsize=(9,3), ax=None):

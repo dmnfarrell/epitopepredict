@@ -173,19 +173,31 @@ def getNmer(df, n=20, key='translation'):
     x = df.apply(getseq,1)
     return x
 
-def getOverlappingBinders(binders1, binders2, label='overlap'):
-    """Overlap for binders with any set of peptides with start/end cols"""
+def getOverlaps(binders1, binders2, label='overlaps'):
+    """
+    Overlaps for 2 sets of sequences where pos in sequence is stored.
+    Args:
+        binders1: first set of sequences, a dataframe with pos field
+        binders2: second set of sequences
+        label: label for overlaps column
+    Returns:
+        First DataFrame with no. of overlaps stored in a new column
+    """
 
     new=[]
-    def overlap(x,b):
-        f = b[(b.pos>x.start) & (b.pos<x.end)]
+    a = base.getCoords(binders1)
+    b = base.getCoords(binders2)
+
+    def overlap(x,y):
+        f = y[(y.pos>x.start) & (y.pos<x.end)]
         #print x.locus_tag,x.start,x.end,x.peptide,len(f) #,f.peptide,f.pos
         return len(f)
-    for n,df in binders1.groupby('name'):
-        b = binders2[binders2.name==n]
-        df[label] = df.apply(lambda r: overlap(r,b),axis=1)
+    for n,df in a.groupby('name'):
+        found = b[b.name==n]
+        df[label] = df.apply(lambda r: overlap(r,found),axis=1)
         new.append(df)
     result = pd.concat(new)
+    print (len(a), len(b))
     print ('%s with overlapping binders' %len(result[result[label]>0]))
     return result
 
@@ -268,7 +280,7 @@ def findClusters(binders, method, dist=None, minsize=3,
 
     C=[]
     grps = list(binders.groupby('name'))
-    print ('%s proteins with binders' %len(grps))
+    #print ('%s proteins with binders' %len(grps))
     length = len(binders.head(1).peptide.max())
     if dist == None:
         dist = length+1
