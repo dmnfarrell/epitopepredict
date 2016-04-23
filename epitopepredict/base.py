@@ -501,7 +501,7 @@ class Predictor(object):
         return results'''
 
     def predictProteins(self, recs, length=11, names=None,
-                         alleles=[], path=None):
+                         alleles=[], path=None, overwrite=True):
         """Get predictions for a set of proteins and/or over multiple alleles
           Args:
             recs: protein sequences in a pandas DataFrame
@@ -510,6 +510,7 @@ class Predictor(object):
             alleles: allele list
             path: if results are to be saved to disk provide a path, otherwise results
             for all proteins are stored in the data attribute of the predictor
+            overwrite: over write existing protein files in path if present
           Returns:
             a dataframe of predictions over multiple proteins"""
 
@@ -525,24 +526,28 @@ class Predictor(object):
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())
         results = []
+        if path is not None and path != '':
+            if not os.path.exists(path):
+                os.mkdir(path)
         for i,row in proteins:
             st = time.time()
             seq = row['translation']
             name = row['locus_tag']
-            #print i,name
+            if path is not None:
+                fname = os.path.join(path, name+'.csv')
+                if os.path.exists(fname) and overwrite == False:
+                    continue
+            #print (i,name)
             res = []
             for a in alleles:
                 df = self.predict(sequence=seq,length=length,
                                     allele=a,name=name)
                 if df is not None:
                     res.append(df)
+            print(a, len(res))
             res = pd.concat(res)
-            if path is not None and path != '':
-                if not os.path.exists(path):
-                    os.mkdir(path)
-                #fname = os.path.join(path, name+'.mpk')
-                #pd.to_msgpack(fname, res)
-                fname = os.path.join(path, name+'.csv')
+            if path is not None:
+                print (fname)
                 res.to_csv(fname)
             else:
                 results.append(res)
