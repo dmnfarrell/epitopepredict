@@ -18,7 +18,7 @@ colormaps={'tepitope':'Greens','netmhciipan':'Oranges','iedbmhc2':'Pinks',
 colors = {'tepitope':'green','netmhciipan':'orange',
            'iedbmhc1':'blue','iedbmhc2':'pink','threading':'purple'}
 
-def plotTracks(preds, title='', n=2, width=820, height=None,
+def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=None,
                 seqdepot=None, bcell=None, exp=None, tools=True):
     """Plot binding predictions as parallel tracks of blocks for each allele.
        This uses Bokeh.
@@ -66,10 +66,10 @@ def plotTracks(preds, title='', n=2, width=820, height=None,
         cmap = mpl.cm.get_cmap(colormaps[m])
         df = pred.data
         sckey = pred.scorekey
-        pb = pred.getPromiscuousBinders(data=df,n=n)
+        pb = pred.getPromiscuousBinders(data=df,n=n, cutoff_method=cutoff_method)
         if len(pb) == 0:
             continue
-        l = pred.getLength()
+        l = base.getLength(pb)
         grps = df.groupby('allele')
         alleles = grps.groups.keys()
         if len(pb)==0:

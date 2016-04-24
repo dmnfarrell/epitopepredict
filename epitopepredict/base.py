@@ -178,6 +178,11 @@ def getSequence(seqfile):
     sequence = recs.seq.tostring()
     return sequence
 
+def getSequencefromPredictionData(data):
+    """Guess original sequence from predictions dataframe"""
+
+    return seq
+
 '''def getOverlappingBinders(B):
     for df in B:
         df.set_index('peptide',inplace=True)
@@ -235,7 +240,8 @@ def getBindersfromPath(method, path, n=3, cutoff=0.95, promiscuous=True):
     l=9
     P = getPredictor(method)
     files = glob.glob(os.path.join(path, '*.csv'))
-    #get allele specific cutoffs
+
+    #get allele specific cutoffs - need arg to choose whether to use this?
     P.allelecutoffs = getCutoffs(P, path, cutoff, overwrite=True)
     key = P.scorekey
     for f in files:
@@ -380,7 +386,7 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, method='cutoff', q=0.01, data=None, name=None):
+    def getBinders(self, cutoff_method='default', q=0.01, data=None, name=None):
         """
         Get the top scoring percentile or using cutoff.
         Args:
@@ -401,7 +407,7 @@ class Predictor(object):
 
         key = self.scorekey
         op = self.operator
-        if method == 'cutoff':
+        if cutoff_method == 'default':
             #this allows us to use global allele based cutoffs
             #must be set first as an attribute
             res = []
@@ -413,7 +419,7 @@ class Predictor(object):
                 b = self.evaluate(g, key, cutoff, op)
                 res.append(b)
             return pd.concat(res)
-        elif method == 'rank':
+        elif cutoff_method == 'rank':
             #get top ranked % per protein
             res=[]
             for i,g in data.groupby('name'):
@@ -422,14 +428,14 @@ class Predictor(object):
                 res.append(b)
             return pd.concat(res)
 
-    def getPromiscuousBinders(self, n=3, method='cutoff', data=None, name=None):
+    def getPromiscuousBinders(self, n=3, cutoff_method='default', data=None, name=None):
         """
         Get top scoring binders present in at least n alleles.
         Args:
             n: number of alleles
-            method: method to use for
+            cutoff method: method to use for cutoffs - default, global or rank
             data: a dataframe of prediction data, optional
-            name: name of the proteins to use, optional
+            name: name of the proteins to use, required if data contains multiple proteins
         Returns:
             pandas DataFrame with binders
         """
@@ -437,7 +443,7 @@ class Predictor(object):
         if data is None:
             data = self.data
         #get binders using the provided or current prediction data
-        b = self.getBinders(method, data=data, name=name)
+        b = self.getBinders(cutoff_method, data=data, name=name)
 
         if b is None or len(b) == 0:
             return pd.DataFrame()
@@ -624,6 +630,15 @@ class Predictor(object):
         grp = self.data.groupby('name')
         return sorted(dict(list(grp)).keys())
 
+    def plot(self, name=None):
+        """Use module level plotTracks method for predictor plot"""
+
+        if name == None:
+            #choose first name found if >1
+            pass
+        plot = plotTracks(self, )
+        return plot
+
     '''def benchmark(self):
         """Benchmark on known cores"""
 
@@ -701,11 +716,11 @@ class Predictor(object):
         R.plot(x='binders',y='freq',kind='scatter',ax=ax,alpha=0.6)
         plt.tight_layout()
         plt.show()
-        return'''
+        return
 
     def plotBinders(self, name, cldist=7, n=2, tmregions=None,
                     legend=False, figsize=(9,3), ax=None):
-        """Plot binders as bars per allele"""
+        """Plot binders as bars per allele - defunct"""
 
         fig=None
         if ax==None:
@@ -763,7 +778,7 @@ class Predictor(object):
             patches,l = zip(*leg)
             ax.legend(l,patches,fontsize=9,mode="expand",ncol=6,framealpha=0.5)
         plt.tight_layout()
-        return fig, labels
+        return fig, labels'''
 
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
