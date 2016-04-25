@@ -219,30 +219,30 @@ def getNearest(df):
             b[m] = binders
     return b'''
 
-def getBindersfromPath(method, path, n=3, cutoff=0.95, promiscuous=True):
+def getBindersfromPath(method, path, n=3, cutoff_method='default',
+                       perc=0.98, promiscuous=True):
     """
     Get all binders from a set of binding results stored in a directory.
 
     Args:
         path: The file path with all the binding prediction results
-        method: Prediction method
+        cutoff_method: Prediction method used to create the data
         n: minimum number of alleles if using promiscuous binders
+        perc: percentile for cutoff(s)
         promiscuous: whether to return only promiscuous binders
 
     Returns:
         A dataframe with all binders matching the required critieria
     """
 
-    #print ('getting binders..')
     binders = []
-    #m=method
-    #if m=='bcell': return #not applicable
-    l=9
     P = getPredictor(method)
     files = glob.glob(os.path.join(path, '*.csv'))
 
-    #get allele specific cutoffs - need arg to choose whether to use this?
-    P.allelecutoffs = getCutoffs(P, path, cutoff, overwrite=True)
+    #get allele specific cutoffs
+    if cutoff_method == 'default':
+        P.allelecutoffs = getCutoffs(P, path, perc, overwrite=True)
+
     key = P.scorekey
     for f in files:
         df = pd.read_csv(f, index_col=0)
@@ -250,7 +250,8 @@ def getBindersfromPath(method, path, n=3, cutoff=0.95, promiscuous=True):
             continue
         #print (df[:3])
         if promiscuous== True:
-            b = P.getPromiscuousBinders(data=df,n=n)
+            b = P.getPromiscuousBinders(data=df, n=n,
+                                        cutoff_method=cutoff_method)
         else:
             b = P.getBinders(data=df)
         #print b[:5]
@@ -258,58 +259,50 @@ def getBindersfromPath(method, path, n=3, cutoff=0.95, promiscuous=True):
     result = pd.concat(binders)
     return result
 
-def getCutoffs(predictor, path, data=None, q=0.98, overwrite=False):
+def getCutoffs(predictor, path=None, perc=0.98, overwrite=True):
     """
-    Estimate global cutoffs for predictions
+    Estimate global allele-based cutoffs for predictions.
     Args:
-        path: The file path with all the binding prediction results
+        predictor: A Predictor object with data loaded optionally
+        path: An optional file path with the binding prediction results
         method: Prediction method
-        q: percentile level of score to select cutoffs
+        perc: percentile level of score to select cutoffs
     Returns:
         A dictionary with cutoff values per allele
     """
 
-    quantfile = os.path.join(path,'quantiles.csv')
-    if not os.path.exists(quantfile) or overwrite==True:
-        getScoreDistributions(predictor, path)
-    quantiles = pd.read_csv(quantfile,index_col=0)
-    cutoffs = dict(quantiles.ix[q])
+    if path != None:
+        binsfile = os.path.join(path, 'quantiles.csv')
+    else:
+        binsfile = ''
+    if not os.path.exists(binsfile) or overwrite==True:
+        bins = getScoreDistributions(predictor, path)
+        if binsfile != '':
+            bins.to_csv(binsfile, float_format='%.3f')
+    else:
+        bins = pd.read_csv(binsfile, index_col=0)
+    cutoffs = dict(bins.ix[perc])
     return cutoffs
 
-def getScoreDistributions(predictor, path):
+def getScoreDistributions(predictor, path=None):
     """Get global score distributions and save quantile values for each allele
        Assumes all the files in path represent related proteins"""
 
-    files = glob.glob(os.path.join(path, '*.csv'))
-    results = []
-    P = predictor
-    key = P.scorekey
-    for f in files[:200]:
-        #df = pd.read_msgpack(f)
-        df = pd.read_csv(f, index_col=0)
-        if not key in df.columns:
-            continue
-        #print (df[:3])
-        #print (df.info())
-        x = df.pivot_table(index='peptide', columns='allele', values=key)
-        #print (x)
-        #print x[:5]
-        results.append(x)
-    result = pd.concat(results)
+    if path != None:
+        predictor.load(path=path, file_limit=100)
+    df = predictor.data
+    key = predictor.scorekey
+    x = df.pivot_table(index='peptide', columns='allele', values=key)
     percs = np.arange(0.01,1,0.01)
-    bins = result.quantile(percs)
-    #reverse is best values are lower
-    if P.operator == '<':
+    bins = x.quantile(percs)
+    #reverse if best values are lower
+    if predictor.operator == '<':
         bins.index = pd.Series(bins.index).apply(lambda x: 1-x)
-    outfile = os.path.join(path,'quantiles.csv')
-    #print (outfile)
-    bins.to_csv(outfile,float_format='%.3f')
-    df= pd.read_csv(outfile,index_col=0)
-    #print (df.ix[0.96])
-    return
+    return bins
 
 def getStandardMHCI(name):
     """Taken from iedb mhc1 utils.py"""
+
     temp = name.strip().split('-')
     length = temp[-1]
     mhc = '-'.join(temp[0:-1])
@@ -317,6 +310,7 @@ def getStandardMHCI(name):
 
 def getDRBList(a):
     """Get DRB list in standard format"""
+
     s = pd.Series(a)
     s = s[s.str.contains('DRB')]
     s = s.apply(lambda x:'HLA-'+x.replace('_','*'))
@@ -386,12 +380,13 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, cutoff_method='default', q=0.01, data=None, name=None):
+    def getBinders(self, cutoff_method='default', perc=0.01,
+                   data=None, name=None):
         """
         Get the top scoring percentile or using cutoff.
         Args:
             data: binding predictions for one or more proteins
-            q: quantile threshold for selecting global cutoffs
+            perc: percentile threshold for ranking in each protein
         Returns:
             pandas DataFrame of all binders
         """
@@ -407,7 +402,7 @@ class Predictor(object):
 
         key = self.scorekey
         op = self.operator
-        if cutoff_method == 'default':
+        if cutoff_method == 'default':# or cutoff_method == 'global':
             #this allows us to use global allele based cutoffs
             #must be set first as an attribute
             res = []
@@ -423,12 +418,13 @@ class Predictor(object):
             #get top ranked % per protein
             res=[]
             for i,g in data.groupby('name'):
-                value = g['rank'].quantile(q=q)
+                value = g['rank'].quantile(q=perc)
                 b = g[g['rank'] <= value]
                 res.append(b)
             return pd.concat(res)
 
-    def getPromiscuousBinders(self, n=3, cutoff_method='default', data=None, name=None):
+    def getPromiscuousBinders(self, n=3, cutoff_method='default',
+                              data=None, name=None):
         """
         Get top scoring binders present in at least n alleles.
         Args:
@@ -450,10 +446,15 @@ class Predictor(object):
         grps = b.groupby(['peptide','pos','name'])
         if self.operator == '<':
             func = min
+            skname = 'min'
         else:
             func = max
-        s = grps.agg({'allele':pd.Series.count,self.scorekey:func})
-        s = s[s.allele>=n]
+            skname = 'max'
+        s = grps.agg({'allele':pd.Series.count,self.scorekey:[func,np.mean]})
+        s.columns = s.columns.get_level_values(1)
+        s.rename(columns={skname: self.scorekey, 'count': 'alleles'}, inplace=True)
+        #print(s)
+        s = s[s.alleles>=n]
         s = s.reset_index()
         #merge frequent binders with original data to retain fields
         p = list(data.groupby('allele'))[0][1]
@@ -464,8 +465,8 @@ class Predictor(object):
             l = getLength(b)
             #if l > 9:
             g = final.groupby('core')
-            final = g.agg({self.scorekey:max,'name':first,'peptide':first,'pos':first,
-                            'allele':first})
+            final = g.agg({self.scorekey:max, 'name':first, 'peptide': first,
+                        'pos':first, 'alleles':first, 'mean':first})
             final = final.reset_index().sort_values('pos')
             #print merged.sort('pos')
             #print final
@@ -566,16 +567,25 @@ class Predictor(object):
             print ('results saved to %s' %os.path.abspath(path))
         return
 
-    def load(self, filename=None, path=None):
-        """Load results for one or more proteins"""
+    def load(self, filename=None, path=None, compression='infer',
+             file_limit=None):
+        """
+        Load results for one or more proteins
+        Args:
+            filename: name of a csv file with predictions
+            path: directory with one or more csv files
+            file_limit: limit to load only the this number of proteins
+        """
 
         if filename != None:
             self.data = pd.read_csv(filename, index_col=0)
         elif path != None:
             files = glob.glob(os.path.join(path, '*.csv'))
+            if file_limit != None:
+                files = files[:file_limit]
             res = []
             for f in files:
-                df = pd.read_csv(f, index_col=0)
+                df = pd.read_csv(f, index_col=0, compression=compression)
                 if not self.scorekey in df.columns:
                     continue
                 res.append(df)
@@ -612,6 +622,13 @@ class Predictor(object):
                                             len(proteins),len(allelegrps))'''
         return
 
+    def alleleSummary(self):
+        """Allele based summary"""
+
+        b = self.getBinders()
+        summary = b.groupby('allele').agg({'peptide':np.size,self.scorekey:np.mean})
+        return summary
+
     def reshape(self, name=None):
         """Return pivoted data over alleles for summary use"""
 
@@ -633,10 +650,11 @@ class Predictor(object):
     def plot(self, name=None):
         """Use module level plotTracks method for predictor plot"""
 
+        from . import plotting
         if name == None:
             #choose first name found if >1
             pass
-        plot = plotTracks(self, )
+        plot = plotting.plotTracks([self])
         return plot
 
     '''def benchmark(self):

@@ -267,13 +267,12 @@ def alignment2Dataframe(aln):
     df = pd.DataFrame(alnrows,columns=['name','seq'])
     return df
 
-def findClusters(binders, method, dist=None, minsize=3,
+def findClusters(binders, dist=None, minsize=3,
                  genome=None):
     """
     Get clusters of binders for a set of binders.
     Args:
         binders: dataframe of binders
-        method: prediction method
         dist: distance over which to apply clustering
         minsize : minimum cluster size to count
     """
@@ -300,7 +299,7 @@ def findClusters(binders, method, dist=None, minsize=3,
     x = pd.DataFrame(C,columns=['name','start','end','binders'])
     x['clustersize'] = (x.end-x.start)
     x['density'] = x.binders/(x.end-x.start)
-    x['method'] = method
+    #x['method'] = method
 
     #do we need this?
     if genome is not None:
