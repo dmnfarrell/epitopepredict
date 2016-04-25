@@ -219,6 +219,16 @@ def getNearest(df):
             b[m] = binders
     return b'''
 
+def summarize(data):
+    """Summarise prediction data"""
+
+    #print 'binders with unique cores: %s' %len(self.getUniqueCores(binders=True))
+    allelegrps = data.groupby('allele')
+    proteins = data.groupby('name')
+    print ('summary: %s peptides in %s proteins and %s alleles' %(len(data),
+                                        len(proteins),len(allelegrps)))
+    return
+
 def getBindersfromPath(method, path, n=3, cutoff_method='default',
                        perc=0.98, promiscuous=True):
     """
@@ -373,20 +383,21 @@ class Predictor(object):
         return
 
     def evaluate(self, df, key, value, operator='<'):
-        """Evaluate binders less than or greater than value - the cutoff"""
+        """Evaluate binders less than or greater than a cutoff"""
 
         if operator == '<':
             return df[df[key] <= value]
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, cutoff_method='default', perc=0.01,
+    def getBinders(self, cutoff_method='default', perc=0.98,
                    data=None, name=None):
         """
-        Get the top scoring percentile or using cutoff.
+        Get the top scoring binders using percentile ranking or single cutoff.
         Args:
             data: binding predictions for one or more proteins
-            perc: percentile threshold for ranking in each protein
+            cutoff_method: method to use for binder threshold
+            perc: percentile threshold for ranking in each allele
         Returns:
             pandas DataFrame of all binders
         """
@@ -402,36 +413,36 @@ class Predictor(object):
 
         key = self.scorekey
         op = self.operator
-        if cutoff_method == 'default':# or cutoff_method == 'global':
-            #this allows us to use global allele based cutoffs
-            #must be set first as an attribute
-            res = []
+        if cutoff_method == 'simple':
+            #we just use a single cutoff value for all
+            cutoff = self.cutoff
+            b = self.evaluate(data, key, cutoff, op)
+            return b
+        else:
+            #this also allows us to use global allele based cutoffs
+            res=[]
+            if op == '<':
+                perc = 1-perc
             for a,g in data.groupby('allele'):
                 if a in self.allelecutoffs:
                     cutoff = self.allelecutoffs[a]
                 else:
-                    cutoff = self.cutoff
+                    cutoff = g[key].quantile(q=perc)
+                #print (a,perc,value)
                 b = self.evaluate(g, key, cutoff, op)
                 res.append(b)
             return pd.concat(res)
-        elif cutoff_method == 'rank':
-            #get top ranked % per protein
-            res=[]
-            for i,g in data.groupby('name'):
-                value = g['rank'].quantile(q=perc)
-                b = g[g['rank'] <= value]
-                res.append(b)
-            return pd.concat(res)
 
-    def getPromiscuousBinders(self, n=3, cutoff_method='default',
+    def getPromiscuousBinders(self, n=2, cutoff_method='default', perc=0.98,
                               data=None, name=None):
         """
         Get top scoring binders present in at least n alleles.
         Args:
             n: number of alleles
-            cutoff method: method to use for cutoffs - default, global or rank
+            cutoff method: method to use for cutoffs - default or simple
             data: a dataframe of prediction data, optional
             name: name of the proteins to use, required if data contains multiple proteins
+            perc: percentile cutoff, applied per allele
         Returns:
             pandas DataFrame with binders
         """
@@ -439,7 +450,7 @@ class Predictor(object):
         if data is None:
             data = self.data
         #get binders using the provided or current prediction data
-        b = self.getBinders(cutoff_method, data=data, name=name)
+        b = self.getBinders(cutoff_method, data=data, name=name, perc=perc)
 
         if b is None or len(b) == 0:
             return pd.DataFrame()
@@ -450,7 +461,7 @@ class Predictor(object):
         else:
             func = max
             skname = 'max'
-        s = grps.agg({'allele':pd.Series.count,self.scorekey:[func,np.mean]})
+        s = grps.agg({'allele':pd.Series.count, self.scorekey:[func,np.mean]})
         s.columns = s.columns.get_level_values(1)
         s.rename(columns={skname: self.scorekey, 'count': 'alleles'}, inplace=True)
         #print(s)
@@ -463,12 +474,10 @@ class Predictor(object):
         if not s.empty:
             final = pd.merge(p,s,how='right',on=['peptide','pos','name'])
             l = getLength(b)
-            #if l > 9:
             g = final.groupby('core')
             final = g.agg({self.scorekey:max, 'name':first, 'peptide': first,
                         'pos':first, 'alleles':first, 'mean':first})
             final = final.reset_index().sort_values('pos')
-            #print merged.sort('pos')
             #print final
             return final
         else:
@@ -614,18 +623,10 @@ class Predictor(object):
                 df.to_csv(outfile)
         return
 
-    def summary(self):
-        '''print 'high binders: %s' %len(self.getBinders())
-        print 'binders with unique cores: %s' %len(self.getUniqueCores(binders=True))
-        allelegrps = self.data.groupby('allele')
-        print '%s peptides in %s proteins and %s alleles' %(len(self.data),
-                                            len(proteins),len(allelegrps))'''
-        return
-
-    def alleleSummary(self):
+    def alleleSummary(self, perc=0.98):
         """Allele based summary"""
 
-        b = self.getBinders()
+        b = self.getBinders(perc=perc)
         summary = b.groupby('allele').agg({'peptide':np.size,self.scorekey:np.mean})
         return summary
 

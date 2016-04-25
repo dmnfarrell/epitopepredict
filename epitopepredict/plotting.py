@@ -35,8 +35,8 @@ def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=
         tools=''
 
     alls=1
-    for m in preds:
-        alls += len(preds[m].data.groupby('allele'))
+    for p in preds:
+        alls += len(p.data.groupby('allele'))
     if height==None:
         height = 130+10*alls
     yrange = Range1d(start=0, end=alls+3)
@@ -61,8 +61,9 @@ def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=
     x=[];y=[];allele=[];widths=[];clrs=[];peptide=[]
     predictor=[];position=[];score=[];leg=[]
     l=80
-    for m in preds:
-        pred = preds[m]
+    for pred in preds:
+        #pred = preds[m]
+        m = pred.name
         cmap = mpl.cm.get_cmap(colormaps[m])
         df = pred.data
         sckey = pred.scorekey
