@@ -409,6 +409,9 @@ class Predictor(object):
             else:
                 data = self.data
         if name != None:
+            if name not in list(data.name):
+                print ('no such protein in data')
+                return
             data = data[data.name==name]
 
         key = self.scorekey
@@ -430,8 +433,11 @@ class Predictor(object):
                     cutoff = g[key].quantile(q=perc)
                 #print (a,perc,value)
                 b = self.evaluate(g, key, cutoff, op)
-                res.append(b)
-            return pd.concat(res)
+                if b is not None:
+                    res.append(b)
+            if len(res) > 0:
+                return pd.concat(res)
+        return
 
     def getPromiscuousBinders(self, n=2, cutoff_method='default', perc=0.98,
                               data=None, name=None):
@@ -655,7 +661,7 @@ class Predictor(object):
         if name == None:
             #choose first name found if >1
             pass
-        plot = plotting.plotTracks([self])
+        plot = plotting.plot_tracks([self])
         return plot
 
     '''def benchmark(self):
@@ -737,67 +743,7 @@ class Predictor(object):
         plt.show()
         return
 
-    def plotBinders(self, name, cldist=7, n=2, tmregions=None,
-                    legend=False, figsize=(9,3), ax=None):
-        """Plot binders as bars per allele - defunct"""
-
-        fig=None
-        if ax==None:
-            fig=plt.figure(figsize=figsize)
-            ax=fig.add_subplot(111)
-        cmap = plt.cm.get_cmap('jet')
-        sckey = self.scorekey
-        df = self.data[self.data.name==name]
-        if self.cutoff < 0:
-            highest = min(df[sckey])
-        else:
-            highest = max(df[sckey])
-        if len(self.allelecutoffs)>0:
-            lowest = min(self.allelecutoffs.values())
-        else:
-            lowest = self.cutoff
-        lims = (lowest,highest)
-        pb = self.getPromiscuousBinders(data=df,n=n)
-        #pball = self.getPromiscuousBinders(data=df,n=1)
-        grps = df.groupby('allele')
-        cl = dbscan(pb,dist=cldist)
-        j=0
-        labels = []
-        leg = []
-        if len(pb)>0:
-            for a, df in grps:
-                c = cmap(float(j)/(len(grps)))
-                b = self.getBinders(data=df)
-                ind = np.arange(len(df))
-                b = b[b.pos.isin(pb.pos)] #show only promiscuous
-                b.sort('pos',inplace=True)
-                y = b[sckey].values
-                x = b['pos'].values
-                bars = plotBars(x,y,ind,color=c,ax=ax,label='')
-                labels.extend(zip(bars,b.peptide))
-                if len(bars)>0:
-                    leg.append((a,bars[0]))
-                j+=1
-        ax.set_title(self.name+' '+name)
-        ax.set_ylim(lims)
-        plt.setp(ax.get_xticklabels(), visible=True)
-
-        #moving average plot of epitope density
-        #df=df.sort('pos')
-        #m = df[sckey].where(df[sckey].isin(pb.pos),other=0)
-        #y = m.apply(lambda x: pball.sco
-        #y = pd.stats.moments.rolling_mean(m, 10)
-        #ax2 = ax.twinx()
-        #ax2.plot(df.pos.values, y, '-',lw=2)
-
-        plotRegions(cl,ax,alpha=0.2,ls='dashed')
-        if tmregions != None:
-             plotRegions(tmregions,ax,color='y',alpha=0.2,ls='dashed')
-        if legend == True and len(leg)>0:
-            patches,l = zip(*leg)
-            ax.legend(l,patches,fontsize=9,mode="expand",ncol=6,framealpha=0.5)
-        plt.tight_layout()
-        return fig, labels'''
+'''
 
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""

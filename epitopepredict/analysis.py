@@ -158,19 +158,23 @@ def comparePredictors(pred1, pred2,
     plt.show()
     return'''
 
-def getNmer(df, n=20, key='translation'):
-    """Get 20mer peptide"""
+def getNmer(df, genome, length=20, key='translation'):
+    """Get n-mer peptide surrounding binders using protein sequence"""
 
+    temp = df.merge(genome[['locus_tag','gene','translation']],
+                    left_on='name',right_on='locus_tag')
+    if not 'end' in list(temp.columns):
+        temp = base.getCoords(temp)
+    n = length
     def getseq(x):
-        n=20
-        size=len(x[key])
+        size = len(x[key])
         if size<n:
             o = int((n-size)/2.0)+1
             s = x[key][x.start-o:x.end+o][:20]
         else:
             s = x[key][x.start:x.end]
         return s
-    x = df.apply(getseq,1)
+    x = temp.apply(getseq,1)
     return x
 
 def getOverlaps(binders1, binders2, label='overlaps'):
@@ -301,11 +305,11 @@ def findClusters(binders, dist=None, minsize=3,
     x['density'] = x.binders/(x.end-x.start)
     #x['method'] = method
 
-    #do we need this?
-    if genome is not None:
-        temp = x.merge(genome[['locus_tag','gene','translation']],
-                    left_on='name',right_on='locus_tag')
-        x['peptide'] = getNmer(temp)
+    #do we need this here...
+    #if genome is not None:
+    #    temp = x.merge(genome[['locus_tag','gene','translation']],
+    #                left_on='name',right_on='locus_tag')
+    #    x['peptide'] = getNmer(temp)
     x = x.sort_values(by=['binders','density'],ascending=False)
     print ('%s clusters found in %s proteins' %(len(x),len(x.groupby('name'))))
     print

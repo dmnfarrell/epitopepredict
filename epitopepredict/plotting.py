@@ -9,6 +9,7 @@
 import sys, os
 from collections import OrderedDict
 import pylab as plt
+import matplotlib as mpl
 import numpy as np
 import pandas as pd
 from . import base
@@ -18,11 +19,19 @@ colormaps={'tepitope':'Greens','netmhciipan':'Oranges','iedbmhc2':'Pinks',
 colors = {'tepitope':'green','netmhciipan':'orange',
            'iedbmhc1':'blue','iedbmhc2':'pink','threading':'purple'}
 
-def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=None,
-                seqdepot=None, bcell=None, exp=None, tools=True):
-    """Plot binding predictions as parallel tracks of blocks for each allele.
-       This uses Bokeh.
-       returns: a bokeh figure for embedding or displaying in a notebook"""
+def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
+                width=820, height=None, tools=True,
+                seqdepot=None, bcell=None, exp=None):
+    """
+    Plot binding predictions as parallel tracks of blocks for each allele.
+    This uses Bokeh.
+    Args:
+        title: plot title
+        n: min alleles to display
+        name: name of protein to show if more than one in data
+
+    Returns: a bokeh figure for embedding or displaying in a notebook
+    """
 
     from collections import OrderedDict
     from bokeh.models import Range1d,HoverTool,FactorRange,Grid,GridPlot,ColumnDataSource
@@ -36,6 +45,8 @@ def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=
 
     alls=1
     for p in preds:
+        if p.data is None:
+            continue
         alls += len(p.data.groupby('allele'))
     if height==None:
         height = 130+10*alls
@@ -56,7 +67,6 @@ def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=
 
     #plotRegions(plot)
 
-    #lists for hover data
     #we plot all rects at once
     x=[];y=[];allele=[];widths=[];clrs=[];peptide=[]
     predictor=[];position=[];score=[];leg=[]
@@ -66,6 +76,11 @@ def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=
         m = pred.name
         cmap = mpl.cm.get_cmap(colormaps[m])
         df = pred.data
+        if df is None or len(df) == 0:
+            print('no data to plot for %s' %m)
+            continue
+        if name != None:
+            df = df[df.name==name]
         sckey = pred.scorekey
         pb = pred.getPromiscuousBinders(data=df,n=n, cutoff_method=cutoff_method)
         if len(pb) == 0:
@@ -77,6 +92,7 @@ def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=
             continue
         c=colors[m]
         leg.append(m)
+        seqlen = df.pos.max()+l
 
         for a,g in grps:
             b = pred.getBinders(data=g)
@@ -111,7 +127,6 @@ def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=
         ("predictor", "@predictor"),
     ])
 
-    seqlen = pred.data.pos.max()+l
     plot.set(x_range=Range1d(start=0, end=seqlen+1))
     plot.xaxis.major_label_text_font_size = "8pt"
     plot.xaxis.major_label_text_font_style = "bold"
@@ -119,3 +134,59 @@ def plotTracks(preds, title='', n=2, cutoff_method='default', width=820, height=
     plot.yaxis.major_label_text_font_size = '0pt'
     plot.xaxis.major_label_orientation = np.pi/4
     return plot
+
+def mpl_plot_tracks(preds, name, cldist=7, n=2, cutoff_method='default',
+                legend=False, figsize=(13,4), ax=None):
+    """Plot binders as bars per allele - defunct"""
+
+    from matplotlib.patches import Rectangle
+    if ax==None:
+        fig=plt.figure(figsize=figsize)
+        ax=fig.add_subplot(111)
+
+    alleles = []
+    leg = []
+    h=1
+    for pred in preds:
+        m = pred.name
+        df = pred.data
+        if df is None or len(df) == 0:
+            print('no data to plot for %s' %m)
+            continue
+        if name != None:
+            df = df[df.name==name]
+        sckey = pred.scorekey
+        pb = pred.getPromiscuousBinders(data=df,n=n, cutoff_method=cutoff_method)
+        if len(pb) == 0:
+            continue
+        l = base.getLength(pb)
+        grps = df.groupby('allele')
+        alleles.extend(grps.groups.keys())
+        if len(pb)==0:
+            continue
+        c=colors[m]
+        leg.append(m)
+        seqlen = df.pos.max()+l
+
+        for a,g in grps:
+            b = pred.getBinders(data=g)
+            b = b[b.pos.isin(pb.pos)] #only promiscuous
+            b.sort_values('pos',inplace=True)
+            #scores = b[sckey].values
+            pos = b['pos'].values
+            h+=1
+            for x in pos:
+                ax.add_patch(Rectangle((x,h), l, 1, facecolor=c, lw=0.5, alpha=0.7))
+
+    ax.set_xlim(0, seqlen)
+    #ax.set_ylim(0, len(alleles+1))
+    ax.set_ylabel('allele')
+    ax.set_yticks(range(len(alleles)))
+    ax.set_yticklabels(alleles)
+    ax.grid(b=True, which='major', alpha=0.5)
+    ax.set_title(name, fontsize=15)
+    #ax.legend(leg)
+
+    #add option to draw binder seqs as x axis labels ?
+    
+    return fig

@@ -116,6 +116,8 @@ class PredictorTests(unittest.TestCase):
     def quit(self):
         self.app.quit()
 
+def run():
+    unittest.main()
 
 if __name__ == '__main__':
     unittest.main()
