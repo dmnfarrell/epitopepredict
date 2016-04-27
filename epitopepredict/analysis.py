@@ -283,7 +283,6 @@ def findClusters(binders, dist=None, minsize=3,
 
     C=[]
     grps = list(binders.groupby('name'))
-    #print ('%s proteins with binders' %len(grps))
     length = len(binders.head(1).peptide.max())
     if dist == None:
         dist = length+1

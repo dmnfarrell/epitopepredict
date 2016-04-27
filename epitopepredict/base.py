@@ -566,7 +566,7 @@ class Predictor(object):
                                     allele=a,name=name)
                 if df is not None:
                     res.append(df)
-            print(a, len(res))
+            #print(a, len(res))
             res = pd.concat(res)
             if path is not None:
                 print (fname)

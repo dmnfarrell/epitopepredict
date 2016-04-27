@@ -146,7 +146,8 @@ def mpl_plot_tracks(preds, name, cldist=7, n=2, cutoff_method='default',
 
     alleles = []
     leg = []
-    h=1
+    y=0
+    handles = []
     for pred in preds:
         m = pred.name
         df = pred.data
@@ -156,7 +157,8 @@ def mpl_plot_tracks(preds, name, cldist=7, n=2, cutoff_method='default',
         if name != None:
             df = df[df.name==name]
         sckey = pred.scorekey
-        pb = pred.getPromiscuousBinders(data=df,n=n, cutoff_method=cutoff_method)
+        pb = pred.getPromiscuousBinders(data=df, n=n,
+                                        cutoff_method=cutoff_method)
         if len(pb) == 0:
             continue
         l = base.getLength(pb)
@@ -174,19 +176,34 @@ def mpl_plot_tracks(preds, name, cldist=7, n=2, cutoff_method='default',
             b.sort_values('pos',inplace=True)
             #scores = b[sckey].values
             pos = b['pos'].values
-            h+=1
             for x in pos:
-                ax.add_patch(Rectangle((x,h), l, 1, facecolor=c, lw=0.5, alpha=0.7))
+                rect = ax.add_patch(Rectangle((x,y), l, 1, facecolor=c, lw=1.5, alpha=0.7))
+            y+=1
+        handles.append(rect)
 
     ax.set_xlim(0, seqlen)
-    #ax.set_ylim(0, len(alleles+1))
+    ax.set_ylim(0, len(alleles))
     ax.set_ylabel('allele')
-    ax.set_yticks(range(len(alleles)))
+    ax.set_yticks(np.arange(.5,len(alleles)+.5))
     ax.set_yticklabels(alleles)
     ax.grid(b=True, which='major', alpha=0.5)
     ax.set_title(name, fontsize=15)
-    #ax.legend(leg)
+    if legend == True:
+        ax.legend(handles, leg, bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
+                  ncol=3)
 
     #add option to draw binder seqs as x axis labels ?
-    
-    return fig
+
+    return ax
+
+def mpl_plot_regions(coords, ax, color='red', label=''):
+    """Highlight regions in a prot binder plot"""
+
+    from matplotlib.patches import Rectangle
+    #l = len(seqs.head(1)['key'].max())
+    h = ax.get_ylim()[1]
+    for c in coords:
+        x,l = c
+        ax.add_patch(Rectangle((x,0), l, h,
+            facecolor=color, lw=.5, alpha=0.5))
+    return
