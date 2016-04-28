@@ -108,6 +108,21 @@ def getAASubstitutions(template):
         matrix.append(x)
     return seqs, matrix
 
+def getAAFraction(seq, aas=None):
+    """Get fraction of give amino acids in a sequence"""
+
+    X = ProteinAnalysis(seq)
+    #h = X.protein_scale(ProtParam.ProtParamData.kd, len(seq), 0.4)
+    nonpolar = ['A','V','L','F','I','W']
+    if aas==None:
+        aas = nonpolar
+    count=0
+    for aa, i in X.count_amino_acids().iteritems():
+        if aa in aas:
+            count+=i
+    frac = round(float(count)/len(seq),2)
+    return frac
+
 def main():
     from optparse import OptionParser
     parser = OptionParser()

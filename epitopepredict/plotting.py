@@ -162,13 +162,13 @@ def mpl_plot_tracks(preds, name, cldist=7, n=2, cutoff_method='default',
         if len(pb) == 0:
             continue
         l = base.getLength(pb)
+        seqlen = df.pos.max()+l
         grps = df.groupby('allele')
         alleles.extend(grps.groups.keys())
         if len(pb)==0:
             continue
         c=colors[m]
         leg.append(m)
-        seqlen = df.pos.max()+l
 
         for a,g in grps:
             b = pred.getBinders(data=g)
@@ -191,9 +191,7 @@ def mpl_plot_tracks(preds, name, cldist=7, n=2, cutoff_method='default',
     if legend == True:
         ax.legend(handles, leg, bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                   ncol=3)
-
-    #add option to draw binder seqs as x axis labels ?
-
+    #plt.tight_layout()
     return ax
 
 def mpl_plot_regions(coords, ax, color='red', label=''):
@@ -206,4 +204,20 @@ def mpl_plot_regions(coords, ax, color='red', label=''):
         x,l = c
         ax.add_patch(Rectangle((x,0), l, h,
             facecolor=color, lw=.5, alpha=0.5))
+    return
+
+def mpl_draw_labels(labels, coords, ax):
+    """Add labels on axis"""
+
+    bbox_args = dict(boxstyle='square',fc='whitesmoke')
+    from matplotlib.transforms import blended_transform_factory
+    tform = blended_transform_factory(ax.transData, ax.transAxes)
+    for text, x in zip(labels,coords):
+        xy = (x,-.05)
+        an = ax.annotate(text, xy=xy, xycoords=tform,
+                   ha='center', va="center",
+                   size=14,
+                   zorder=10, textcoords='offset points',
+                   bbox=bbox_args)
+    plt.subplots_adjust(bottom=0.1)
     return

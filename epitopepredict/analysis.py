@@ -22,7 +22,7 @@ import subprocess
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
-from . import base, sequtils, tepitope, utilities
+from . import base, sequtils, tepitope, utilities, peptides
 
 home = os.path.expanduser("~")
 #fix paths!
@@ -78,21 +78,6 @@ def plotheatmap(df, ax=None, cmap='Blues'):
     print '%s, %s samples' %(allele,len(E))
     print auc
     print Predict.aucCrossValidation(merged['exp'].values,merged['pred'].values)
-    return
-
-def compareProteins(df, pred, exp, scorefield):
-    """Compare whole antigen scores to % best binders per protein"""
-
-    binders=[]
-    names = []
-    cds = df[df.type=='CDS']
-    for i,row in list(cds.iterrows())[:10]:
-        seq = row['translation']
-        name = row['locus_tag']
-        print name,seq
-        names.append(name)
-        pred.predict(sequence=seq)
-        binders.append(pred.getBinders(method='cutoff'))
     return
 
 def getMatchingPredictions(pred1, pred2, method='cutoff'):
@@ -158,6 +143,10 @@ def comparePredictors(pred1, pred2,
     plt.show()
     return'''
 
+def getAAContent(df):
+    x = df.apply( lambda r: peptides.getAAFraction(str(r.peptide)), axis=1)
+    return x
+
 def getNmer(df, genome, length=20, key='translation'):
     """Get n-mer peptide surrounding binders using protein sequence"""
 
@@ -189,6 +178,10 @@ def getOverlaps(binders1, binders2, label='overlaps'):
     """
 
     new=[]
+    for df in (binders1,binders2):
+        if not 'pos' in df.columns:
+            df['pos'] = df.start
+
     a = base.getCoords(binders1)
     b = base.getCoords(binders2)
 
@@ -271,14 +264,14 @@ def alignment2Dataframe(aln):
     df = pd.DataFrame(alnrows,columns=['name','seq'])
     return df
 
-def findClusters(binders, dist=None, minsize=3,
+def findClusters(binders, dist=None, min_binders=2, min_size=12,
                  genome=None):
     """
     Get clusters of binders for a set of binders.
     Args:
         binders: dataframe of binders
         dist: distance over which to apply clustering
-        minsize : minimum cluster size to count
+        min_binders : minimum binders to be considered a cluster
     """
 
     C=[]
@@ -289,7 +282,7 @@ def findClusters(binders, dist=None, minsize=3,
         print ('using dist for clusters: %s' %dist)
     for n,b in grps:
         if len(b)==0: continue
-        clusts = base.dbscan(b,dist=dist,minsize=minsize)
+        clusts = base.dbscan(b,dist=dist,minsize=min_binders)
         if len(clusts) == 0:
             continue
         for c in clusts:
@@ -301,15 +294,17 @@ def findClusters(binders, dist=None, minsize=3,
         return pd.DataFrame()
     x = pd.DataFrame(C,columns=['name','start','end','binders'])
     x['clustersize'] = (x.end-x.start)
-    x['density'] = x.binders/(x.end-x.start)
-    #x['method'] = method
+    x['density'] = (x.binders/(x.end-x.start)).round(2)
+    x = x[x.clustersize>=min_size]
 
-    #do we need this here...
-    #if genome is not None:
-    #    temp = x.merge(genome[['locus_tag','gene','translation']],
-    #                left_on='name',right_on='locus_tag')
-    #    x['peptide'] = getNmer(temp)
-    x = x.sort_values(by=['binders','density'],ascending=False)
+    #if genome data available merge to get peptide seq
+    if genome is not None:
+        x = x.merge(genome[['locus_tag','translation']],
+                    left_on='name',right_on='locus_tag')
+        x['peptide'] = x.apply(lambda r: r.translation[r.start:r.end], 1)
+        x = x.drop(['locus_tag','translation'],1)
+    x = x.sort_values(by=['density','binders'],ascending=False)
+    x = x.reset_index(drop=True)
     print ('%s clusters found in %s proteins' %(len(x),len(x.groupby('name'))))
     print
     return x
@@ -338,8 +333,30 @@ def genomeAnalysis(datadir,label,gname,method):
         gc = cl.groupby('name').agg({'density':np.max})
         res = res.merge(gc,left_on='locus_tag',right_index=True)
     #print res[:10]
-
     return res
+
+def tmhmm(fastafile=None, infile=None):
+    """
+    Get TMhmm predictions
+    Args:
+        fastafile: fasta input file to run
+        infile: text file with tmhmm prediction output
+    """
+
+    if infile==None:
+        tempfile = 'tmhmm_temp.txt'
+        cmd = 'tmhmm %s > %s' %(fastafile,tempfile)
+        infile = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    tmpred = pd.read_csv(infile, delim_whitespace=True, comment='#',
+                      names=['locus_tag','v','status','start','end'])
+    tmpred = tmpred.dropna()
+    print ('tmhmm predictions for %s proteins' %len(tmpred.groupby('locus_tag')))
+    lengths=[]
+    for i,row in tmpred.iterrows():
+        if row.status == 'TMhelix':
+            lengths.append(row.end-row.start)
+    #print np.mean(lengths), np.std(lengths)
+    return tmpred
 
 def testFeatures():
     """test feature handling"""
