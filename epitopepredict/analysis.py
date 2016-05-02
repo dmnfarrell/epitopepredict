@@ -80,31 +80,6 @@ def plotheatmap(df, ax=None, cmap='Blues'):
     print Predict.aucCrossValidation(merged['exp'].values,merged['pred'].values)
     return
 
-def getMatchingPredictions(pred1, pred2, method='cutoff'):
-    """Compare 2 predictors binders"""
-
-    data1 = pred1.getBinders(method=method)
-    data2 = pred2.getBinders(method=method)
-    #data1 = pred1.data
-    #data2 = pred2.data
-    merged = pd.merge(data1, data2,
-                      left_on=['peptide','name'], right_on=['peptide','name'],
-                      suffixes=['_1', '_2'])
-    union = pd.merge(data1, data2, how='outer',
-                      left_on=['peptide','name'], right_on=['peptide','name'])
-
-    #merged = merged[merged.core_1==merged.core_2]
-    #print merged[:20]
-    k1 = pred1.scorekey; k2 = pred2.scorekey
-    if k1 == k2:
-        k1 += '_1'
-        k2 += '_2'
-    x=merged[k1]
-    y=merged[k2]
-
-    print '%s/%s shared binders' %(len(merged),len(union))
-    return merged, x, y
-
 def comparePredictors(pred1, pred2,
                       names=None, allele='HLA-DRB1*0101'):
     """Compare 2 predictors with various metrics and plot output.
@@ -143,11 +118,11 @@ def comparePredictors(pred1, pred2,
     plt.show()
     return'''
 
-def getAAContent(df):
-    x = df.apply( lambda r: peptides.getAAFraction(str(r.peptide)), axis=1)
+def getAAContent(df, amino_acids=None):
+    x = df.apply( lambda r: peptides.getAAFraction(str(r.peptide), amino_acids), axis=1)
     return x
 
-def getNmer(df, genome, length=20, key='translation'):
+def getNmer(df, genome, length=20, key='peptide'):
     """Get n-mer peptide surrounding binders using protein sequence"""
 
     temp = df.merge(genome[['locus_tag','gene','translation']],
@@ -156,13 +131,17 @@ def getNmer(df, genome, length=20, key='translation'):
         temp = base.getCoords(temp)
     n = length
     def getseq(x):
-        size = len(x[key])
-        if size<n:
+        seq = x['translation']
+        size = x.end-x.start
+        if size>n:
             o = int((n-size)/2.0)+1
-            s = x[key][x.start-o:x.end+o][:20]
-        else:
-            s = x[key][x.start:x.end]
-        return s
+            seq = seq[x.start-o:x.end+o][:20]
+        elif size<n:
+            o = int((n-size)/2.0)
+            seq = seq[x.start-o:x.end+o]
+        print (x.peptide, seq, size, len(seq))
+        #print (x)
+        return seq
     x = temp.apply(getseq,1)
     return x
 
@@ -178,23 +157,20 @@ def getOverlaps(binders1, binders2, label='overlaps'):
     """
 
     new=[]
-    for df in (binders1,binders2):
-        if not 'pos' in df.columns:
-            df['pos'] = df.start
-
     a = base.getCoords(binders1)
     b = base.getCoords(binders2)
 
     def overlap(x,y):
-        f = y[(y.pos>x.start) & (y.pos<x.end)]
-        #print x.locus_tag,x.start,x.end,x.peptide,len(f) #,f.peptide,f.pos
+        f = y[(y.start>x.start) & (y.start<x.end)]
+        #print (x['name'],x.start,x.end,x.peptide,len(f))
+        #print (f)
         return len(f)
     for n,df in a.groupby('name'):
         found = b[b.name==n]
         df[label] = df.apply(lambda r: overlap(r,found),axis=1)
         new.append(df)
     result = pd.concat(new)
-    print (len(a), len(b))
+    #print (len(a), len(b))
     print ('%s with overlapping binders' %len(result[result[label]>0]))
     return result
 

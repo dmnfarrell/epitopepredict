@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    Genome annotation methods
+    Sequence utilities and genome annotation methods
     Created November 2013
     Copyright (C) Damien Farrell
 """
@@ -24,74 +24,9 @@ featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
                'product', 'note', 'translation','pseudo','start','end']
 typecolors = ['blue','green','brown','orange','purple','lightblue','yellow','red']
 
-
-'''def drawFeatures(tracks, highlight=[], filename=None,
-                color=None, pagesize=(600,200),name=''):
-    """Draw gene features in multiple tracks for general comparison"""
-
-    from reportlab.lib import colors
-    from reportlab.lib.units import cm
-    from Bio.Graphics import GenomeDiagram
-    gd_diagram = GenomeDiagram.Diagram("test1")
-    i=0
-    locs = [f.location for f in tracks[0]]
-    start = min([l.start for l in locs])
-    end = max([l.end for l in locs])
-
-    for features in tracks:
-        track = gd_diagram.new_track(1, greytrack=True,greytrack_labels=2,
-                                    name=name,scale_fontsize=10,scale_fontangle=0,
-                                    scale_largetick_interval=1500,scale_color=colors.gray,
-                                    scale_largeticks=1,scale_smallticks=0,
-                                    greytrack_fontsize=20)
-        gd_feature_set = track.new_set()
-        #features.sort(key=lambda x: abs(x.location.end-x.location.start))
-
-        for feature in features:
-            if color!=None: c=color
-            else:
-                c=typecolors[i]
-            if feature in highlight: c='red'
-            if feature.type != 'CDS': continue
-            gd_feature_set.add_feature(feature, color=c, label=True,
-                                        sigil="ARROW", arrowhead_length=0.5,
-                                        arrowshaft_height=0.2, tracklines=1,
-                                        label_size=12, label_angle=45)
-        i+=1
-    gd_diagram.draw(format='linear', orientation="landscape", pagesize=pagesize,
-                    fragments=1, start=start, end=end)
-    if filename==None:
-        filename = 'genediagram'
-    gd_diagram.write(filename+'.png', "PNG")
-    return filename+'.png'
-
-def drawFeatures2(tks, highlight=[], filename=None, color=None, **kwargs):
-    from biograpy import Panel, tracks, features
-    panel=Panel(fig_width=500,fig_height=150, fig_dpi=100,padding=10,
-                grid='both')
-    for feats in tks:
-        test_track = tracks.BaseTrack(name = 'X',
-                                       height = .2)
-        for feat in feats:
-            if feat.location.strand == -1:
-                arr = "larrow,pad=0.6"
-            else:
-                arr = "rarrow,pad=0.6"
-            q=feat.qualifiers
-            tag=q['locus_tag'][0]
-            test_track.append(features.GenericSeqFeature(feat,
-                              name=tag,boxstyle=arr,
-                              ))
-        panel.add_track(test_track)
-    if filename==None:
-        filename = 'genediagram'
-    panel.save(filename+'.png')
-    panel.close()
-    return filename+'.png'
-'''
-
 def drawGenomeMap(infile, filename=None):
     """Draw whole circular genome"""
+
     from Bio.Graphics import GenomeDiagram
     from Bio.SeqUtils import GC
     from reportlab.lib import colors
@@ -133,7 +68,8 @@ def distanceTree(seqfile=None, seqs=None, ref=None):
     return
 
 def ETETree(seqs, ref, metric):
-    """Tree showing bola alleles covered by tepitope"""
+    """Tree showing alleles"""
+
     from ete2 import Tree,PhyloTree,TreeStyle,NodeStyle
     aln = Genome.clustalAlignment(seqs=seqs)
     t = Tree('temp.dnd')
@@ -163,9 +99,10 @@ def ETETree(seqs, ref, metric):
     t.show(tree_style=ts)
     return
 
-def doLocalBlast(database, query, output=None, maxseqs=10, evalue=0.001,
+def localBlast(database, query, output=None, maxseqs=10, evalue=0.001,
                     compress=False):
-    """Blast a local db"""
+    """Blast a local database"""
+
     start = time.time()
     if output == None:
         output = os.path.splitext(query)[0]+'.xml'
@@ -184,6 +121,7 @@ def doLocalBlast(database, query, output=None, maxseqs=10, evalue=0.001,
 
 def parseBlastRec(rec):
     """Parse blast record alignment(s)"""
+
     if len(rec.alignments) == 0 : print('no alignments')
     recs=[]
     qry = rec.query.split()[0]
@@ -198,11 +136,14 @@ def parseBlastRec(rec):
 
 def getBlastResults(handle=None, filename=None, n=80):
     """Get blast results into dataframe"""
+
     from Bio.Blast import NCBIXML
     import gzip
-    if filename!=None:
-        #handle = open(filename)
-        handle = gzip.open(filename, 'rb')
+    if filename != None:
+        if os.path.splitext(filename)[1] == 'gz':
+            handle = gzip.open(filename, 'rb')
+        else:
+            handle = open(filename)
     blastrecs = NCBIXML.parse(handle)
     rows=[]
     for rec in blastrecs:
@@ -212,6 +153,25 @@ def getBlastResults(handle=None, filename=None, n=80):
                             'positive','query_length','sequence'])
     df['perc_ident'] = df.identity/df.query_length*100
     return df
+
+def blastSequences(database, seqs):
+    """
+    Blast a set of sequences to a local blast database
+    Args:
+        database: local blast db name
+        seqs: sequences to query
+    Returns:
+        pandas dataframe with top blast results
+    """
+
+    res = []
+    for seq in seqs:
+        rec = SeqRecord(Seq(seq),id='temp')
+        SeqIO.write([rec], 'tempseq.fa', "fasta")
+        localBlast(database, 'tempseq.fa')
+        df = getBlastResults(filename='tempseq.xml')
+        res.append(df)
+    return pd.concat(res)
 
 def testblast():
     database = 'all_genomes'
@@ -232,6 +192,7 @@ def fasta2Dataframe(infile,idindex=0):
     return df
 
 def convertSequenceFormat(infile, format='embl'):
+
     informat = os.path.splitext(infile)[1][1:]
     print ('input format: %s' %informat)
     print ('output format: %s' %format)
@@ -361,6 +322,7 @@ def checkTags(df):
 
 def genbankSummary(df):
     """Genbank dataframe summary"""
+
     def hypo(val):
         val = val.lower()
         kwds=['hypothetical','conserved protein','unknown protein']
@@ -390,14 +352,6 @@ def genbankSummary(df):
         s['mean sequence length'] =  avlength
 
     return s
-
-def blastORFs(infile, seq):
-    """Blast translations for a sequence"""
-    return
-
-def blastGenomeRecords():
-    """Blast hypotheticals in genome for up to date results"""
-    return
 
 def findkeyword(f):
     """Get keyword from a field"""
@@ -538,6 +492,7 @@ def showAlignment(aln, diff=False, offset=0):
 
 def getIdentity(aln):
     """Get sequence identity of alignment for overlapping region only"""
+
     j=0
     i=0
     record = aln[1]
@@ -580,16 +535,3 @@ def getFeatureQualifier(f, qualifier):
     else:
         fq = None
     return fq
-
-def main():
-    from optparse import OptionParser
-    parser = OptionParser()
-    parser.add_option("-t", "--test", dest="test", action='store_true',
-                            help="test")
-    opts, remainder = parser.parse_args()
-
-    if opts.test == True:
-        testblast()
-
-if __name__ == '__main__':
-    main()

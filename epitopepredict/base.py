@@ -154,6 +154,8 @@ def getLength(data):
 def getCoords(df):
     """Get start end coords from position and length of peptides"""
 
+    if 'start' in df.columns:
+        return df
     df['start'] = df.pos
     df['end'] = df.pos + df.peptide.str.len()
     return df
@@ -299,7 +301,7 @@ def getScoreDistributions(predictor, path=None):
        Assumes all the files in path represent related proteins"""
 
     if path != None:
-        predictor.load(path=path, file_limit=100)
+        predictor.load(path=path, file_limit=500)
     df = predictor.data
     key = predictor.scorekey
     x = df.pivot_table(index='peptide', columns='allele', values=key)
@@ -663,87 +665,6 @@ class Predictor(object):
             pass
         plot = plotting.plot_tracks([self])
         return plot
-
-    '''def benchmark(self):
-        """Benchmark on known cores"""
-
-        hits=0; total=0
-        templates = Threading.templates
-        for allele,row in templates.iterrows():
-            name = row['pdbid']
-            nativecore = row['core']
-            seq = row['peptide']
-            if len(seq)<=11: continue
-            df = self.predict(seq,allele=allele,length=9)
-            if len(df)==0: continue
-            rank = df[df.peptide==nativecore]['rank'].values[0]
-            #print df
-            print (allele,df.iloc[0].peptide,nativecore,rank,df.iloc[0][self.scorekey])
-            if rank==1:
-                hits+=1
-            total+=1
-        print ('%s/%s correct' %(hits,total))
-        return
-
-    def benchmarkKnownAntigens(self, expdata=None):
-        """Test ability to rank known epitiopes/binders in antigen sequences"""
-
-        import pylab as plt
-        if expdata==None:
-            #expdata = pd.read_csv(os.path.join(datadir,'expdata/bovine_responder_jones.csv'))
-            expdata = pd.read_csv(os.path.join(datadir,'expdata/SYF.csv'))
-        R=[]
-        for name,row in expdata.dropna().iterrows():
-            true = row['peptide']
-            protseq = row['sequence']
-            if protseq == np.NaN or len(true)<15 or len(true)>20:
-                continue
-            a = row['allele']
-            if a == 'bola':
-                #a='BoLA-DRB3*1601'
-                a='HLA-DRB1*0101'
-            df = self.predict(protseq,allele=a,length=9,name=true)
-            if len(df)==0: continue
-            print (a,true)
-            self.cutoff=0
-            b = self.getBinders()
-            #print b
-            def instring(x):
-                if x in true: return True
-                else: return False
-            found = df[df.peptide.apply(instring)]
-            #print found
-            #if len(found)==0:
-            #    continue
-            toprank = found['rank'].values[0]
-            #meanrank = np.mean(found['score'].values[:5])
-            sc = found[self.scorekey].max()
-            #locs = b['pos'].values
-            #print getClusters(b)
-            bnd = len(b[b.peptide.apply(instring)])
-            freq = 0#row['freq']
-            #rank = df[df.peptide==true]['rank'].values[0]
-            R.append([a, true, toprank, sc, bnd, freq, len(protseq)])
-            #plotPerAllele(self, path='benchmark')
-        R=pd.DataFrame(R,columns=['allele','peptide','toprank','score','binders','freq','length'])
-        R['percentile'] = R.toprank/R.length*100
-        #print R
-        R.hist('percentile',by=R.allele)
-        x=R.groupby('allele').agg({'percentile':np.mean,'score':np.mean})
-        x.plot(kind='bar',subplots=True)
-        #print x
-        fig=plt.figure(figsize=(10,10))
-        ax=fig.add_subplot(221)
-        R.plot(x='toprank',y='freq',kind='scatter',ax=ax,alpha=0.6)
-        ax=fig.add_subplot(222)
-        R.plot(x='meansc',y='freq',kind='scatter',ax=ax,alpha=0.6)
-        ax=fig.add_subplot(223)
-        R.plot(x='binders',y='freq',kind='scatter',ax=ax,alpha=0.6)
-        plt.tight_layout()
-        plt.show()
-        return
-
-'''
 
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""

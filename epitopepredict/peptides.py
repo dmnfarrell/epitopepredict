@@ -108,17 +108,17 @@ def getAASubstitutions(template):
         matrix.append(x)
     return seqs, matrix
 
-def getAAFraction(seq, aas=None):
+def getAAFraction(seq, amino_acids=None):
     """Get fraction of give amino acids in a sequence"""
 
     X = ProteinAnalysis(seq)
     #h = X.protein_scale(ProtParam.ProtParamData.kd, len(seq), 0.4)
     nonpolar = ['A','V','L','F','I','W']
-    if aas==None:
-        aas = nonpolar
+    if amino_acids == None:
+        amino_acids = nonpolar
     count=0
     for aa, i in X.count_amino_acids().iteritems():
-        if aa in aas:
+        if aa in amino_acids:
             count+=i
     frac = round(float(count)/len(seq),2)
     return frac
