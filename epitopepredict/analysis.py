@@ -30,6 +30,7 @@ genomespath = os.path.join(home, 'epitopedata')
 datadir = os.path.join(home, 'testpredictions')
 
 def plotheatmap(df, ax=None, cmap='Blues'):
+    """Plot a heatmap - move to plotting?"""
 
     if ax==None:
         fig=plt.figure()
@@ -79,53 +80,19 @@ def plotheatmap(df, ax=None, cmap='Blues'):
     print auc
     print Predict.aucCrossValidation(merged['exp'].values,merged['pred'].values)
     return
-
-def comparePredictors(pred1, pred2,
-                      names=None, allele='HLA-DRB1*0101'):
-    """Compare 2 predictors with various metrics and plot output.
-       Input is a dataframe with sequence records"""
-
-    from matplotlib_venn import venn2
-    import pylab as plt
-    f = plt.figure(figsize=(10,10))
-    ax = f.add_subplot(221)
-
-    binders1 = pred1.getBinders('cutoff')
-    binders2 = pred2.getBinders('cutoff')
-    names = dict(list(pred1.data.groupby('name'))).keys()
-
-    #get merged binders
-    m,x,y = getMatchingPredictions(pred1, pred2, method='cutoff')
-
-    ax.plot(x,y,'o',ms=3,alpha=0.5)
-    ax.set_xlabel(pred1.name)
-    ax.set_ylabel(pred2.name)
-    ind=np.arange(len(names))
-    b1 = list(binders1.peptide)
-    b2 = list(binders2.peptide)
-    #print list(set(names1) & set(names2))
-    groups1 = dict(list(binders1.groupby('name')))
-    groups2 = dict(list(binders2.groupby('name')))
-    prots1 = groups1.keys()
-    prots2 = groups2.keys()
-
-    ax1 = f.add_subplot(222)
-    ax1.set_title('proteins overlap')
-    venn2([set(prots1), set(prots2)], set_labels = (pred1.name,pred2.name))
-    ax3=f.add_subplot(212)
-    venn2([set(b1), set(b2)], set_labels = (pred1.name,pred2.name))
-    f.suptitle('%s vs. %s' %(pred1.name,pred2.name),fontsize=16)
-    plt.show()
-    return'''
+'''
 
 def getAAContent(df, amino_acids=None):
     x = df.apply( lambda r: peptides.getAAFraction(str(r.peptide), amino_acids), axis=1)
     return x
 
-def getNmer(df, genome, length=20, key='peptide'):
-    """Get n-mer peptide surrounding binders using protein sequence"""
+def getNmer(df, genome, length=20, seqkey='translation'):
+    """
+    Get n-mer peptide surrounding binders using the host
+    protein sequence
+    """
 
-    temp = df.merge(genome[['locus_tag','gene','translation']],
+    temp = df.merge(genome[['locus_tag','gene','translation','length']],
                     left_on='name',right_on='locus_tag')
     if not 'end' in list(temp.columns):
         temp = base.getCoords(temp)
@@ -134,13 +101,17 @@ def getNmer(df, genome, length=20, key='peptide'):
         seq = x['translation']
         size = x.end-x.start
         if size>n:
-            o = int((n-size)/2.0)+1
-            seq = seq[x.start-o:x.end+o][:20]
+            l = int((size-n)/2.0)+1
+            if x.start == 0: l=0
+            seq = seq[x.start-l:x.end+l][:n]
         elif size<n:
-            o = int((n-size)/2.0)
-            seq = seq[x.start-o:x.end+o]
-        print (x.peptide, seq, size, len(seq))
-        #print (x)
+            l = int((n-size)/2.0)
+            if size%2 == 1: l1 = l+1
+            else: l1=l
+            seq = seq[x.start-l1:x.end+l]
+        else:
+            seq = seq[x.start:x.end]
+        #print (x['name'],x.peptide, x.start, x.end, x.length, seq, size, len(seq))
         return seq
     x = temp.apply(getseq,1)
     return x
