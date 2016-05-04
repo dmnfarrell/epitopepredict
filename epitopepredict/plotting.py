@@ -135,7 +135,7 @@ def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
     plot.xaxis.major_label_orientation = np.pi/4
     return plot
 
-def mpl_plot_tracks(preds, name, cldist=7, n=2, perc=0.98, cutoff_method='default',
+def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
                 legend=False, figsize=(13,4), ax=None):
     """Plot binders as bars per allele - defunct"""
 
@@ -159,8 +159,6 @@ def mpl_plot_tracks(preds, name, cldist=7, n=2, perc=0.98, cutoff_method='defaul
         sckey = pred.scorekey
         pb = pred.getPromiscuousBinders(data=df, n=n, perc=perc,
                                         cutoff_method=cutoff_method)
-        #if m == 'tepitope':
-        #print (pb)
         if len(pb) == 0:
             continue
         l = base.getLength(pb)

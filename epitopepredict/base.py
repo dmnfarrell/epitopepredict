@@ -82,7 +82,7 @@ def checkMembers(g,clusts):
             return False
     return True
 
-def getClusters(B, clustlen=25, cutoff=0.05):
+'''def getClusters(B, clustlen=25, cutoff=0.05):
     """Get clusters of binders from a set of predictions
       df: a pandas dataframe with one set of predictions per row"""
 
@@ -102,7 +102,7 @@ def getClusters(B, clustlen=25, cutoff=0.05):
         if checkMembers(g, clusts) == True:
             clusts.append(g)
     #print clusts
-    return clusts
+    return clusts'''
 
 def dbscan(B=None, x=None, dist=7, minsize=4):
     """Density-Based Spatial clustering. Finds core samples of
@@ -289,6 +289,8 @@ def getCutoffs(predictor, path=None, perc=0.98, overwrite=True):
         binsfile = ''
     if not os.path.exists(binsfile) or overwrite==True:
         bins = getScoreDistributions(predictor, path)
+        if bins is None:
+            return {}
         if binsfile != '':
             bins.to_csv(binsfile, float_format='%.3f')
     else:
@@ -303,6 +305,9 @@ def getScoreDistributions(predictor, path=None):
     if path != None:
         predictor.load(path=path, file_limit=500)
     df = predictor.data
+    if df is None or len(df)==0:
+        print ('no prediction data loaded')
+        return
     key = predictor.scorekey
     x = df.pivot_table(index='peptide', columns='allele', values=key)
     percs = np.arange(0.01,1,0.01)

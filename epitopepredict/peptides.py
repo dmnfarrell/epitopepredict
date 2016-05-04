@@ -113,7 +113,7 @@ def getAAFraction(seq, amino_acids=None):
 
     X = ProteinAnalysis(seq)
     #h = X.protein_scale(ProtParam.ProtParamData.kd, len(seq), 0.4)
-    nonpolar = ['A','V','L','F','I','W']
+    nonpolar = ['A','V','L','F','I','W','P']
     if amino_acids == None:
         amino_acids = nonpolar
     count=0
@@ -122,6 +122,19 @@ def getAAFraction(seq, amino_acids=None):
             count+=i
     frac = round(float(count)/len(seq),2)
     return frac
+
+def netCharge(seq):
+    """Get net charge of a peptide sequence"""
+
+    X = ProteinAnalysis(seq)
+    ac = 0
+    ba = 0
+    for aa, i in X.count_amino_acids().iteritems():
+        if aa in ['D','E']:
+            ac -= i
+        elif aa in ['K','R']:
+            ba += i
+    return ac + ba
 
 def main():
     from optparse import OptionParser

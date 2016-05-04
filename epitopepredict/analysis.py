@@ -83,8 +83,18 @@ def plotheatmap(df, ax=None, cmap='Blues'):
 '''
 
 def getAAContent(df, amino_acids=None):
-    x = df.apply( lambda r: peptides.getAAFraction(str(r.peptide), amino_acids), axis=1)
-    return x
+    """Amino acid composition for dataframe with sequences"""
+    return df.apply( lambda r: peptides.getAAFraction(str(r.peptide), amino_acids), 1)
+
+def netCharge(df):
+    """Net peptide charge for dataframe with sequences"""
+    return df.apply( lambda r: peptides.netCharge(r.peptide),1)
+
+def isoelectricPoint(df):
+    def getpi(seq):
+        X = ProteinAnalysis(seq)
+        return X.isoelectric_point()
+    return df.apply( lambda r: getpi(r.peptide),1)
 
 def getNmer(df, genome, length=20, seqkey='translation'):
     """
@@ -393,7 +403,7 @@ def getLocalOrthologs(seq, db):
     """Get alignment for a protein using local blast db"""
 
     SeqIO.write(SeqRecord(Seq(seq)), 'tempseq.faa', "fasta")
-    sequtils.doLocalBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=30)
+    sequtils.localBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=30)
     result_handle = open("my_blast.xml")
     df = sequtils.getBlastResults(result_handle)
     return df
