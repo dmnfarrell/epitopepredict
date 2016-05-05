@@ -423,6 +423,16 @@ class Predictor(object):
 
         key = self.scorekey
         op = self.operator
+        if op == '<':
+            q = 1-perc
+        else:
+            q = perc
+        cutoffs = self.allelecutoffs
+        if cutoff_method == 'global':
+            #we derive cutoffs using all loaded data
+            for a,g in self.data.groupby('allele'):
+                cutoffs[a] = g[key].quantile(q=q)
+
         if cutoff_method == 'simple':
             #we just use a single cutoff value for all
             cutoff = self.cutoff
@@ -431,13 +441,11 @@ class Predictor(object):
         else:
             #this also allows us to use global allele based cutoffs
             res=[]
-            if op == '<':
-                perc = 1-perc
             for a,g in data.groupby('allele'):
-                if a in self.allelecutoffs:
-                    cutoff = self.allelecutoffs[a]
+                if a in cutoffs:
+                    cutoff = cutoffs[a]
                 else:
-                    cutoff = g[key].quantile(q=perc)
+                    cutoff = g[key].quantile(q=q)
                 #print (a,perc,value)
                 b = self.evaluate(g, key, cutoff, op)
                 if b is not None:
