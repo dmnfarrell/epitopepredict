@@ -427,12 +427,14 @@ class Predictor(object):
             q = 1-perc
         else:
             q = perc
-        cutoffs = self.allelecutoffs
+
+        cutoffs = {}
         if cutoff_method == 'global':
             #we derive cutoffs using all loaded data
             for a,g in self.data.groupby('allele'):
                 cutoffs[a] = g[key].quantile(q=q)
-
+        else:
+            cutoffs = self.allelecutoffs
         if cutoff_method == 'simple':
             #we just use a single cutoff value for all
             cutoff = self.cutoff

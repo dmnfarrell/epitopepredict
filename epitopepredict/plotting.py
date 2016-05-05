@@ -159,6 +159,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         sckey = pred.scorekey
         pb = pred.getPromiscuousBinders(data=df, n=n, perc=perc,
                                         cutoff_method=cutoff_method)
+        binders = pred.getBinders(data=df, perc=perc, cutoff_method=cutoff_method)
         if len(pb) == 0:
             continue
         l = base.getLength(pb)
@@ -169,7 +170,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         leg.append(m)
 
         for a,g in grps:
-            b = pred.getBinders(data=g, perc=perc)
+            b = binders[binders.allele==a]
             b = b[b.pos.isin(pb.pos)] #only promiscuous
             b.sort_values('pos',inplace=True)
             #scores = b[sckey].values
