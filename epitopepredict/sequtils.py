@@ -191,12 +191,15 @@ def fasta2Dataframe(infile,idindex=0):
     #df.set_index(['name'],inplace=True)
     return df
 
-def convertSequenceFormat(infile, format='embl'):
+def convertSequenceFormat(infile, outformat='embl'):
 
     informat = os.path.splitext(infile)[1][1:]
+    if informat == 'fa':
+        informat = 'fasta'
     print ('input format: %s' %informat)
-    print ('output format: %s' %format)
-    count = SeqIO.convert(infile, informat, 'converted', format)
+    print ('output format: %s' %outformat)
+    outfile = os.path.splitext(infile)[0]+'.'+outformat
+    count = SeqIO.convert(infile, informat, outfile, outformat)
     print ("Converted %i records" %count)
     return
 

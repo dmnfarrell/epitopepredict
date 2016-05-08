@@ -126,7 +126,7 @@ def getNmer(df, genome, length=20, seqkey='translation'):
     x = temp.apply(getseq,1)
     return x
 
-def getOverlaps(binders1, binders2, label='overlaps'):
+'''def getOverlaps(binders1, binders2, label='overlaps'):
     """
     Overlaps for 2 sets of sequences where pos in sequence is stored.
     Args:
@@ -146,6 +146,46 @@ def getOverlaps(binders1, binders2, label='overlaps'):
         #print (x['name'],x.start,x.end,x.peptide,len(f))
         #print (f)
         return len(f)
+    for n,df in a.groupby('name'):
+        found = b[b.name==n]
+        df[label] = df.apply(lambda r: overlap(r,found),axis=1)
+        new.append(df)
+    result = pd.concat(new)
+    #print (len(a), len(b))
+    print ('%s with overlapping binders' %len(result[result[label]>0]))
+    return result'''
+
+def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
+    """
+    Overlaps for 2 sets of sequences where positions in host sequence are stored
+    in each dataframe.
+    Args:
+        binders1: first set of sequences, a dataframe with pos field
+        binders2: second set of sequences
+        label: label for overlaps column
+        how: may be 'any' or 'inside'
+    Returns:
+        First DataFrame with no. of overlaps stored in a new column
+    """
+    new=[]
+    a = base.getCoords(binders1)
+    b = base.getCoords(binders2)
+
+    def overlap(x,y):
+        f=0
+        #print x['name'],x.peptide
+        #print x.start,x.end
+        for i,r in y.iterrows():
+            if how == 'inside':
+                if ((x.start<=r.start) & (x.end>=r.end)):
+                    f+=1
+            elif how == 'any':
+                if ((x.start<r.start) & (x.end>r.start)) or \
+                   ((x.start>r.start) & (x.start<r.end)):
+                    f+=1
+            #print r.start,r.end, f
+        return f
+
     for n,df in a.groupby('name'):
         found = b[b.name==n]
         df[label] = df.apply(lambda r: overlap(r,found),axis=1)
@@ -221,7 +261,7 @@ def alignment2Dataframe(aln):
     df = pd.DataFrame(alnrows,columns=['name','seq'])
     return df
 
-def findClusters(binders, dist=None, min_binders=2, min_size=12,
+def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
                  genome=None):
     """
     Get clusters of binders for a set of binders.
@@ -229,6 +269,8 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12,
         binders: dataframe of binders
         dist: distance over which to apply clustering
         min_binders : minimum binders to be considered a cluster
+        min_size: smallest cluster length to return
+        max_size: largest cluster length to return
     """
 
     C=[]
@@ -251,8 +293,9 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12,
         return pd.DataFrame()
     x = pd.DataFrame(C,columns=['name','start','end','binders'])
     x['clustersize'] = (x.end-x.start)
-    x['density'] = (x.binders/(x.end-x.start)).round(2)
+    #x['density'] = (x.binders/(x.end-x.start)).round(2)
     x = x[x.clustersize>=min_size]
+    x = x[x.clustersize<=max_size]
 
     #if genome data available merge to get peptide seq
     if genome is not None:
@@ -260,11 +303,38 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12,
                     left_on='name',right_on='locus_tag')
         x['peptide'] = x.apply(lambda r: r.translation[r.start:r.end], 1)
         x = x.drop(['locus_tag','translation'],1)
-    x = x.sort_values(by=['density','binders'],ascending=False)
+    x = x.sort_values(by=['binders'],ascending=False)
     x = x.reset_index(drop=True)
     print ('%s clusters found in %s proteins' %(len(x),len(x.groupby('name'))))
     print
     return x
+
+def getRandomizedLists(df, n=94, seed=8, filename='peptide_lists'):
+    """
+    Return a randomized lists of sequences from a dataframe. Used for
+    providing peptide lists for aassying etc.
+    """
+
+    #cols for excel file
+    lcols=['name','peptide']
+    #nb always use same seed
+    np.random.seed(seed=seed)
+    plist = df.reset_index(drop=True)
+    plist = plist.reindex(np.random.permutation(plist.index))
+    plist.to_csv('%s.csv' %filename)
+
+    writer = pd.ExcelWriter('%s.xls' %filename)
+    #chunks = np.array_split(plist.index, groups)
+    i=1
+    chunks = plist.groupby(np.arange(len(plist)) // n)
+    for g,c in chunks:
+        c[lcols].to_excel(writer,'list'+str(i))
+        i+=1
+    #also save by method for easy reference
+    #for i,g in plist.groupby('method'):
+    #    g.sort_values(by='name')[lcols].to_excel(writer,'method'+str(i))
+    plist.to_excel(writer,'original data')
+    writer.save()
 
 def genomeAnalysis(datadir,label,gname,method):
     """this method should be made independent of web app paths etc"""
