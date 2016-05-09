@@ -158,11 +158,6 @@ def setAttributesfromConfigParser(cp, obj=None):
             obj.__dict__[f[0]] = val
     return obj
 
-def getSequencefromFasta(filename):
-    rec = SeqIO.parse(open(filename,'r'),'fasta').next()
-    seq = str(rec.seq)
-    return seq
-
 def getListfromConfig(string, types='int'):
     """Extract a list from a comma separated config entry"""
     if types == 'int':

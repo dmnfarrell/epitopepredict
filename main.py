@@ -11,17 +11,22 @@ import sys, os
 import pandas as pd
 from configparser import ConfigParser
 from collections import OrderedDict
+import epitopepredict as ep
 from epitopepredict import base, analysis, sequtils, tests
 
 defaultpath = os.getcwd()
 optvalues = (('predictors', 'tepitope'),
                ('mhc2alleles','HLA-DRB1*01:01,HLA-DRB1*04:01'),
                ('mhc1alleles','HLA-A*01:01'),
-               ('n', 2), ('cutoff_method', 'default'),
+               ('n', 2),
+               ('cutoff_method', 'default'),
+               ('cutoff',0.98),
                ('genome', 'name.gb'),
                ('path', os.getcwd()),
-               ('find_clusters',True),
-               ('genome_analysis', False))
+               ('prefix', '_'), #prefix for subfolders
+               ('overwrite', 'no'),
+               ('find_clusters', 'no'),
+               ('genome_analysis', 'no'))
 defaultopts = OrderedDict(optvalues)
 
 def createConfigParserfromOptions(opts, section):
@@ -61,13 +66,34 @@ def parseConfig(conffile=None):
     except:
         pass
     print (cp)
-    return
+    return cp
 
-def run():
+def config2Dict(config):
+    return {s:dict(config.items(s)) for s in config.sections()}
+
+def run(predictors=[], cutoff=0.98, cutoff_method='default',
+         mhc2alleles=[], mhc1alleles=[],
+         n=2,  genome='',
+         path='', prefix='_',
+         overwrite=False,
+         genome_analysis=False,
+         find_clusters = True):
     """Run a workflow using config settings"""
 
-    genome = sequtils.genbank2Dataframe(genomefile, cds=True)
-    P1 = ep.getPredictor('tepitope')
+    genome = sequtils.genbank2Dataframe(genome, cds=True)
+    predictors = predictors.split(',')
+    mhc2alleles = mhc2alleles.split(',')
+    print (mhc2alleles)
+    for p in predictors:
+        print (p)
+        P = ep.getPredictor(p)
+        savepath = os.path.join(path,prefix+p)
+        print (overwrite)
+        P.predictProteins(genome, length=11, alleles=mhc2alleles,
+                          path=savepath, overwrite=overwrite)
+        P.load(path=savepath)
+        #pb = P.getPromiscuousBinders(n=n, perc=cutoff, cutoff_method=cutoff_method)
+
     return
 
 
@@ -78,16 +104,21 @@ def main():
     parser = OptionParser()
     parser.add_option("-c", "--config", dest="config",
                         help="Configuration file", metavar="FILE")
+    parser.add_option("-r", "--run", dest="run",  action="store_true",
+                        default=False, help="Run")
     #parser.add_option("-t", "--test", dest="test",  action="store_true",
-    #                    default=False, help="Run tests")
+    #                    default=False, help="tests")
     opts, remainder = parser.parse_args()
     if opts.config != None:
         #from epitopepredict.tests import *
         #unittest.main()
         cp = parseConfig(opts.config)
-        print (cp)
+        #print (cp)
     else:
         createConfig()
+    if opts.run == True:
+        kwargs = config2Dict(cp)['prediction']
+        run(**kwargs)
 
 
 if __name__ == '__main__':

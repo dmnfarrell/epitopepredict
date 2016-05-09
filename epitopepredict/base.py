@@ -916,6 +916,7 @@ class TEpitopePredictor(Predictor):
             #try:
             m = tepitope.createVirtualPSSM(allele)
             if m is None:
+                print ('no such allele')
                 return pd.DataFrame()
         else:
             m = self.pssms[allele]
