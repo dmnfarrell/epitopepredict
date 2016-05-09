@@ -154,7 +154,7 @@ def getBlastResults(handle=None, filename=None, n=80):
     df['perc_ident'] = df.identity/df.query_length*100
     return df
 
-def blastSequences(database, seqs):
+def blastSequences(database, seqs, labels=None, maxseqs=10):
     """
     Blast a set of sequences to a local blast database
     Args:
@@ -165,11 +165,14 @@ def blastSequences(database, seqs):
     """
 
     res = []
-    for seq in seqs:
+    if labels == None:
+        labels = seqs
+    for seq, name in zip(seqs,labels):
         rec = SeqRecord(Seq(seq),id='temp')
         SeqIO.write([rec], 'tempseq.fa', "fasta")
-        localBlast(database, 'tempseq.fa')
+        localBlast(database, 'tempseq.fa', maxseqs=maxseqs)
         df = getBlastResults(filename='tempseq.xml')
+        df['name'] = name
         res.append(df)
     return pd.concat(res)
 

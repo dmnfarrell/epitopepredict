@@ -126,35 +126,6 @@ def getNmer(df, genome, length=20, seqkey='translation'):
     x = temp.apply(getseq,1)
     return x
 
-'''def getOverlaps(binders1, binders2, label='overlaps'):
-    """
-    Overlaps for 2 sets of sequences where pos in sequence is stored.
-    Args:
-        binders1: first set of sequences, a dataframe with pos field
-        binders2: second set of sequences
-        label: label for overlaps column
-    Returns:
-        First DataFrame with no. of overlaps stored in a new column
-    """
-
-    new=[]
-    a = base.getCoords(binders1)
-    b = base.getCoords(binders2)
-
-    def overlap(x,y):
-        f = y[(y.start>x.start) & (y.start<x.end)]
-        #print (x['name'],x.start,x.end,x.peptide,len(f))
-        #print (f)
-        return len(f)
-    for n,df in a.groupby('name'):
-        found = b[b.name==n]
-        df[label] = df.apply(lambda r: overlap(r,found),axis=1)
-        new.append(df)
-    result = pd.concat(new)
-    #print (len(a), len(b))
-    print ('%s with overlapping binders' %len(result[result[label]>0]))
-    return result'''
-
 def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
     """
     Overlaps for 2 sets of sequences where positions in host sequence are stored

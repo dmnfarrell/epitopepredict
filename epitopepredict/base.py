@@ -599,8 +599,8 @@ class Predictor(object):
             print ('results saved to %s' %os.path.abspath(path))
         return
 
-    def load(self, filename=None, path=None, compression='infer',
-             file_limit=None):
+    def load(self, filename=None, path=None, names=None,
+               compression='infer', file_limit=None):
         """
         Load results for one or more proteins
         Args:
@@ -613,6 +613,12 @@ class Predictor(object):
             self.data = pd.read_csv(filename, index_col=0)
         elif path != None:
             files = glob.glob(os.path.join(path, '*.csv'))
+            if names is not None:
+                #if type(names) is pd.Series:
+                #    names = list(names)
+                names = [n+'.csv' for n in names]
+                files = [n for n in files if os.path.basename(n) in names]
+                print (len(files))
             if file_limit != None:
                 files = files[:file_limit]
             res = []
