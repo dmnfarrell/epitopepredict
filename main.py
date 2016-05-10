@@ -25,7 +25,7 @@ optvalues = (('predictors', 'tepitope'),
                ('path', os.getcwd()),
                ('prefix', '_'), #prefix for subfolders
                ('overwrite', 'no'),
-               ('find_clusters', 'no'),
+               ('names', ''),
                ('genome_analysis', 'no'))
 defaultopts = OrderedDict(optvalues)
 
@@ -69,7 +69,21 @@ def parseConfig(conffile=None):
     return cp
 
 def config2Dict(config):
-    return {s:dict(config.items(s)) for s in config.sections()}
+    """Convert confiparser sections to dict"""
+
+    data={}
+    for s in config.sections():
+        #print (s)
+        d = config.items(s)
+        data[s]={}
+        for i,name in config.items(s):
+            #print(i)
+            try:
+                data[s][i] = (config.getboolean(s,i))
+            except:
+                data[s][i] = config.get(s,i)
+    print (data)
+    return data
 
 def run(predictors=[], cutoff=0.98, cutoff_method='default',
          mhc2alleles=[], mhc1alleles=[],
@@ -77,7 +91,7 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
          path='', prefix='_',
          overwrite=False,
          genome_analysis=False,
-         find_clusters = True):
+         names = ''):
     """Run a workflow using config settings"""
 
     genome = sequtils.genbank2Dataframe(genome, cds=True)
@@ -88,14 +102,12 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         print (p)
         P = ep.getPredictor(p)
         savepath = os.path.join(path,prefix+p)
-        print (overwrite)
-        P.predictProteins(genome, length=11, alleles=mhc2alleles,
+        P.predictProteins(genome, length=11, alleles=mhc2alleles, #names=names,
                           path=savepath, overwrite=overwrite)
         P.load(path=savepath)
         #pb = P.getPromiscuousBinders(n=n, perc=cutoff, cutoff_method=cutoff_method)
 
     return
-
 
 def main():
     "Run the application"
