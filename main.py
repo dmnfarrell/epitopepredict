@@ -12,20 +12,22 @@ import pandas as pd
 from configparser import ConfigParser
 from collections import OrderedDict
 import epitopepredict as ep
-from epitopepredict import base, analysis, sequtils, tests
+from epitopepredict import base, analysis, sequtils, plotting, tests
 
 defaultpath = os.getcwd()
+#default configuration values
 optvalues = (('predictors', 'tepitope'),
                ('mhc2alleles','HLA-DRB1*01:01,HLA-DRB1*04:01'),
                ('mhc1alleles','HLA-A*01:01'),
-               ('n', 2),
+               ('n', 2), #number of alleles
                ('cutoff_method', 'default'),
-               ('cutoff',0.98),
-               ('genome', 'name.gb'),
+               ('cutoff',0.98), #percentile cutoff
+               ('genome', 'name.gb'), #genbank file
                ('path', os.getcwd()),
                ('prefix', '_'), #prefix for subfolders
                ('overwrite', 'no'),
-               ('names', ''),
+               ('names', ''), #subset of protein names from genome file
+               ('plots','no'), #whether to save plots
                ('genome_analysis', 'no'))
 defaultopts = OrderedDict(optvalues)
 
@@ -86,26 +88,55 @@ def config2Dict(config):
     return data
 
 def run(predictors=[], cutoff=0.98, cutoff_method='default',
-         mhc2alleles=[], mhc1alleles=[],
+         mhc2alleles='', mhc1alleles='',
          n=2,  genome='',
          path='', prefix='_',
          overwrite=False,
+         plots=False,
          genome_analysis=False,
          names = ''):
-    """Run a workflow using config settings"""
+    """Run the prediction workflow using config settings"""
 
     genome = sequtils.genbank2Dataframe(genome, cds=True)
+    #process these in config2Dict
     predictors = predictors.split(',')
     mhc2alleles = mhc2alleles.split(',')
-    print (mhc2alleles)
+    mhc1alleles = mhc1alleles.split(',')
+    cutoff = float(cutoff)
+    print (mhc1alleles)
+    preds = []
     for p in predictors:
         print (p)
         P = ep.getPredictor(p)
+        preds.append(P)
         savepath = os.path.join(path,prefix+p)
-        P.predictProteins(genome, length=11, alleles=mhc2alleles, #names=names,
+        if p == 'iedbmhc1':
+            a = mhc1alleles
+        else:
+            a = mhc2alleles
+        P.predictProteins(genome, length=11, alleles=a, #names=names,
                           path=savepath, overwrite=overwrite)
         P.load(path=savepath)
-        #pb = P.getPromiscuousBinders(n=n, perc=cutoff, cutoff_method=cutoff_method)
+        pb = P.getPromiscuousBinders(n=int(n), perc=float(cutoff), cutoff_method=cutoff_method)
+        pb.to_csv(os.path.join(path,'binders_%s.csv' %p))
+        if genome_analysis == True:
+            b = P.getBinders(perc=cutoff,cutoff_method=cutoff_method)
+            cl = analysis.findClusters(pb, genome=genome)
+
+    #various choices here - we could generate a notebook with the plots
+    #embedded ? better than saving all to disk
+    prots = genome.locus_tag
+    if plots == True:
+        import pylab as plt
+        height = 2*len(preds)
+        for prot in prots:
+            ax = plotting.mpl_plot_tracks(preds,name=prot,n=2,perc=cutoff,
+                                          cutoff_method='global',
+                                          figsize=(14,height),legend=True)
+            #plotting.mpl_plot_regions(coords, ax, color='gray')
+            plt.tight_layout()
+            plt.savefig('plots/%s.png'%prot, dpi=150)
+        print ('saved plots')
 
     return
 

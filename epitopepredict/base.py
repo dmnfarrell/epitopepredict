@@ -441,7 +441,6 @@ class Predictor(object):
             b = self.evaluate(data, key, cutoff, op)
             return b
         else:
-            #this also allows us to use global allele based cutoffs
             res=[]
             for a,g in data.groupby('allele'):
                 if a in cutoffs:
