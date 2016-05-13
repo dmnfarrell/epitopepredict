@@ -156,8 +156,8 @@ def getCoords(df):
 
     if 'start' in df.columns:
         return df
-    df['start'] = df.pos
-    df['end'] = df.pos + df.peptide.str.len()
+    df['start'] = df.pos.astype(int)
+    df['end'] = ( df.pos + df.peptide.str.len() ).astype(int)
     return df
 
 def createTempSeqfile(sequences, seqfile='tempseq.fa'):
@@ -617,7 +617,7 @@ class Predictor(object):
                 #    names = list(names)
                 names = [n+'.csv' for n in names]
                 files = [n for n in files if os.path.basename(n) in names]
-                print (len(files))
+                #print (len(files))
             if file_limit != None:
                 files = files[:file_limit]
             res = []

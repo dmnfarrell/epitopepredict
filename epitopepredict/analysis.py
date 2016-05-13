@@ -96,35 +96,49 @@ def isoelectricPoint(df):
         return X.isoelectric_point()
     return df.apply( lambda r: getpi(r.peptide),1)
 
-def getNmer(df, genome, length=20, seqkey='translation'):
+def getTopScoringSequences(df, genome, length):
+    """Finds n-mers surrounding top scoring regions of protein"""
+
+    return
+
+def getNmer(df, genome, length=20, seqkey='translation', how='center'):
     """
-    Get n-mer peptide surrounding binders using the host
+    Get n-mer peptide surrounding a set of sequences using the host
     protein sequence
     """
 
     temp = df.merge(genome[['locus_tag','gene','translation','length']],
-                    left_on='name',right_on='locus_tag')
+                    left_on='name',right_on='locus_tag',how='left')
     if not 'end' in list(temp.columns):
         temp = base.getCoords(temp)
     n = length
+    temp =  base.getCoords(temp)
+
     def getseq(x):
+        """get n-mer sequence for a peptide"""
         seq = x['translation']
         size = x.end-x.start
         if size>n:
             l = int((size-n)/2.0)+1
-            if x.start == 0: l=0
-            seq = seq[x.start-l:x.end+l][:n]
-        elif size<n:
+            start = x.start-l
+            end = x.end+l
+        elif size<=n:
             l = int((n-size)/2.0)
             if size%2 == 1: l1 = l+1
             else: l1=l
-            seq = seq[x.start-l1:x.end+l]
-        else:
-            seq = seq[x.start:x.end]
-        #print (x['name'],x.peptide, x.start, x.end, x.length, seq, size, len(seq))
+            start = x.start-l1
+            end = x.end+l
+
+        d = 1-start
+        if d>0:
+            start = start+d
+            end = end+d
+        #print (x.peptide, start, end, size)
+        seq = seq[start:end][:n]
         return seq
-    x = temp.apply(getseq,1)
-    return x
+
+    res = temp.apply( lambda r: getseq(r), 1)
+    return res
 
 def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
     """

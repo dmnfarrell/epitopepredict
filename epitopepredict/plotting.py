@@ -167,9 +167,10 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         grps = df.groupby('allele')
         alleles.extend(grps.groups.keys())
         c=colors[m]
-        norm = mpl.colors.Normalize(vmin = df[sckey].min(), vmax = df[sckey].max())
-        cmap = mpl.cm.get_cmap(colormaps[m])
-        scmap = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+        #norm = mpl.colors.Normalize(vmin = binders[sckey].min(),
+        #                             vmax = binders[sckey].max())
+        #cmap = mpl.cm.get_cmap(colormaps[m])
+        #scmap = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
         leg.append(m)
 
         for a,g in grps:
@@ -178,8 +179,9 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
             b.sort_values('pos',inplace=True)
             #scores = b[sckey].values
             pos = b['pos'].values
-            clrs = [scmap.to_rgba(i) for i in b[sckey]]
-            for x,c in zip(pos,clrs):
+            #clrs = [scmap.to_rgba(i) for i in b[sckey]]
+            #for x,c in zip(pos,clrs):
+            for x in pos:
                 rect = ax.add_patch(Rectangle((x,y), l, 1, facecolor=c, lw=1.5, alpha=0.7))
             y+=1
         handles.append(rect)
