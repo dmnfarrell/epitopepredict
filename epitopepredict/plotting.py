@@ -136,11 +136,16 @@ def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
     return plot
 
 def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
-                legend=False, figsize=(13,4), ax=None):
+                legend=False, figsize=None, ax=None):
     """Plot binders as bars per allele - defunct"""
 
     from matplotlib.patches import Rectangle
     if ax==None:
+        if figsize==None:
+            h = sum([len(p.data.groupby('allele')) for p in preds])
+            h = round(h*.1+2)
+            w = int(h*2.5)
+            figsize = (w,h)
         fig=plt.figure(figsize=figsize)
         ax=fig.add_subplot(111)
 
@@ -182,7 +187,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
             #clrs = [scmap.to_rgba(i) for i in b[sckey]]
             #for x,c in zip(pos,clrs):
             for x in pos:
-                rect = ax.add_patch(Rectangle((x,y), l, 1, facecolor=c, lw=1.5, alpha=0.7))
+                rect = ax.add_patch(Rectangle((x,y), l, 1, facecolor=c, lw=1.5, alpha=0.6))
             y+=1
         handles.append(rect)
     if len(leg) == 0:
@@ -227,3 +232,42 @@ def mpl_draw_labels(labels, coords, ax):
                    bbox=bbox_args)
     plt.subplots_adjust(bottom=0.1)
     return
+
+def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
+                legend=False, figsize=(13,4), ax=None):
+    """Bar plots for regions of proteins that can display score averages
+    over multiple sequences"""
+
+    if ax==None:
+        fig,axs=plt.subplots(len(preds),1,figsize=figsize)
+        grid=axs.flat
+
+    alleles = []
+    leg = []
+    i=0
+    handles = []
+    for pred in preds:
+        ax=grid[i]
+        m = pred.name
+        df = pred.data
+        if df is None or len(df) == 0:
+            print('no data to plot for %s' %m)
+            continue
+        if name != None:
+            df = df[df.name==name]
+        sckey = pred.scorekey
+        binders = pred.getBinders(data=df, perc=perc, cutoff_method=cutoff_method)
+        grps = binders.groupby('pos')
+        vals = grps.agg({sckey:np.sum})
+        #if len(pb) == 0:
+        #    continue
+        l = base.getLength(binders)
+        seqlen = df.pos.max()+l
+        c=colors[m]
+        rvals = pd.rolling_sum(vals, window=11, min_periods=2, center=True)
+        #print(rvals)
+        ax.bar(rvals.index, rvals[sckey],width=1,color=c)
+        ax.grid(b=True, which='major', alpha=0.5)
+        i+=1
+        ax.set_xlim(0, seqlen)
+    return ax
