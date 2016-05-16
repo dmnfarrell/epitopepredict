@@ -150,6 +150,8 @@ def getNmer(df, genome, length=20, seqkey='translation', how='center'):
         genome: genome dataframe with host sequences
         length: length of nmer to return
         seqkey: column name of protein sequence
+        how: method to create the n-mer, split will try to split up
+        the sequence into overlapping n-mes of length is larger than size
     Returns:
         pandas Series with nmer values
     """
@@ -165,6 +167,8 @@ def getNmer(df, genome, length=20, seqkey='translation', how='center'):
     elif how == 'split':
         res = temp.apply( lambda r: _split_nmer(r, length), 1)
         res.index = temp.index
+        res = res.stack().drop_duplicates()
+        res.index = res.index.droplevel(1)
     return res
 
 def getOverlaps(binders1, binders2, label='overlaps', how='inside'):

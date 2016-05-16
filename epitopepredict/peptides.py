@@ -120,6 +120,7 @@ def getAAFraction(seq, amino_acids=None):
     for aa, i in X.count_amino_acids().iteritems():
         if aa in amino_acids:
             count+=i
+    if count == 0: return 0
     frac = round(float(count)/len(seq),2)
     return frac
 
