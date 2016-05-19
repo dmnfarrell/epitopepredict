@@ -9,6 +9,7 @@
 from __future__ import absolute_import, print_function
 import sys, os, shutil, string, types
 import csv, glob, pickle, itertools
+import math
 import re
 import time, random
 from collections import OrderedDict
@@ -49,39 +50,6 @@ def plotheatmap(df, ax=None, cmap='Blues'):
     plt.tight_layout()
     return
 
-'''def compareBindingData(exp, pred, seqkey, datakey, allele):
-    """Compare to experimental binding data in a csv file.
-     pred: the predictor
-     seqkey: col name for sequences
-     datakey col name for exp binding/score value"""
-
-    peptides = list(exp[seqkey])
-    pred.predict(peptides=peptides, allele=allele)
-    scorekey = pred.scorekey
-    data = pd.read_csv(os.path.join(tepitope.tepitopedir,
-                        'predictions/HLA-DRB1*0101.csv'))
-    pred.cutoff=0
-    merged = pd.merge(pred.data, exp,
-                  left_on='peptide', right_on=seqkey,
-                  suffixes=['_1', '_2'])
-    def cutoff(x,c,func):
-        if func(x,c): return 1
-        else: return 0
-
-    merged['pred'] = merged[scorekey].apply(lambda x:cutoff(x,pred.cutoff,op.gt))
-    merged['exp'] = merged[datakey].apply(lambda x:cutoff(x,.426,op.gt))
-    #print merged['exp']
-    P=merged[scorekey]
-    E=merged[datakey]
-    from sklearn import metrics
-    auc = metrics.roc_auc_score(merged['exp'],merged['pred'])
-
-    print '%s, %s samples' %(allele,len(E))
-    print auc
-    print Predict.aucCrossValidation(merged['exp'].values,merged['pred'].values)
-    return
-'''
-
 def getAAContent(df, amino_acids=None):
     """Amino acid composition for dataframe with sequences"""
     return df.apply( lambda r: peptides.getAAFraction(str(r.peptide), amino_acids), 1)
@@ -121,13 +89,12 @@ def _center_nmer(x, n):
     #print(size, x.peptide, x.start, x.end, l, l1, start, end, seq, len(seq))
     return seq
 
-def _split_nmer(x, n):
+def _split_nmer(x, n, key):
     """Row based method to split a peptide in to multiple nmers if too large"""
 
-    import math
     size = x.end-x.start
-    if size <= n:
-        return _center_nmer(x, n)
+    if size <= n+2:
+        return pd.Series(_center_nmer(x, n))
     else:
         o=size%n
         #print (x.peptide, size, o)
@@ -137,13 +104,13 @@ def _split_nmer(x, n):
         else: s=0
         for i in range(s, size, n):
             if i+n>size:
-                seqs.append(x.peptide[o:o+n])
+                seqs.append(x[key][o:o+n])
             else:
-                seqs.append(x.peptide[i:i+n])
-        seqs = pd.Series(seqs)#,name=x['name'])
+                seqs.append(x[key][i:i+n])
+        seqs = pd.Series(seqs)
         return seqs
 
-def getNmer(df, genome, length=20, seqkey='translation', how='center'):
+def getNmer(df, genome, length=20, seqkey='peptide', how='center'):
     """
     Get n-mer peptide surrounding a set of sequences using the host
     protein sequence.
@@ -151,9 +118,9 @@ def getNmer(df, genome, length=20, seqkey='translation', how='center'):
         df: input dataframe with sequences
         genome: genome dataframe with host sequences
         length: length of nmer to return
-        seqkey: column name of protein sequence
+        seqkey: column name of sequence to be processed
         how: method to create the n-mer, split will try to split up
-        the sequence into overlapping n-mes of length is larger than size
+            the sequence into overlapping n-mes of length is larger than size
     Returns:
         pandas Series with nmer values
     """
@@ -167,7 +134,7 @@ def getNmer(df, genome, length=20, seqkey='translation', how='center'):
     if how == 'center':
         res = temp.apply( lambda r: _center_nmer(r, length), 1)
     elif how == 'split':
-        res = temp.apply( lambda r: _split_nmer(r, length), 1)
+        res = temp.apply( lambda r: _split_nmer(r, length, seqkey), 1)
         res.index = temp.index
         res = res.stack().drop_duplicates()
         res.index = res.index.droplevel(1)
@@ -280,7 +247,7 @@ def alignment2Dataframe(aln):
     return df
 
 def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
-                 genome=None):
+                 genome=None, colname='peptide'):
     """
     Get clusters of binders for a set of binders.
     Args:
@@ -289,6 +256,10 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
         min_binders : minimum binders to be considered a cluster
         min_size: smallest cluster length to return
         max_size: largest cluster length to return
+        colname: name for cluster sequence column
+    Returns:
+        a pandas Series with the new n-mers (may be longer than the initial dataframe
+        if splitting)
     """
 
     C=[]
@@ -311,7 +282,6 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
         return pd.DataFrame()
     x = pd.DataFrame(C,columns=['name','start','end','binders'])
     x['clustersize'] = (x.end-x.start)
-    #x['density'] = (x.binders/(x.end-x.start)).round(2)
     x = x[x.clustersize>=min_size]
     x = x[x.clustersize<=max_size]
 
@@ -319,7 +289,7 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     if genome is not None:
         x = x.merge(genome[['locus_tag','translation']],
                     left_on='name',right_on='locus_tag')
-        x['peptide'] = x.apply(lambda r: r.translation[r.start:r.end], 1)
+        x[colname] = x.apply(lambda r: r.translation[r.start:r.end], 1)
         x = x.drop(['locus_tag','translation'],1)
     x = x.sort_values(by=['binders'],ascending=False)
     x = x.reset_index(drop=True)
@@ -327,18 +297,19 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     print
     return x
 
-def getRandomizedLists(df, n=94, seed=8, filename='peptide_lists'):
+def randomizedLists(df, n=94, seed=8, filename='peptide_lists'):
     """
     Return a randomized lists of sequences from a dataframe. Used for
     providing peptide lists for aassying etc.
     """
 
     #cols for excel file
-    lcols=['name','peptide']
+    lcols=['label','peptide']
     #nb always use same seed
     np.random.seed(seed=seed)
     plist = df.reset_index(drop=True)
     plist = plist.reindex(np.random.permutation(plist.index))
+    plist['label'] = plist['name']+'_'+plist.index.astype(str)
     plist.to_csv('%s.csv' %filename)
 
     writer = pd.ExcelWriter('%s.xls' %filename)
@@ -351,7 +322,7 @@ def getRandomizedLists(df, n=94, seed=8, filename='peptide_lists'):
     #also save by method for easy reference
     #for i,g in plist.groupby('method'):
     #    g.sort_values(by='name')[lcols].to_excel(writer,'method'+str(i))
-    plist.to_excel(writer,'original data')
+    plist.to_excel(writer,'original data', float_format='%.2f')
     writer.save()
 
 def genomeAnalysis(datadir,label,gname,method):

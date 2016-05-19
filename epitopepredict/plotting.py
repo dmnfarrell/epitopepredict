@@ -169,6 +169,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
             continue
         l = base.getLength(pb)
         seqlen = df.pos.max()+l
+        #print (m,df.pos.max())
         grps = df.groupby('allele')
         alleles.extend(grps.groups.keys())
         c=colors[m]
@@ -214,7 +215,7 @@ def mpl_plot_regions(coords, ax, color='red', label=''):
     for c in coords:
         x,l = c
         ax.add_patch(Rectangle((x,0), l, h,
-            facecolor=color, lw=.5, alpha=0.5))
+            facecolor=color, lw=.8, alpha=0.5))
     return
 
 def mpl_draw_labels(labels, coords, ax):

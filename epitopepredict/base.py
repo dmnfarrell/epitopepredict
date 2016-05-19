@@ -151,6 +151,20 @@ def getLength(data):
         return len(data.head(1).peptide.max())
     return
 
+def getCoordsfromSequence(df, genome):
+    """Get peptide coords from parent protein sequences"""
+
+    def func(x):
+        seq = x.translation
+        st = seq.find(x.peptide)
+        end = st+len(x.peptide)
+        return pd.Series({'start':st,'end':end})
+    temp = df.merge(genome[['locus_tag','translation']],
+                    left_on='name',right_on='locus_tag')
+    temp = temp.apply( lambda r: func(r),1)
+    df = df.drop(['start','end'],1)
+    return df.join(temp)
+
 def getCoords(df):
     """Get start end coords from position and length of peptides"""
 
