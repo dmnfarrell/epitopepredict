@@ -131,15 +131,17 @@ def _split_nmer(x, n):
     else:
         o=size%n
         #print (x.peptide, size, o)
-        s=[]
+        seqs=[]
         l = int(math.ceil(float(size)/n))
-        for i in range(0, size, n):
+        if x.start==0: s=1
+        else: s=0
+        for i in range(s, size, n):
             if i+n>size:
-                s.append(x.peptide[o:o+n])
+                seqs.append(x.peptide[o:o+n])
             else:
-                s.append(x.peptide[i:i+n])
-        s = pd.Series(s)#,name=x['name'])
-        return s
+                seqs.append(x.peptide[i:i+n])
+        seqs = pd.Series(seqs)#,name=x['name'])
+        return seqs
 
 def getNmer(df, genome, length=20, seqkey='translation', how='center'):
     """
