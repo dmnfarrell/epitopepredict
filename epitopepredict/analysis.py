@@ -90,10 +90,12 @@ def _center_nmer(x, n):
     return seq
 
 def _split_nmer(x, n, key):
-    """Row based method to split a peptide in to multiple nmers if too large"""
+    """Row based method to split a peptide in to multiple nmers
+    if it's too large"""
 
     size = x.end-x.start
-    if size <= n+2:
+    m = 3 #margin
+    if size <= n+m:
         return pd.Series(_center_nmer(x, n))
     else:
         o=size%n
@@ -373,6 +375,20 @@ def tmhmm(fastafile=None, infile=None):
             lengths.append(row.end-row.start)
     #print np.mean(lengths), np.std(lengths)
     return tmpred
+
+def signalP(infile=None,genome=None):
+    """Get signal peptide predictions"""
+    
+    if genome != None:
+        seqfile = Genome.genbank2Fasta(genome)
+        tempfile = 'signalp_temp.txt'
+        cmd = 'signalp -t gram+ -f short %s > %s' %(seqfile,tempfile)
+        infile = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    sp = pd.read_csv(infile,delim_whitespace=True,comment='#',skiprows=2,
+                      names=['locus_tag','Cmax','cpos','Ymax','ypos','Smax',
+                            'spos','Smean','D','SP','Dmaxcut','net'])
+    #print sp[sp.SP=='Y']
+    return sp
 
 def testFeatures():
     """test feature handling"""

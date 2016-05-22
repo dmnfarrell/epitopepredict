@@ -238,6 +238,39 @@ def filterIEDBFile(filename, field, search):
     y.to_csv('filtered.csv',cols=cols)
     return y
 
+def searchPubmed(term, max_count=100):
+
+    from Bio import Entrez
+    from Bio import Medline
+
+    def fetch_details(id_list):
+        ids = ','.join(id_list)
+        Entrez.email = 'your.email@example.com'
+        handle = Entrez.efetch(db='pubmed',
+                               retmode='xml',
+                               id=ids)
+        results = Entrez.read(handle)
+        return results
+
+    def search(query):
+        Entrez.email = 'your.email@example.com'
+        handle = Entrez.esearch(db='pubmed',
+                                sort='relevance',
+                                retmax=max_count,
+                                retmode='xml',
+                                term=query)
+        results = Entrez.read(handle)
+        return results
+
+    results = search(term)
+    id_list = results['IdList']
+    papers = fetch_details(id_list)
+    for i, paper in enumerate(papers):
+        print("%d) %s" % (i+1, paper['MedlineCitation']['Article']['ArticleTitle']))
+        # Pretty print the first paper in full to observe its structure
+        #import json
+        #print(json.dumps(papers[0], indent=2, separators=(',', ':')))
+
 def test():
     sourcefasta = os.path.join(home,'dockingdata/fastafiles/1KLU.fasta')
     findClosestStructures(sourcefasta)

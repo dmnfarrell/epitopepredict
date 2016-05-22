@@ -272,3 +272,42 @@ def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
         i+=1
         ax.set_xlim(0, seqlen)
     return ax
+
+def mpl_plot_seqdepot(annotation, ax):
+    """Plot sedepot annotations"""
+
+    from matplotlib.patches import Rectangle
+    y=-1.5
+    fontsize=12
+
+    if 'signalp' in annotation:
+        bbox_args = dict(boxstyle='rarrow', fc='white', lw=1, alpha=0.8)
+        pos = annotation['signalp'].values()
+        print (pos)
+        for x in pos:
+            an = ax.annotate('SP', xy=(x,y), xycoords='data',
+                        ha='left', va="center", bbox=bbox_args,
+                        size=fontsize)
+    if 'tmhmm' in annotation:
+        vals = annotation['tmhmm']
+        pos = [i[0]+(i[1]-i[0])/2.0 for i in vals]
+        widths = [i[1]-i[0] for i in vals]
+        bbox_args = dict(boxstyle='round', fc='deepskyblue', lw=1, alpha=0.8)
+        for x,w in zip(pos,widths):
+            an = ax.annotate('TMHMM', xy=(x,y), xycoords='data',
+                       ha='left', va="center", bbox=bbox_args,
+                       size=fontsize)
+    if 'pfam27' in annotation:
+        vals = annotation['pfam27']
+        text = [i[0] for i in vals]
+        pos = [i[1]+(i[2]-i[1])/2.0 for i in vals]
+        widths = [i[2]-i[1] for i in vals]
+        print (pos,widths,text)
+        bbox_args = dict(boxstyle='round', fc='coral', lw=1, alpha=0.8)
+        for x,w,t in zip(pos,widths,text):
+            an = ax.annotate(t, xy=(x,y), xycoords='data',
+                       ha='left', va="center", bbox=bbox_args,
+                       size=fontsize)
+
+    ax.set_ylim(y-1, ax.get_ylim()[1])
+    return
