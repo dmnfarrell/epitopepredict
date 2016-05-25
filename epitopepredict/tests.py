@@ -93,6 +93,11 @@ class PredictorTests(unittest.TestCase):
         P.data = pred
         return
 
+    def testsave(self):
+        """Test saving"""
+
+        return
+
     def testAnalysis(self):
         """Test analysis methods"""
 

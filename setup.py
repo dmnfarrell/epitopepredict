@@ -3,7 +3,7 @@ import sys,os
 
 setup(
     name = 'epitopepredict',
-    version = '0.1.0',
+    version = '0.2.0',
     description = 'Library ',
     url='https://github.com/dmnfarrell/epitopepredict',
     license='GPL v3',

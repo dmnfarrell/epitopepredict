@@ -378,7 +378,7 @@ def tmhmm(fastafile=None, infile=None):
 
 def signalP(infile=None,genome=None):
     """Get signal peptide predictions"""
-    
+
     if genome != None:
         seqfile = Genome.genbank2Fasta(genome)
         tempfile = 'signalp_temp.txt'
@@ -389,6 +389,20 @@ def signalP(infile=None,genome=None):
                             'spos','Smean','D','SP','Dmaxcut','net'])
     #print sp[sp.SP=='Y']
     return sp
+
+def getSeqDepot(seq):
+    """Fetch seqdepot annotation for sequence"""
+
+    from epitopepredict import seqdepot
+    reload(seqdepot)
+    sd = seqdepot.new()
+    aseqid = sd.aseqIdFromSequence(seq)
+    try:
+        result = sd.findOne(aseqid)
+    except Exception, e:
+        print (e)
+        result=None
+    return result
 
 def testFeatures():
     """test feature handling"""

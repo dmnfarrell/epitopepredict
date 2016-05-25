@@ -16,7 +16,7 @@ from . import base
 
 colormaps={'tepitope':'Greens','netmhciipan':'Oranges','iedbmhc2':'Pinks',
                'threading':'Purples','iedbmhc1':'Blues'}
-colors = {'tepitope':'green','netmhciipan':'orange',
+defaultcolors = {'tepitope':'green','netmhciipan':'orange',
            'iedbmhc1':'blue','iedbmhc2':'pink','threading':'purple'}
 
 def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
@@ -136,7 +136,7 @@ def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
     return plot
 
 def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
-                legend=False, figsize=None, ax=None):
+                legend=False, colormap=None, figsize=None, ax=None):
     """Plot binders as bars per allele - defunct"""
 
     from matplotlib.patches import Rectangle
@@ -149,6 +149,12 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         fig=plt.figure(figsize=figsize)
         ax=fig.add_subplot(111)
 
+    if colormap != None:
+        p=len(preds)
+        cmap = mpl.cm.get_cmap(colormap)
+        colors = { preds[i].name : cmap(float(i+0.1)/p) for i in range(p) }
+    else:
+        colors = defaultcolors
     alleles = []
     leg = []
     y=0
@@ -173,10 +179,6 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         grps = df.groupby('allele')
         alleles.extend(grps.groups.keys())
         c=colors[m]
-        #norm = mpl.colors.Normalize(vmin = binders[sckey].min(),
-        #                             vmax = binders[sckey].max())
-        #cmap = mpl.cm.get_cmap(colormaps[m])
-        #scmap = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
         leg.append(m)
 
         for a,g in grps:
@@ -188,13 +190,15 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
             #clrs = [scmap.to_rgba(i) for i in b[sckey]]
             #for x,c in zip(pos,clrs):
             for x in pos:
-                rect = ax.add_patch(Rectangle((x,y), l, 1, facecolor=c, lw=1.5, alpha=0.6))
+                rect = ax.add_patch(Rectangle((x,y), l, 1, facecolor=c,
+                                    lw=1.5, alpha=0.6))
             y+=1
         handles.append(rect)
     if len(leg) == 0:
         return
     ax.set_xlim(0, seqlen)
     ax.set_ylim(0, len(alleles))
+    ax.set_xticks(np.arange(0, seqlen, 20.0))
     ax.set_ylabel('allele')
     ax.set_yticks(np.arange(.5,len(alleles)+.5))
     ax.set_yticklabels(alleles)
@@ -206,7 +210,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
     #plt.tight_layout()
     return ax
 
-def mpl_plot_regions(coords, ax, color='red', label=''):
+def mpl_plot_regions(coords, ax, color='red', label='', alpha=0.6):
     """Highlight regions in a prot binder plot"""
 
     from matplotlib.patches import Rectangle
@@ -215,7 +219,7 @@ def mpl_plot_regions(coords, ax, color='red', label=''):
     for c in coords:
         x,l = c
         ax.add_patch(Rectangle((x,0), l, h,
-            facecolor=color, lw=.8, alpha=0.5))
+            facecolor=color, lw=.8, alpha=alpha, zorder=0))
     return
 
 def mpl_draw_labels(labels, coords, ax):
@@ -310,4 +314,26 @@ def mpl_plot_seqdepot(annotation, ax):
                        size=fontsize)
 
     ax.set_ylim(y-1, ax.get_ylim()[1])
+    return
+
+def plotResults(preds, names, regions=None, genome=None, **kwargs):
+    """Plot multiple results"""
+
+    for prot in names:
+        ax = mpl_plot_tracks(preds,name=prot,**kwargs)
+        r = regions[regions.name==prot]
+        print r
+        #print genome[genome.locus_tag==prot]
+        coords = (list(r.start),list(r.end-r.start))
+        coords = zip(*coords)
+        mpl_plot_regions(coords, ax, color='gray')
+        #labels = list(r.peptide)
+        #plotting.mpl_draw_labels(labels, coords, ax)
+        if genome is not None:
+            p = genome[genome['locus_tag']==prot]
+            seq = p.translation.iloc[0]
+            sd = analysis.getSeqDepot(seq)['t']
+            mpl_plot_seqdepot(sd, ax)
+        plt.tight_layout()
+        plt.show()
     return

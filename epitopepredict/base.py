@@ -643,26 +643,42 @@ class Predictor(object):
             self.data = pd.concat(res)
         return
 
-    def save(self, label, singlefile=True):
-        """Save all current predictions dataframe with some metadata"""
+    def save(self, prefix='_', filename=None, compression=None):
+        """
+        Save all current predictions dataframe with some metadata
+        Args:
+            prefix: if writing to a path, the prefix name
+            filename: if saving all to a single file
+            compression: a string representing the compression to use,
+            allowed values are 'gzip', 'bz2', 'xz'.
+        """
 
-        if singlefile == True:
-            fname = 'epit_%s_%s_%s.mpk' %(label,self.name,self.length)
-            print ('saving as %s' %fname)
-            meta = {'method':self.name, 'length':self.length}
-            pd.to_msgpack(fname, meta)
-            for i,g in self.data.groupby('name'):
-                pd.to_msgpack(fname, g, append=True)
+        exts = {'gzip':'.gz','bz2':'.bz2','xz':'.xz'}
+        if filename != None:
+            cext = exts[compression]
+            if compression != None and not filename.endswith(cext):
+                filename += cext
+            self.data.to_csv(filename, compression=compression)
         else:
             #save one file per protein/name
-            path = os.path.join(label,self.name)
+            ext = '.csv'
+            path = os.path.join(prefix, self.name)
             print ('saving to %s' %path)
             if not os.path.exists(path):
                 os.makedirs(path)
             for name,df in self.data.groupby('name'):
-                outfile = os.path.join(path, name+'.csv')
-                #pd.to_msgpack(outfile,df)
+                outfile = os.path.join(path, name+ext)
                 df.to_csv(outfile)
+        return
+
+    def save_msgpack(self, filename=None):
+        if filename == None:
+            filename = 'epit_%s_%s_%s.msg' %(label,self.name,self.length)
+        print ('saving as %s' %filename)
+        meta = {'method':self.name, 'length':self.length}
+        pd.to_msgpack(filename, meta)
+        for i,g in self.data.groupby('name'):
+            pd.to_msgpack(filename, g, append=True)
         return
 
     def alleleSummary(self, perc=0.98):
