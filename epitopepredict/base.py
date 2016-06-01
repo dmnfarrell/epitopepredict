@@ -555,8 +555,9 @@ class Predictor(object):
         self.data = pd.concat(results)
         return results'''
 
-    def predictProteins(self, recs, length=11, names=None,
-                         alleles=[], path=None, overwrite=True, cpu=1):
+    def predictProteins(self, recs, key='locus_tag', seqkey='translation',
+                        length=11, names=None, alleles=[],
+                        path=None, overwrite=True, cpu=1):
         """Get predictions for a set of proteins and/or over multiple alleles
           Args:
             recs: protein sequences in a pandas DataFrame
@@ -578,9 +579,10 @@ class Predictor(object):
             print ('no alleles provided')
             return
         self.length = length
-        recs = sequtils.getCDS(recs)
+        #recs = sequtils.getCDS(recs)
+
         if names != None:
-            recs = recs[recs.locus_tag.isin(names)]
+            recs = recs[recs[seqkey].isin(names)]
         proteins = list(recs.iterrows())
         results = []
         if path is not None and path != '':
@@ -597,7 +599,8 @@ class Predictor(object):
                 p = Process(target=self._predict_multiple,
                             kwargs={'proteins':df, 'alleles':alleles,
                                     'path': path, 'overwrite':overwrite,
-                                    'length':length, 'queue':queue})
+                                    'length':length, key:key, seqkey:seqkey,
+                                    'queue':queue})
                 procs.append(p)
                 p.start()
             #print ( [queue.get() for p in procs])
@@ -605,7 +608,8 @@ class Predictor(object):
                 p.join()
             #print (len(results))
         else:
-            results = self._predict_multiple(proteins, path, overwrite, alleles, length)
+            results = self._predict_multiple(proteins, path, overwrite, alleles, length,
+                                             key=key, seqkey=seqkey )
 
         print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
         if path is None:
@@ -616,7 +620,8 @@ class Predictor(object):
             print ('results saved to %s' %os.path.abspath(path))
         return
 
-    def _predict_multiple(self, proteins, path, overwrite, alleles, length, queue=None):
+    def _predict_multiple(self, proteins, path, overwrite, alleles, length,
+                          key='locus_tag', seqkey='sequence', queue=None):
         """Predictions for multiple proteins in a dataframe
             Args: as for predictProteins
             Returns: a dataframe of the results if no path is given
@@ -624,8 +629,8 @@ class Predictor(object):
 
         results = []
         for i,row in proteins:
-            seq = row['translation']
-            name = row['locus_tag']
+            seq = row[seqkey]
+            name = row[key]
             if path is not None:
                 fname = os.path.join(path, name+'.csv')
                 if os.path.exists(fname) and overwrite == False:
@@ -663,6 +668,9 @@ class Predictor(object):
         if filename != None:
             self.data = pd.read_csv(filename, index_col=0)
         elif path != None:
+            if not os.path.exists(path):
+                print('no such path %s' %path)
+                return
             files = glob.glob(os.path.join(path, '*.csv'))
             if names is not None:
                 #if type(names) is pd.Series:

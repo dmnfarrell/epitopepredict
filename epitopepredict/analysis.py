@@ -182,24 +182,26 @@ def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
     print ('%s with overlapping binders' %len(result[result[label]>0]))
     return result
 
-def getOrthologs(seq, expect=10, hitlist_size=400, equery=None):
-    """Fetch orthologous sequences using blast and return the records
-        as a dataframe"""
+def getOrthologs(seq, expect=10, hitlist_size=400, equery=None,
+                 email="anon.user@mail.ie"):
+    """
+    Fetch orthologous sequences using online blast and return the records
+    as a dataframe.
+    Args:
+        seq: sequence to blast
+    Returns:
+        blast results in a pandas dataframe
+    """
 
     from Bio.Blast import NCBIXML,NCBIWWW
     from Bio import Entrez, SeqIO
-    Entrez.email = "anon.user@ucd.ie"
-    #entrez_query = "mycobacterium[orgn]"
-    #db = '/local/blast/nr'
-    #SeqIO.write(SeqRecord(Seq(seq)), 'tempseq.faa', "fasta")
-    #sequtils.doLocalBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=100, evalue=expect)
-
+    Entrez.email = email
     try:
         print ('running blast..')
         result_handle = NCBIWWW.qblast("blastp", "nr", seq, expect=expect,
                               hitlist_size=500,entrez_query=equery)
         time.sleep(2)
-    except:
+    except e as exception:
         print ('blast timeout')
         return
     savefile = open("my_blast.xml", "w")
@@ -218,8 +220,10 @@ def getOrthologs(seq, expect=10, hitlist_size=400, equery=None):
     #df = getAlignedBlastResults(df)
     return df
 
-def getAlignedBlastResults(df,aln=None,idkey='accession',productkey='definition'):
-    """Get gapped alignment from blast results """
+def getAlignedBlastResults(df, aln=None, idkey='accession', productkey='definition'):
+    """
+    Get gapped alignment from blast results using muscle aligner.
+    """
 
     sequtils.dataframe2Fasta(df, idkey=idkey, seqkey='sequence',
                         productkey=productkey, outfile='blast_found.faa')
@@ -233,7 +237,7 @@ def getAlignedBlastResults(df,aln=None,idkey='accession',productkey='definition'
     #res.drop_duplicates(subset=['definition','seq'], inplace=True)
     res = res.sort('identity',ascending=False)
     print ('%s hits, %s filtered' %(len(df), len(res)))
-    return res
+    return res, aln
 
 def setBlastLink(df):
     def makelink(x):
