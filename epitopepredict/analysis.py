@@ -182,7 +182,7 @@ def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
     print ('%s with overlapping binders' %len(result[result[label]>0]))
     return result
 
-def getOrthologs(seq,expect=10,hitlist_size=400,equery=None):
+def getOrthologs(seq, expect=10, hitlist_size=400, equery=None):
     """Fetch orthologous sequences using blast and return the records
         as a dataframe"""
 
@@ -399,7 +399,7 @@ def getSeqDepot(seq):
     aseqid = sd.aseqIdFromSequence(seq)
     try:
         result = sd.findOne(aseqid)
-    except Exception, e:
+    except Exception as e:
         print (e)
         result=None
     return result

@@ -387,7 +387,8 @@ class Predictor(object):
 
     def prepareData(self, result, name, allele):
         """Put raw prediction data into DataFrame and rank,
-           override for custom processing"""
+           override for custom processing. Can be overriden for
+           custom data."""
 
         df = pd.DataFrame(result, columns=['peptide','core','pos','score'])
         df['name'] = name
@@ -404,7 +405,10 @@ class Predictor(object):
         return
 
     def evaluate(self, df, key, value, operator='<'):
-        """Evaluate binders less than or greater than a cutoff"""
+        """
+        Evaluate binders less than or greater than a cutoff.
+        This method is called by all predictors to get binders
+        """
 
         if operator == '<':
             return df[df[key] <= value]
@@ -417,7 +421,7 @@ class Predictor(object):
         Get the top scoring binders using percentile ranking or single cutoff.
         Args:
             data: binding predictions for one or more proteins
-            cutoff_method: method to use for binder threshold
+            cutoff_method: method to use for binder thresholds
             perc: percentile threshold for ranking in each allele
         Returns:
             pandas DataFrame of all binders
@@ -487,7 +491,6 @@ class Predictor(object):
             data = self.data
         #get binders using the provided or current prediction data
         b = self.getBinders(cutoff_method, data=data, name=name, perc=perc)
-
         if b is None or len(b) == 0:
             return pd.DataFrame()
         grps = b.groupby(['peptide','pos','name'])
@@ -500,7 +503,7 @@ class Predictor(object):
         s = grps.agg({'allele':pd.Series.count, self.scorekey:[func,np.mean]})
         s.columns = s.columns.get_level_values(1)
         s.rename(columns={skname: self.scorekey, 'count': 'alleles'}, inplace=True)
-        #print(s)
+
         s = s[s.alleles>=n]
         s = s.reset_index()
         #merge frequent binders with original data to retain fields
@@ -553,7 +556,7 @@ class Predictor(object):
         return results'''
 
     def predictProteins(self, recs, length=11, names=None,
-                         alleles=[], path=None, overwrite=True):
+                         alleles=[], path=None, overwrite=True, cpu=1):
         """Get predictions for a set of proteins and/or over multiple alleles
           Args:
             recs: protein sequences in a pandas DataFrame
@@ -563,6 +566,7 @@ class Predictor(object):
             path: if results are to be saved to disk provide a path, otherwise results
             for all proteins are stored in the data attribute of the predictor
             overwrite: over write existing protein files in path if present
+            cpu: number of processors to use
           Returns:
             a dataframe of predictions over multiple proteins"""
 
@@ -571,6 +575,7 @@ class Predictor(object):
         elif type(alleles) is pd.Series:
             alleles = alleles.tolist()
         if len(alleles) == 0:
+            print ('no alleles provided')
             return
         self.length = length
         recs = sequtils.getCDS(recs)
@@ -581,36 +586,69 @@ class Predictor(object):
         if path is not None and path != '':
             if not os.path.exists(path):
                 os.mkdir(path)
+
+        if cpu > 1:
+            #use more than one cpu
+            from multiprocessing import Process,Queue
+            grps = np.array_split(proteins, cpu)
+            procs = []
+            queue = Queue()
+            for df in grps:
+                p = Process(target=self._predict_multiple,
+                            kwargs={'proteins':df, 'alleles':alleles,
+                                    'path': path, 'overwrite':overwrite,
+                                    'length':length, 'queue':queue})
+                procs.append(p)
+                p.start()
+            #print ( [queue.get() for p in procs])
+            for p in procs:
+                p.join()
+            #print (len(results))
+        else:
+            results = self._predict_multiple(proteins, path, overwrite, alleles, length)
+
+        print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
+        if path is None:
+            #if no path we keep assign results to the data object
+            #assumes we have enough memory..
+            self.data = results
+        else:
+            print ('results saved to %s' %os.path.abspath(path))
+        return
+
+    def _predict_multiple(self, proteins, path, overwrite, alleles, length, queue=None):
+        """Predictions for multiple proteins in a dataframe
+            Args: as for predictProteins
+            Returns: a dataframe of the results if no path is given
+        """
+
+        results = []
         for i,row in proteins:
-            st = time.time()
             seq = row['translation']
             name = row['locus_tag']
             if path is not None:
                 fname = os.path.join(path, name+'.csv')
                 if os.path.exists(fname) and overwrite == False:
                     continue
-            #print (i,name)
             res = []
             for a in alleles:
                 df = self.predict(sequence=seq,length=length,
                                     allele=a,name=name)
                 if df is not None:
                     res.append(df)
-            #print(a, len(res))
+                #print (name, a, df.pos.max())
             res = pd.concat(res)
+            #print (res.pos.max())
             if path is not None:
-                print (fname)
                 res.to_csv(fname)
             else:
                 results.append(res)
-        print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
-        if path is None:
-            #if no path we keep assign results to the data object
-            #assumes we have enough memory
-            self.data = pd.concat(results)
-        else:
-            print ('results saved to %s' %os.path.abspath(path))
-        return
+        if len(results)>0:
+            results = pd.concat(results)
+        #if queue != None:
+            #print (path,len(results))
+            #queue.put(results)
+        return results
 
     def load(self, filename=None, path=None, names=None,
                compression='infer', file_limit=None):
@@ -637,6 +675,8 @@ class Predictor(object):
             res = []
             for f in files:
                 df = pd.read_csv(f, index_col=0, compression=compression)
+                if len(df) == 0:
+                    continue
                 if not self.scorekey in df.columns:
                     continue
                 res.append(df)
@@ -672,6 +712,8 @@ class Predictor(object):
         return
 
     def save_msgpack(self, filename=None):
+        """Save as msgpack format - experimental"""
+
         if filename == None:
             filename = 'epit_%s_%s_%s.msg' %(label,self.name,self.length)
         print ('saving as %s' %filename)
@@ -680,6 +722,11 @@ class Predictor(object):
         for i,g in self.data.groupby('name'):
             pd.to_msgpack(filename, g, append=True)
         return
+
+    def summarize(self):
+        """Summarise currently loaded data"""
+
+        return summarize(self.data)
 
     def alleleSummary(self, perc=0.98):
         """Allele based summary"""
@@ -706,14 +753,14 @@ class Predictor(object):
         grp = self.data.groupby('name')
         return sorted(dict(list(grp)).keys())
 
-    def plot(self, name=None):
+    def plot(self, names=[], **kwargs):
         """Use module level plotTracks method for predictor plot"""
 
         from . import plotting
         if name == None:
             #choose first name found if >1
             pass
-        plot = plotting.plot_tracks([self])
+        plot = plotting.mpl_plot_tracks([self], names=names, **kwargs)
         return plot
 
 class NetMHCIIPanPredictor(Predictor):

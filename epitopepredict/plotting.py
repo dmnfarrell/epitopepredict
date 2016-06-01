@@ -143,8 +143,8 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
     if ax==None:
         if figsize==None:
             h = sum([len(p.data.groupby('allele')) for p in preds])
+            w=10
             h = round(h*.1+2)
-            w = int(h*2.5)
             figsize = (w,h)
         fig=plt.figure(figsize=figsize)
         ax=fig.add_subplot(111)
@@ -198,7 +198,9 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         return
     ax.set_xlim(0, seqlen)
     ax.set_ylim(0, len(alleles))
-    ax.set_xticks(np.arange(0, seqlen, 20.0))
+    w=20
+    if seqlen>500: w=100
+    ax.set_xticks(np.arange(0, seqlen, w))
     ax.set_ylabel('allele')
     ax.set_yticks(np.arange(.5,len(alleles)+.5))
     ax.set_yticklabels(alleles)
@@ -268,7 +270,7 @@ def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
         #    continue
         l = base.getLength(binders)
         seqlen = df.pos.max()+l
-        c=colors[m]
+        c=defaultcolors[m]
         rvals = pd.rolling_sum(vals, window=11, min_periods=2, center=True)
         #print(rvals)
         ax.bar(rvals.index, rvals[sckey],width=1,color=c)
@@ -321,12 +323,13 @@ def plotResults(preds, names, regions=None, genome=None, **kwargs):
 
     for prot in names:
         ax = mpl_plot_tracks(preds,name=prot,**kwargs)
-        r = regions[regions.name==prot]
-        print r
-        #print genome[genome.locus_tag==prot]
-        coords = (list(r.start),list(r.end-r.start))
-        coords = zip(*coords)
-        mpl_plot_regions(coords, ax, color='gray')
+        if regions is not None:
+            r = regions[regions.name==prot]
+            print (r)
+            #print genome[genome.locus_tag==prot]
+            coords = (list(r.start),list(r.end-r.start))
+            coords = zip(*coords)
+            mpl_plot_regions(coords, ax, color='gray')
         #labels = list(r.peptide)
         #plotting.mpl_draw_labels(labels, coords, ax)
         if genome is not None:
