@@ -30,26 +30,6 @@ home = os.path.expanduser("~")
 genomespath = os.path.join(home, 'epitopedata')
 datadir = os.path.join(home, 'testpredictions')
 
-def plotheatmap(df, ax=None, cmap='Blues'):
-    """Plot a heatmap - move to plotting?"""
-
-    if ax==None:
-        fig=plt.figure()
-        ax=fig.add_subplot(111)
-    else:
-        fig = ax.get_figure()
-    df = df._get_numeric_data()
-    hm=ax.pcolor(df,cmap=cmap)
-    #fig.colorbar(hm, ax=ax)
-    ax.set_xticks(np.arange(0.5, len(df.columns)))
-    ax.set_yticks(np.arange(0.5, len(df.index)))
-    ax.set_xticklabels(df.columns, minor=False, fontsize=10,rotation=45)
-    ax.set_yticklabels(df.index, minor=False, fontsize=8)
-    ax.set_ylim(0, len(df.index))
-    hm.set_clim(0,1)
-    plt.tight_layout()
-    return
-
 def getAAContent(df, amino_acids=None):
     """Amino acid composition for dataframe with sequences"""
     return df.apply( lambda r: peptides.getAAFraction(str(r.peptide), amino_acids), 1)
@@ -189,6 +169,8 @@ def getOrthologs(seq, expect=10, hitlist_size=400, equery=None,
     as a dataframe.
     Args:
         seq: sequence to blast
+        equery: Entrez Gene Advanced Search options
+        see http://www.ncbi.nlm.nih.gov/books/NBK3837/
     Returns:
         blast results in a pandas dataframe
     """

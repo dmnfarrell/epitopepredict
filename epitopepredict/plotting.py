@@ -19,6 +19,27 @@ colormaps={'tepitope':'Greens','netmhciipan':'Oranges','iedbmhc2':'Pinks',
 defaultcolors = {'tepitope':'green','netmhciipan':'orange',
            'iedbmhc1':'blue','iedbmhc2':'pink','threading':'purple'}
 
+def plot_heatmap(df, ax=None, cmap='Blues', figsize=(6,6)):
+    """Plot a heatmap - move to plotting?"""
+
+    if ax==None:
+        fig=plt.figure(figsize=figsize)
+        ax=fig.add_subplot(111)
+    else:
+        fig = ax.get_figure()
+    df = df._get_numeric_data()
+    hm = ax.pcolor(df,cmap=cmap)
+    #fig.colorbar(hm, ax=ax)
+    ax.set_xticks(np.arange(0.5, len(df.columns)))
+    ax.set_yticks(np.arange(0.5, len(df.index)))
+    ax.set_xticklabels(df.columns, minor=False, fontsize=14,rotation=90)
+    ax.set_yticklabels(df.index, minor=False, fontsize=14)
+    ax.set_ylim(0, len(df.index))
+    hm.set_clim(0,1)
+    ax.grid(True)
+    plt.tight_layout()
+    return ax
+
 def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
                 width=820, height=None, tools=True,
                 seqdepot=None, bcell=None, exp=None):

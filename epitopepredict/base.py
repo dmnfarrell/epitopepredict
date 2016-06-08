@@ -47,6 +47,13 @@ iedbmhc1path = '/local/iedbmhc1/'
 iedbmhc2path = '/local/iedbmhc2/'
 iedbbcellpath = '/local/iedbbcell/'
 
+#six class I super-type alleles
+mhc1supertypes = ['HLA-A*01:01', 'HLA-A*02:01', 'HLA-A*03:01', 'HLA-A*24:02',
+                  'HLA-B*07:02','HLA-B*44:03']
+#eight class II super-types
+mhc2supertypes = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0701'
+                  'HLA-DRB1*0801','HLA-DRB1*1101','HLA-DRB1*1301','HLA-DRB1*1501']
+
 def first(x):
     return x.iloc[0]
 
@@ -81,28 +88,6 @@ def checkMembers(g,clusts):
             #print i,common
             return False
     return True
-
-'''def getClusters(B, clustlen=25, cutoff=0.05):
-    """Get clusters of binders from a set of predictions
-      df: a pandas dataframe with one set of predictions per row"""
-
-    nmer = len(B.iloc[0].peptide)
-    overlap = clustlen - nmer
-    #print clustlen, nmer, overlap
-    locs = pd.Series(B.peptide.values,index=B.pos).to_dict()
-    #ad hoc method to get overlapping epitopes and
-    #return largest unique groups as clusters
-    groups=[]
-    for i in locs:
-        g = getOverlapping(locs, int(i), overlap, clustlen)
-        groups.append(g)
-    ranked = sorted(groups, key=len, reverse=True)
-    clusts=[]
-    for g in ranked:
-        if checkMembers(g, clusts) == True:
-            clusts.append(g)
-    #print clusts
-    return clusts'''
 
 def dbscan(B=None, x=None, dist=7, minsize=4):
     """Density-Based Spatial clustering. Finds core samples of
