@@ -12,6 +12,7 @@ import csv, glob, pickle
 import time, io
 import operator as op
 import re, types
+import math
 import subprocess
 from subprocess import CalledProcessError
 import numpy as np
@@ -521,24 +522,23 @@ class Predictor(object):
         #print cores
         return cores
 
-    '''def predictSequences(self, data, seqkey='peptide', length=11,
+    def predictPeptides(self, peptides, length=11,
                         alleles=[], save=False):
+        """Predict a set of individual peptides"""
+
         results=[]
-        for i,row in data.iterrows():
-            seq = row[seqkey]
-            if len(seq)<=length: continue
-            #print (i,seq)
+        for seq in peptides:
+            print (seq)
+            if len(seq)<length: continue
             res=[]
             for a in alleles:
-               df = self.predict(sequence=seq,length=length,
-                                    allele=a,name=i)
+               df = self.predict(sequence=seq, length=length,
+                                    allele=a, name=seq)
                res.append(df)
             res = pd.concat(res)
             results.append(res)
-            #if save==True:
-            #    pd.to_msgpack('predictions_%s.mpk' %self.name, res, append=True)
         self.data = pd.concat(results)
-        return results'''
+        return results
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
                         length=11, names=None, alleles=[],
@@ -594,7 +594,7 @@ class Predictor(object):
             #print (len(results))
         else:
             results = self._predict_multiple(proteins, path, overwrite, alleles, length,
-                                             key=key, seqkey=seqkey )
+                                             key=key, seqkey=seqkey)
 
         print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
         if path is None:
@@ -746,27 +746,27 @@ class Predictor(object):
         grp = self.data.groupby('name')
         return sorted(dict(list(grp)).keys())
 
-    def plot(self, names=[], **kwargs):
+    def plot(self, name, **kwargs):
         """Use module level plotTracks method for predictor plot"""
 
         from . import plotting
         if name == None:
-            #choose first name found if >1
-            pass
-        plot = plotting.mpl_plot_tracks([self], names=names, **kwargs)
+            return
+        plot = plotting.mpl_plot_tracks([self], name=name, **kwargs)
         return plot
 
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
+
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'netmhciipan'
         self.colnames = ['pos','HLA','peptide','Identity','Pos','Core',
                          '1-log50k(aff)','Affinity','Rank']
-        self.scorekey = 'Affinity' #'1-log50k(aff)'
-        self.cutoff = 500
-        self.operator = '<'
-        self.rankascending = 1
+        self.scorekey = '1-log50k(aff)'
+        self.cutoff = .426
+        self.operator = '>'
+        self.rankascending = 0
 
     def readResult(self, res):
         """Read raw results from netMHCIIpan output"""
@@ -847,12 +847,12 @@ class IEDBMHCIPredictor(Predictor):
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc1'
-        self.scorekey = 'ic50'
+        self.scorekey = 'score'
         self.methods = {'ANN':'ann_ic50','IEDB_recommended':'smm_ic50',
                          'Consensus (ANN,SMM)':'ann_ic50','NetMHCpan':'netmhcpan_ic50'}
-        self.cutoff = 500
-        self.operator = '<'
-        self.rankascending = 1
+        self.cutoff = .426
+        self.operator = '>'
+        self.rankascending = 0
         self.iedbmethod = 'IEDB_recommended'
         #self.path = iedbmhc1path
 
@@ -894,6 +894,7 @@ class IEDBMHCIPredictor(Predictor):
         df['name'] = name
         key = self.getScoreKey(df)
         df['ic50'] = df[key]
+        df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
         self.data = df
         self.getRanking(df)
         self.data = df
@@ -967,6 +968,7 @@ class IEDBMHCIIPredictor(Predictor):
 
 class TEpitopePredictor(Predictor):
     """Predictor using tepitope QM method"""
+
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'tepitope'
@@ -982,7 +984,6 @@ class TEpitopePredictor(Predictor):
         self.sequence = sequence
         if not allele in self.pssms:
             #print 'computing virtual matrix for %s' %allele
-            #try:
             m = tepitope.createVirtualPSSM(allele)
             if m is None:
                 print ('no such allele')

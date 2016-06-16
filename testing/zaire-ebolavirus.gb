@@ -266,7 +266,7 @@ FEATURES             Location/Qualifiers
                      QLKTTKSWLQKIPLQWFKCTVKEGKLQCRI"
      CDS             join(6039..6922,6924..6933)
                      /gene="GP"
-                     /locus_tag="ZEBOVgp4"
+                     /locus_tag="ZEBOVgp4.1"
                      /artificial_location="low-quality sequence region"
                      /note="ssGP; second non-structural secreted glycoprotein;
                      secreted in a monomeric form; one A residue is deleted or

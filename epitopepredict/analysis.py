@@ -163,14 +163,15 @@ def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
     return result
 
 def getOrthologs(seq, expect=10, hitlist_size=400, equery=None,
-                 email="anon.user@mail.ie"):
+                 email=''):
     """
     Fetch orthologous sequences using online blast and return the records
     as a dataframe.
     Args:
         seq: sequence to blast
-        equery: Entrez Gene Advanced Search options
-        see http://www.ncbi.nlm.nih.gov/books/NBK3837/
+        expect: expect value
+        equery: Entrez Gene Advanced Search options,
+                (see http://www.ncbi.nlm.nih.gov/books/NBK3837/)
     Returns:
         blast results in a pandas dataframe
     """
@@ -183,7 +184,7 @@ def getOrthologs(seq, expect=10, hitlist_size=400, equery=None,
         result_handle = NCBIWWW.qblast("blastp", "nr", seq, expect=expect,
                               hitlist_size=500,entrez_query=equery)
         time.sleep(2)
-    except e as exception:
+    except Exception as e:
         print ('blast timeout')
         return
     savefile = open("my_blast.xml", "w")
@@ -196,10 +197,8 @@ def getOrthologs(seq, expect=10, hitlist_size=400, equery=None,
     df['definition'] = df.subj.apply(lambda x: x.split('|')[4])
     df = df.drop(['subj','positive','query_length','score'],1)
     print (len(df))
-    df.drop_duplicates(subset=['definition'], inplace=True)
+    df.drop_duplicates(subset=['definition','perc_ident'], inplace=True)
     df = df[df['perc_ident']!=100]
-    print (len(df))
-    #df = getAlignedBlastResults(df)
     return df
 
 def getAlignedBlastResults(df, aln=None, idkey='accession', productkey='definition'):
@@ -217,15 +216,82 @@ def getAlignedBlastResults(df, aln=None, idkey='accession', productkey='definiti
     res = res.drop('sequence',1)
     #get rid of duplicate hits
     #res.drop_duplicates(subset=['definition','seq'], inplace=True)
-    res = res.sort('identity',ascending=False)
+    res = res.sort_values(by='identity',ascending=False)
     print ('%s hits, %s filtered' %(len(df), len(res)))
     return res, aln
 
-def setBlastLink(df):
+def get_species_name(s):
+    """Find [species name] in blast result definition"""
+    m = re.search(r"[^[]*\[([^]]*)\]", s)
+    if m == None:
+        return s
+    return m.groups()[0]
+
+def find_conserved_sequences(seqs, alnrows):
+    """
+    Find if sub-sequences are conserved in given set of aligned sequences
+    Args:
+        seqs: a list of sequences to find
+        alnrows: a dataframe of aligned protein sequences
+    Returns:
+        a pandas DataFrame of 1 or 0 values for each protein/search sequence
+    """
+
+    f=[]
+    for i,a in alnrows.iterrows():
+        sequence = a.seq
+        found = [sequence.find(j) for j in seqs]
+        f.append(found)
+    ind = alnrows.species #alnrows.accession
+    s = pd.DataFrame(f,columns=seqs,index=ind)
+    s = s.replace(-1,np.nan)
+    s[s>0] = 1
+    res = s.count()
+    return s
+
+def epitopeConservation(peptides, alnrows=None, proteinseq=None, filename=None,
+                       perc_ident=50, equery='srcdb_refseq[Properties]'):
+    """
+    Find and visualise conserved peptides in a set of aligned sequences.
+    Args:
+        peptides: a list of peptides/epitopes
+        alnrows: a dataframe of aligned sequences
+        proteinseq: a sequence to blast and get an alignment for
+        filename: a file of saved blast results
+        equery: blast query string
+    """
+
+    import seaborn as sns
+    sns.set_context("notebook", font_scale=1.4)
+
+    if alnrows == None:
+        if filename == None or not os.path.exists(filename):
+            blr = getOrthologs(proteinseq, equery=equery)
+            if blr is None:
+                return
+            blr.to_csv(filename)
+        else:
+            blr = pd.read_csv(filename, index_col=0)
+        blr = blr[blr.perc_ident>=perc_ident]
+        alnrows, aln = getAlignedBlastResults(blr)
+        print (sequtils.formatAlignment(aln))
+        alnrows['species'] = alnrows.definition.apply(get_species_name)
+
+    c = find_conserved_sequences(peptides, alnrows).T
+    c = c.dropna(how='all')
+    c = c.reindex_axis(c.sum(1).sort_values().index)
+    #c['fraction'] = (c.count(1)/len(c.columns)).round(2)
+    h=int(len(c)/2.)+2
+    #ax = plotting.plot_heatmap(c, figsize=(8,h), cmap='Blues', edgecolors='black', lw=.5)
+    sns.heatmap(c, linewidths=1, cmap='summer', linecolor='black',
+                cbar=False, square=True)
+    return c, alnrows
+
+'''def setBlastLink(df):
     def makelink(x):
         return '<a href=http://www.ncbi.nlm.nih.gov/protein/%s> %s </a>' %(x,x)
     df['accession'] = df.accession.apply(makelink)
-    return df
+    return df'''
 
 def alignment2Dataframe(aln):
     """Blast results alignment 2 dataframe for making tables"""
