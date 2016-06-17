@@ -134,7 +134,7 @@ def parseBlastRec(rec):
                     hsp.positives, rec.query_length,hsp.sbjct])
     return recs
 
-def getBlastResults(handle=None, filename=None, n=80):
+def getBlastResults(handle=None, filename=None, n=80, local=True):
     """Get blast results into dataframe"""
 
     from Bio.Blast import NCBIXML
@@ -151,6 +151,12 @@ def getBlastResults(handle=None, filename=None, n=80):
         rows.extend(r)
     df = pd.DataFrame(rows, columns=['subj','score','expect','identity',
                             'positive','query_length','sequence'])
+    if local == True:
+        df['accession'] = df.subj.apply(lambda x: x.split(' ')[1])
+        df['definition'] = df.subj.apply(lambda x: ' '.join(x.split(' ')[2:]))
+    else:
+        df['accession'] = df.subj.apply(lambda x: x.split('|')[3])
+        df['definition'] = df.subj.apply(lambda x: x.split('|')[4])
     df['perc_ident'] = df.identity/df.query_length*100
     return df
 

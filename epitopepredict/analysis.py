@@ -162,13 +162,22 @@ def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
     print ('%s with overlapping binders' %len(result[result[label]>0]))
     return result
 
-def getOrthologs(seq, expect=10, hitlist_size=400, equery=None,
+def getLocalOrthologs(seq, db):
+    """Get alignment for a protein using local blast db"""
+
+
+    result_handle = open("my_blast.xml")
+    df = sequtils.getBlastResults(result_handle)
+    return df
+
+def getOrthologs(seq, db=None, expect=10, hitlist_size=400, equery=None,
                  email=''):
     """
     Fetch orthologous sequences using online blast and return the records
     as a dataframe.
     Args:
         seq: sequence to blast
+        db: the name of a local blast db
         expect: expect value
         equery: Entrez Gene Advanced Search options,
                 (see http://www.ncbi.nlm.nih.gov/books/NBK3837/)
@@ -179,29 +188,34 @@ def getOrthologs(seq, expect=10, hitlist_size=400, equery=None,
     from Bio.Blast import NCBIXML,NCBIWWW
     from Bio import Entrez, SeqIO
     Entrez.email = email
-    try:
-        print ('running blast..')
-        result_handle = NCBIWWW.qblast("blastp", "nr", seq, expect=expect,
-                              hitlist_size=500,entrez_query=equery)
-        time.sleep(2)
-    except Exception as e:
-        print ('blast timeout')
-        return
-    savefile = open("my_blast.xml", "w")
-    savefile.write(result_handle.read())
-    savefile.close()
-    result_handle = open("my_blast.xml")
 
-    df = sequtils.getBlastResults(result_handle)
-    df['accession'] = df.subj.apply(lambda x: x.split('|')[3])
-    df['definition'] = df.subj.apply(lambda x: x.split('|')[4])
+    print ('running blast..')
+    if db != None:
+        #local blast
+        SeqIO.write(SeqRecord(Seq(seq)), 'tempseq.faa', "fasta")
+        sequtils.localBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=30)
+        result_handle = open("my_blast.xml")
+        df = sequtils.getBlastResults(result_handle)
+    else:
+        try:
+            result_handle = NCBIWWW.qblast("blastp", "nr", seq, expect=expect,
+                                  hitlist_size=500,entrez_query=equery)
+            time.sleep(2)
+            savefile = open("my_blast.xml", "w")
+            savefile.write(result_handle.read())
+            savefile.close()
+            result_handle = open("my_blast.xml")
+            df = sequtils.getBlastResults(result_handle, local=False)
+        except Exception as e:
+            print ('blast timeout')
+            return
+
     df = df.drop(['subj','positive','query_length','score'],1)
-    print (len(df))
     df.drop_duplicates(subset=['definition','perc_ident'], inplace=True)
     df = df[df['perc_ident']!=100]
     return df
 
-def getAlignedBlastResults(df, aln=None, idkey='accession', productkey='definition'):
+def alignBlastResults(df, aln=None, idkey='accession', productkey='definition'):
     """
     Get gapped alignment from blast results using muscle aligner.
     """
@@ -264,28 +278,30 @@ def epitopeConservation(peptides, alnrows=None, proteinseq=None, filename=None,
     import seaborn as sns
     sns.set_context("notebook", font_scale=1.4)
 
-    if alnrows == None:
+    if alnrows is None:
         if filename == None or not os.path.exists(filename):
             blr = getOrthologs(proteinseq, equery=equery)
             if blr is None:
                 return
+            #if filename == None: filename = 'blast_%s.csv' %label
             blr.to_csv(filename)
         else:
             blr = pd.read_csv(filename, index_col=0)
         blr = blr[blr.perc_ident>=perc_ident]
-        alnrows, aln = getAlignedBlastResults(blr)
-        print (sequtils.formatAlignment(aln))
-        alnrows['species'] = alnrows.definition.apply(get_species_name)
+        alnrows, aln = alignBlastResults(blr)
+        #print (sequtils.formatAlignment(aln))
 
+    alnrows['species'] = alnrows.definition.apply(get_species_name)
     c = find_conserved_sequences(peptides, alnrows).T
+    print (c)
     c = c.dropna(how='all')
     c = c.reindex_axis(c.sum(1).sort_values().index)
     #c['fraction'] = (c.count(1)/len(c.columns)).round(2)
     h=int(len(c)/2.)+2
-    #ax = plotting.plot_heatmap(c, figsize=(8,h), cmap='Blues', edgecolors='black', lw=.5)
+
     sns.heatmap(c, linewidths=1, cmap='summer', linecolor='black',
                 cbar=False, square=True)
-    return c, alnrows
+    return c
 
 '''def setBlastLink(df):
     def makelink(x):
@@ -539,15 +555,6 @@ def testconservation(label,gname):
     P.predictSequences(df,seqkey='sequence')
     b = P.getBinders()'''
     return
-
-def getLocalOrthologs(seq, db):
-    """Get alignment for a protein using local blast db"""
-
-    SeqIO.write(SeqRecord(Seq(seq)), 'tempseq.faa', "fasta")
-    sequtils.localBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=30)
-    result_handle = open("my_blast.xml")
-    df = sequtils.getBlastResults(result_handle)
-    return df
 
 def findConservedPeptide(peptide, recs):
     """Find sequences where a peptide is conserved"""
