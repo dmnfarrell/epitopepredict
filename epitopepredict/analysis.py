@@ -23,7 +23,7 @@ import subprocess
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
-from . import base, sequtils, tepitope, utilities, peptides
+from . import base, sequtils, tepitope, utilities, peptutils
 
 home = os.path.expanduser("~")
 #fix paths!

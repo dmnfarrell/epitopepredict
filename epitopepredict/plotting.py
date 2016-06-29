@@ -171,7 +171,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         ax=fig.add_subplot(111)
 
     if colormap != None:
-        p=len(preds)
+        p = len(preds)
         cmap = mpl.cm.get_cmap(colormap)
         colors = { preds[i].name : cmap(float(i+0.1)/p) for i in range(p) }
     else:
@@ -199,7 +199,10 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         #print (m,df.pos.max())
         grps = df.groupby('allele')
         alleles.extend(grps.groups.keys())
-        c=colors[m]
+        if m in colors:
+            c=colors[m]
+        else:
+            c='blue'
         leg.append(m)
 
         for a,g in grps:

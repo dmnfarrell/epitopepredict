@@ -17,7 +17,7 @@ from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import PDB
-from . import peptides, utilities
+from . import peptutils, utilities
 
 refalleles = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0402',
            'HLA-DRB1*0404', 'HLA-DRB1*0701','HLA-DRB1*0801','HLA-DRB1*1101',
@@ -81,7 +81,7 @@ def getPSSMScore(seq, pssm):
 def scorePeptide(seq, pssm):
     """Score a single sequence in 9-mer frames"""
 
-    nmers, s = peptides.createFragments(seq=seq, length=9)
+    nmers, s = peptutils.createFragments(seq=seq, length=9)
     scores=[]
     for f in nmers:
         sc = getPSSMScore(f, pssm)
@@ -94,7 +94,7 @@ def getScores(pssm, sequence=None, peptide=None, length=11):
     """Score multiple fragments of a sequence in seperate fragments"""
 
     if peptide == None:
-        peptide, s = peptides.createFragments(seq=sequence, length=length)
+        peptide, s = peptutils.createFragments(seq=sequence, length=length)
     scores=[]
     pos=0
     for p in peptide:

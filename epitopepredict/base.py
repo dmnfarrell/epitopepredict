@@ -20,7 +20,7 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
-from . import utilities, peptides, sequtils, tepitope
+from . import utilities, peptutils, sequtils, tepitope
 
 home = os.path.expanduser("~")
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
@@ -126,6 +126,8 @@ def getPredictor(name='tepitope', **kwargs):
         return BCellPredictor(**kwargs)
     elif name == 'tepitope':
         return TEpitopePredictor(**kwargs)
+    elif name == 'mhcflurry':
+        return MHCFlurryPredictor(**kwargs)
     else:
         print ('no such predictor %s' %name)
         return
@@ -499,7 +501,10 @@ class Predictor(object):
         if not s.empty:
             final = pd.merge(p,s,how='right',on=['peptide','pos','name'])
             l = getLength(b)
-            g = final.groupby('core')
+            grpkey = 'core'
+            if not grpkey in final.columns:
+                final[grpkey] = final.peptide
+            g = final.groupby(grpkey)
             final = g.agg({self.scorekey:max, 'name':first, 'peptide': first,
                         'pos':first, 'alleles':first, 'mean':first})
             final = final.reset_index().sort_values('pos')
@@ -747,7 +752,14 @@ class Predictor(object):
         return sorted(dict(list(grp)).keys())
 
     def plot(self, name, **kwargs):
-        """Use module level plotTracks method for predictor plot"""
+        """
+        Use module level plotting.mpl_plot_tracks method for predictor plot
+        Args:
+            name:
+            n: min no. of alleles to be visible
+            perc: percentile cutoff for score
+            cutoff_method: method to use for cutoffs
+        """
 
         from . import plotting
         if name == None:
@@ -1080,3 +1092,47 @@ class BCellPredictor(Predictor):
                 res.to_csv(fname)
 
         return
+
+class MHCFlurryPredictor(Predictor):
+    """
+    Predictor using MHCFlurry for MHC-I predictions. Requires you to
+    install the python package and dependencies.
+    see https://github.com/hammerlab/mhcflurry
+    """
+
+    def __init__(self, data=None):
+        Predictor.__init__(self, data=data)
+        self.name = 'mhcflurry'
+        self.cutoff = .426
+        self.operator = '>'
+        self.scorekey = 'score'
+        self.rankascending = 0
+        try:
+            from mhcflurry import predict
+        except:
+            print ('mhcflurry not installed!')
+        return
+
+    def predict(self, sequence=None, peptides=None, length=11,
+                      allele='HLA-A0101', name=''):
+
+        self.sequence = sequence
+        from mhcflurry import predict
+        if peptides == None:
+            peptides, s = peptutils.createFragments(seq=sequence, length=length)
+        scores=[]
+        pos=0
+        result = predict(alleles=[allele], peptides=peptides)
+        df = self.prepareData(result, name, allele)
+        self.data = df
+        return df
+
+    def prepareData(self, df, name, allele):
+        """Post process dataframe to alter some column names"""
+
+        df = df.rename(columns={'Allele':'allele','Peptide':'peptide'})
+        df['name'] = name
+        df['pos'] = df.index
+        df['score'] = df['Prediction'].apply( lambda x: 1-math.log(x, 50000) )
+        self.getRanking(df)
+        return df
