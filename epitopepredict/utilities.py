@@ -21,7 +21,7 @@ from Bio import PDB
 
 home = os.path.expanduser("~")
 
-def venndiagram(names,labels,ax=None):
+def venndiagram(names, labels, ax=None, colors=('r','g','b')):
     """Plot a venn diagram"""
 
     from matplotlib_venn import venn2,venn3
@@ -32,10 +32,10 @@ def venndiagram(names,labels,ax=None):
         ax=f.add_subplot(111)
     if len(names)==2:
         n1,n2=names
-        v = venn2([set(n1), set(n2)], set_labels=labels)
+        v = venn2([set(n1), set(n2)], set_labels=labels, set_colors=colors)
     elif len(names)==3:
         n1,n2,n3=names
-        v = venn3([set(n1), set(n2), set(n3)], set_labels=labels)
+        v = venn3([set(n1), set(n2), set(n3)], set_labels=labels, set_colors=colors)
     ax.axis('off')
     #f.patch.set_visible(False)
     ax.set_axis_off()

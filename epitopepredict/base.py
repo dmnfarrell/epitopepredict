@@ -800,8 +800,9 @@ class NetMHCIIPanPredictor(Predictor):
         #df = df.apply(pd.to_numeric)#, errors='ignore')
         df['name'] = name
         df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
-        df=df.drop(['Pos','Identity','Rank'],1)
-        df=df.dropna()
+        df = df.drop(['Pos','Identity','Rank'],1)
+        df = df.dropna()
+        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         self.getRanking(df)
         self.data = df
         return
@@ -853,6 +854,12 @@ class NetMHCIIPanPredictor(Predictor):
         alleles=temp.split('\n')[34:]
         #print sorted(list(set([getStandardmhc1Name(i) for i in alleles])))
         return alleles
+
+    def convert_allele_name(self, r):
+        if not r.startswith('HLA'):
+            return 'HLA-'+r
+        else:
+            return r
 
 class IEDBMHCIPredictor(Predictor):
     """Using IEDB tools method, requires iedb-mhc1 tools"""
@@ -1115,6 +1122,7 @@ class MHCFlurryPredictor(Predictor):
 
     def predict(self, sequence=None, peptides=None, length=11,
                       allele='HLA-A0101', name=''):
+        """Uses mhcflurry python classes for prediction"""
 
         self.sequence = sequence
         from mhcflurry import predict
@@ -1134,5 +1142,9 @@ class MHCFlurryPredictor(Predictor):
         df['name'] = name
         df['pos'] = df.index
         df['score'] = df['Prediction'].apply( lambda x: 1-math.log(x, 50000) )
+        df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         self.getRanking(df)
         return df
+
+    def convert_allele_name(self, r):
+        return r[:5]+'*'+r[5:7]+':'+r[7:]
