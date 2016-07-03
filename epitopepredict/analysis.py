@@ -293,7 +293,7 @@ def epitopeConservation(peptides, alnrows=None, proteinseq=None, filename=None,
 
     alnrows['species'] = alnrows.definition.apply(get_species_name)
     c = find_conserved_sequences(peptides, alnrows).T
-    print (c)
+    #print (c)
     c = c.dropna(how='all')
     c = c.reindex_axis(c.sum(1).sort_values().index)
     #c['fraction'] = (c.count(1)/len(c.columns)).round(2)

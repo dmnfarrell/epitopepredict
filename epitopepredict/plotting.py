@@ -229,7 +229,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
     ax.set_yticks(np.arange(.5,len(alleles)+.5))
     ax.set_yticklabels(alleles)
     ax.grid(b=True, which='major', alpha=0.5)
-    ax.set_title(name, fontsize=15)
+    ax.set_title(name, fontsize=16, loc='right')
     if legend == True:
         ax.legend(handles, leg, bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                   ncol=3)
@@ -265,18 +265,21 @@ def mpl_draw_labels(labels, coords, ax):
     return
 
 def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
-                legend=False, figsize=(13,4), ax=None):
+                legend=False, colormap='jet', figsize=(13,4), ax=None):
     """Bar plots for regions of proteins that can display score averages
     over multiple sequences"""
 
     if ax==None:
-        fig,axs=plt.subplots(len(preds),1,figsize=figsize)
+        fig,axs=plt.subplots(len(preds),1,sharex=True,figsize=figsize)
         grid=axs.flat
 
     alleles = []
     leg = []
     i=0
     handles = []
+    p = len(preds)
+    cmap = mpl.cm.get_cmap(colormap)
+    colors = { preds[i].name : cmap(float(i+0.1)/p) for i in range(p) }
     for pred in preds:
         ax=grid[i]
         m = pred.name
@@ -290,17 +293,21 @@ def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
         binders = pred.getBinders(data=df, perc=perc, cutoff_method=cutoff_method)
         grps = binders.groupby('pos')
         vals = grps.agg({sckey:np.sum})
-        #if len(pb) == 0:
-        #    continue
+
         l = base.getLength(binders)
         seqlen = df.pos.max()+l
-        c=defaultcolors[m]
-        rvals = pd.rolling_sum(vals, window=11, min_periods=2, center=True)
+        c = colors[m]
+        rvals = pd.rolling_mean(vals, window=11, min_periods=2, center=True)
         #print(rvals)
         ax.bar(rvals.index, rvals[sckey],width=1,color=c)
         ax.grid(b=True, which='major', alpha=0.5)
         i+=1
         ax.set_xlim(0, seqlen)
+        ax.set_title(m, loc='right')
+        w=20
+        if seqlen>500: w=100
+        ax.set_xticks(np.arange(0, seqlen, w))
+    plt.tight_layout()
     return ax
 
 def mpl_plot_seqdepot(annotation, ax):

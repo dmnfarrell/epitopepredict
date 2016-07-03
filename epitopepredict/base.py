@@ -767,6 +767,10 @@ class Predictor(object):
         plot = plotting.mpl_plot_tracks([self], name=name, **kwargs)
         return plot
 
+    def getAlleles(self):
+        """Get available alleles - override"""
+        return []
+
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
 
@@ -802,7 +806,7 @@ class NetMHCIIPanPredictor(Predictor):
         df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
         df = df.drop(['Pos','Identity','Rank'],1)
         df = df.dropna()
-        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
+        df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         self.getRanking(df)
         self.data = df
         return
@@ -842,7 +846,7 @@ class NetMHCIIPanPredictor(Predictor):
         #print self.data[self.data.columns[:7]][:5]
         return self.data
 
-    def getAlleleList(self):
+    def getAlleles(self):
         """Get available alleles"""
 
         cmd = 'netMHCIIpan -list'
@@ -856,10 +860,12 @@ class NetMHCIIPanPredictor(Predictor):
         return alleles
 
     def convert_allele_name(self, r):
+        """Convert allele names to internally used form"""
+
         if not r.startswith('HLA'):
-            return 'HLA-'+r
+            return 'HLA-'+r.replace(':','')
         else:
-            return r
+            return r.replace(':','')
 
 class IEDBMHCIPredictor(Predictor):
     """Using IEDB tools method, requires iedb-mhc1 tools"""
@@ -1015,6 +1021,9 @@ class TEpitopePredictor(Predictor):
         self.data = df
         #print df[:12]
         return df
+
+    def getAlleles(self):
+        return tepitope.getAlleles()
 
 class BCellPredictor(Predictor):
     """Using IEDB tools methods, requires iedb bcell tools.
