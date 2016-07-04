@@ -1157,3 +1157,7 @@ class MHCFlurryPredictor(Predictor):
 
     def convert_allele_name(self, r):
         return r[:5]+'*'+r[5:7]+':'+r[7:]
+
+    def getAlleles(self):
+        import mhcflurry
+        return mhcflurry.Class1BindingPredictor.supported_alleles()

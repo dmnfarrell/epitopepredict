@@ -263,42 +263,50 @@ def find_conserved_sequences(seqs, alnrows):
     res = s.count()
     return s
 
-def epitopeConservation(peptides, alnrows=None, proteinseq=None, filename=None,
-                       perc_ident=50, equery='srcdb_refseq[Properties]'):
+def epitopeConservation(peptides, alnrows=None, proteinseq=None, blastresult=None,
+                        blastdb=None, perc_ident=50, equery='srcdb_refseq[Properties]'):
     """
     Find and visualise conserved peptides in a set of aligned sequences.
     Args:
         peptides: a list of peptides/epitopes
-        alnrows: a dataframe of aligned sequences
+        alnrows: a dataframe of previously aligned sequences e.g. custom strains
         proteinseq: a sequence to blast and get an alignment for
-        filename: a file of saved blast results
+        blastresult: a file of saved blast results in plain csv format
         equery: blast query string
+    Returns:
+        Matrix of
     """
 
     import seaborn as sns
     sns.set_context("notebook", font_scale=1.4)
 
     if alnrows is None:
-        if filename == None or not os.path.exists(filename):
-            blr = getOrthologs(proteinseq, equery=equery)
+        if proteinseq == None:
+            print ('protein sequence to blast or alignment required')
+            return
+        if blastresult == None or not os.path.exists(blastresult):
+            blr = getOrthologs(proteinseq, equery=equery, blastdb=blastdb)
             if blr is None:
                 return
             #if filename == None: filename = 'blast_%s.csv' %label
-            blr.to_csv(filename)
+            blr.to_csv(blastresult)
         else:
-            blr = pd.read_csv(filename, index_col=0)
-        blr = blr[blr.perc_ident>=perc_ident]
+            blr = pd.read_csv(blastresult, index_col=0)
+        #blr = blr[blr.perc_ident>=perc_ident]
         alnrows, aln = alignBlastResults(blr)
         #print (sequtils.formatAlignment(aln))
 
+    alnrows = alnrows[alnrows.perc_ident>=perc_ident]
     alnrows['species'] = alnrows.definition.apply(get_species_name)
     c = find_conserved_sequences(peptides, alnrows).T
     #print (c)
     c = c.dropna(how='all')
     c = c.reindex_axis(c.sum(1).sort_values().index)
+    if len(c) == 0:
+        print ('no conserved epitopes in any sequence')
+        return
     #c['fraction'] = (c.count(1)/len(c.columns)).round(2)
     h=int(len(c)/2.)+2
-
     sns.heatmap(c, linewidths=1, cmap='summer', linecolor='black',
                 cbar=False, square=True)
     return c
@@ -357,7 +365,7 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
 
     #if genome data available merge to get peptide seq
     if genome is not None:
-        x = x.merge(genome[['locus_tag','translation']],
+        x = x.merge(genome[['locus_tag','translation','gene']],
                     left_on='name',right_on='locus_tag')
         x[colname] = x.apply(lambda r: r.translation[r.start:r.end], 1)
         x = x.drop(['locus_tag','translation'],1)
