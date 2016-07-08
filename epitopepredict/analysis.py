@@ -221,7 +221,7 @@ def alignBlastResults(df, aln=None, idkey='accession', productkey='definition'):
     """
 
     sequtils.dataframe2Fasta(df, idkey=idkey, seqkey='sequence',
-                        productkey=productkey, outfile='blast_found.faa')
+                        descrkey=productkey, outfile='blast_found.faa')
     aln = sequtils.muscleAlignment("blast_found.faa")
     alnrows = [[a.id,str(a.seq)] for a in aln]
     alndf = pd.DataFrame(alnrows,columns=['accession','seq'])
@@ -236,6 +236,7 @@ def alignBlastResults(df, aln=None, idkey='accession', productkey='definition'):
 
 def get_species_name(s):
     """Find [species name] in blast result definition"""
+
     m = re.search(r"[^[]*\[([^]]*)\]", s)
     if m == None:
         return s
@@ -256,7 +257,10 @@ def find_conserved_sequences(seqs, alnrows):
         sequence = a.seq
         found = [sequence.find(j) for j in seqs]
         f.append(found)
-    ind = alnrows.species #alnrows.accession
+    try:
+        ind = alnrows.species #alnrows.accession
+    except:
+        ind = alnrows.name
     s = pd.DataFrame(f,columns=seqs,index=ind)
     s = s.replace(-1,np.nan)
     s[s>0] = 1
@@ -296,8 +300,10 @@ def epitopeConservation(peptides, alnrows=None, proteinseq=None, blastresult=Non
         alnrows, aln = alignBlastResults(blr)
         #print (sequtils.formatAlignment(aln))
 
-    alnrows = alnrows[alnrows.perc_ident>=perc_ident]
-    alnrows['species'] = alnrows.definition.apply(get_species_name)
+    if 'perc_ident' in alnrows.columns:
+        alnrows = alnrows[alnrows.perc_ident>=perc_ident]
+    if 'definition' in alnrows.columns:
+        alnrows['species'] = alnrows.definition.apply(get_species_name)
     c = find_conserved_sequences(peptides, alnrows).T
     #print (c)
     c = c.dropna(how='all')
@@ -316,13 +322,6 @@ def epitopeConservation(peptides, alnrows=None, proteinseq=None, blastresult=Non
         return '<a href=http://www.ncbi.nlm.nih.gov/protein/%s> %s </a>' %(x,x)
     df['accession'] = df.accession.apply(makelink)
     return df'''
-
-def alignment2Dataframe(aln):
-    """Blast results alignment 2 dataframe for making tables"""
-
-    alnrows = [[a.id,str(a.seq)] for a in aln]
-    df = pd.DataFrame(alnrows,columns=['name','seq'])
-    return df
 
 def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
                  genome=None, colname='peptide'):

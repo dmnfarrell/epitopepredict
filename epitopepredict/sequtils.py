@@ -193,8 +193,8 @@ def fasta2Dataframe(infile,idindex=0):
     """Get fasta proteins into dataframe"""
 
     recs = SeqIO.parse(infile,'fasta')
-    keys = ['locus_tag','translation']
-    data = [(r.name,str(r.seq)) for r in recs]
+    keys = ['locus_tag','translation','description']
+    data = [(r.name,str(r.seq),str(r.description)) for r in recs]
     df = pd.DataFrame(data,columns=(keys))
     df['type'] = 'CDS'
     #df.set_index(['name'],inplace=True)
@@ -272,14 +272,14 @@ def getORFs(sequence, treshold):
     return len(orfs), orfs
 
 def dataframe2Fasta(df, seqkey='translation', idkey='locus_tag',
-                     productkey='product',
+                     descrkey='description',
                      outfile='out.faa'):
     """Genbank features to fasta file"""
 
     seqs=[]
     for i,row in df.iterrows():
         rec = SeqRecord(Seq(row[seqkey]),id=row[idkey],
-                            description=row[productkey])
+                            description=row[descrkey])
         seqs.append(rec)
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
@@ -540,6 +540,12 @@ def getAlignment(f1,f2,genome1,genome2,checkcds=True):
     aln = needleAlignment(SeqRecord(p1,'a'),SeqRecord(p2,'b'))
     return aln
 
+def alignment2Dataframe(aln):
+    """Sequence alignment to dataframe"""
+
+    alnrows = [[a.id,str(a.seq),a.description] for a in aln]
+    df = pd.DataFrame(alnrows,columns=['name','seq','description'])
+    return df
 
 def getFeatureQualifier(f, qualifier):
     if f.qualifiers.has_key(qualifier):
