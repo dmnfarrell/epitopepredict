@@ -173,7 +173,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
     if colormap != None:
         p = len(preds)
         cmap = mpl.cm.get_cmap(colormap)
-        colors = { preds[i].name : cmap(float(i+0.1)/p) for i in range(p) }
+        colors = { preds[i].name : cmap(float(i)/p) for i in range(p) }
     else:
         colors = defaultcolors
     alleles = []
@@ -198,14 +198,16 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         seqlen = df.pos.max()+l
         #print (m,df.pos.max())
         grps = df.groupby('allele')
-        alleles.extend(grps.groups.keys())
         if m in colors:
             c=colors[m]
         else:
             c='blue'
         leg.append(m)
-
-        for a,g in grps:
+        order = sorted(grps.groups)
+        alleles.extend(order)
+        #for a,g in grps:
+        for a in order:
+            g = grps.groups[a]
             b = binders[binders.allele==a]
             b = b[b.pos.isin(pb.pos)] #only promiscuous
             b.sort_values('pos',inplace=True)

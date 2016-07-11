@@ -278,7 +278,7 @@ def epitopeConservation(peptides, alnrows=None, proteinseq=None, blastresult=Non
         blastresult: a file of saved blast results in plain csv format
         equery: blast query string
     Returns:
-        Matrix of
+        Matrix of 0 or 1 for conservation for each epitope/protein variant
     """
 
     import seaborn as sns
