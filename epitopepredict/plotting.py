@@ -157,8 +157,15 @@ def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
     return plot
 
 def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
-                legend=False, colormap=None, figsize=None, ax=None):
-    """Plot binders as bars per allele - defunct"""
+                legend=False, colormap='Paired', figsize=None, ax=None):
+    """
+    Plot binders as bars per allele using matplotlib.
+    Args:
+        preds: list of one or more predictors
+        name: name of protein
+        n: number of alleles binder should be found in to be displayed
+        
+    """
 
     from matplotlib.patches import Rectangle
     if ax==None:
@@ -170,12 +177,10 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         fig=plt.figure(figsize=figsize)
         ax=fig.add_subplot(111)
 
-    if colormap != None:
-        p = len(preds)
-        cmap = mpl.cm.get_cmap(colormap)
-        colors = { preds[i].name : cmap(float(i)/p) for i in range(p) }
-    else:
-        colors = defaultcolors
+    p = len(preds)
+    cmap = mpl.cm.get_cmap(colormap)
+    colors = { preds[i].name : cmap(float(i)/p) for i in range(p) }
+
     alleles = []
     leg = []
     y=0
