@@ -189,7 +189,7 @@ def testblast():
     print (df[:5])
     return
 
-def fasta2Dataframe(infile,idindex=0):
+def fasta2Dataframe(infile):
     """Get fasta proteins into dataframe"""
 
     recs = SeqIO.parse(infile,'fasta')
@@ -197,7 +197,6 @@ def fasta2Dataframe(infile,idindex=0):
     data = [(r.name,str(r.seq),str(r.description)) for r in recs]
     df = pd.DataFrame(data,columns=(keys))
     df['type'] = 'CDS'
-    #df.set_index(['name'],inplace=True)
     return df
 
 def convertSequenceFormat(infile, outformat='embl'):

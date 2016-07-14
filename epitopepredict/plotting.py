@@ -164,7 +164,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         preds: list of one or more predictors
         name: name of protein
         n: number of alleles binder should be found in to be displayed
-        
+
     """
 
     from matplotlib.patches import Rectangle
@@ -194,8 +194,9 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         if name != None:
             df = df[df.name==name]
         sckey = pred.scorekey
-        pb = pred.getPromiscuousBinders(data=df, n=n, perc=perc,
+        pb = pred.getPromiscuousBinders( n=n, perc=perc, name=name,
                                         cutoff_method=cutoff_method)
+        #pb = pb[pb.name == name]
         binders = pred.getBinders(data=df, perc=perc, cutoff_method=cutoff_method)
         if len(pb) == 0:
             continue
@@ -216,8 +217,7 @@ def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
             b = binders[binders.allele==a]
             b = b[b.pos.isin(pb.pos)] #only promiscuous
             b.sort_values('pos',inplace=True)
-            #scores = b[sckey].values
-            pos = b['pos'].values
+            pos = b['pos'].values+1 #assumes pos is zero indexed
             #clrs = [scmap.to_rgba(i) for i in b[sckey]]
             #for x,c in zip(pos,clrs):
             for x in pos:
