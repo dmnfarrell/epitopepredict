@@ -90,11 +90,11 @@ def scorePeptide(seq, pssm):
         #print f, sc
     return scores
 
-def getScores(pssm, sequence=None, peptide=None, length=11):
+def getScores(pssm, sequence=None, peptide=None, length=11, overlap=1):
     """Score multiple fragments of a sequence in seperate fragments"""
 
     if peptide == None:
-        peptide, s = peptutils.createFragments(seq=sequence, length=length)
+        peptide, s = peptutils.createFragments(seq=sequence, length=length, overlap=overlap)
     scores=[]
     pos=0
     for p in peptide:
@@ -103,7 +103,7 @@ def getScores(pssm, sequence=None, peptide=None, length=11):
         core,i,best = sc[0]
         #print (p,core,pos,best)
         scores.append((p,core,pos,best))
-        pos+=1
+        pos+=overlap
     return scores
 
 def getPseudoSequence(pp, query, method='tepitope'):

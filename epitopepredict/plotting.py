@@ -378,3 +378,56 @@ def plotResults(preds, names, regions=None, genome=None, **kwargs):
         plt.tight_layout()
         plt.show()
     return
+
+def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
+    """
+    Plot heatmap of binders above a cutoff by rank or score.
+    Args:
+        P: predictor object with data
+        name: name of protein to plot
+        values: data column to use for plot data, 'score' or 'rank'
+        cutoff: cutoff if using rank as values
+        chunks: number of plots to split the sequence into
+    """
+
+    import seaborn as sns
+    if cmap == None:
+        cmap = sns.cubehelix_palette(light=1, as_cmap=True)
+    df = P.data[P.data.name==name].sort('pos')
+    w = 10
+    l= base.getLength(df)
+    seqlen = df.pos.max()+l
+    f,axs = plt.subplots(chunks,1,figsize=(15,5+2*chunks))
+    if chunks == 1:
+        axs = [axs]
+    else:
+        axs = list(axs.flat)
+
+    if values == 'score':
+        values = P.scorekey
+    X = df.pivot_table(index='allele', columns='pos', values=values)
+    if values == 'rank':
+        X[X > cutoff] = 0
+
+    s = df.drop_duplicates(['peptide','pos'])
+    seqlist = s.set_index('pos').peptide.apply( lambda x : x[0])
+    #print seqlist
+    seqchunks = np.array_split(X.columns, chunks)
+    for c in range(chunks):
+        ax = axs[c]
+        p = X[seqchunks[c]]
+        sns.heatmap(p, cmap=cmap, cbar_kws={"shrink": .5}, #linewidth=0.1, linecolor='gray',
+                    ax=ax, xticklabels=20)
+        #show sequence on x-axis
+        st = seqchunks[c][0]
+        end = seqchunks[c][-1]
+        xseq = seqlist[st:end]
+        ax.set_title(str(st)+'-'+str(end), loc='right')
+        ax.spines['bottom'].set_visible(True)
+        if len(seqchunks[c])<150:
+            ax.set_xticks(np.arange(0,len(xseq))+0.5)
+            ax.set_xticklabels(xseq, rotation=0, fontsize=10)
+
+    f.suptitle(name+' - '+P.name)
+    plt.tight_layout()
+    return ax

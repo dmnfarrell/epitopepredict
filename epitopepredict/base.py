@@ -403,7 +403,7 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, cutoff_method='default', perc=0.98,
+    def getBinders(self, by='score', cutoff_method='default', perc=0.98,
                    data=None, name=None):
         """
         Get the top scoring binders using percentile ranking or single cutoff.
@@ -513,6 +513,25 @@ class Predictor(object):
         else:
             return pd.DataFrame()
 
+    def consensusRankedBinders(self, name=None, how='median', threshold=None):
+        """
+        Get the top percentile rank of each binder over all alleles.
+        Args:
+            name: specify protein name, otherwise all current data used
+            how: method to use for rank selection, 'median', 'best' or
+                 'mean'
+            threshold: apply a threshold
+        """
+
+        df = self.data
+        if name != None:
+            df=df[df.name==name]
+        funcs = { 'median':np.median, 'mean':np.mean, 'best':min }
+        func = funcs[how]
+        b = df.groupby(['peptide']).agg({'rank': func,'pos':first, 'name':first})
+        b = b.reset_index().sort_values('rank')
+        return b
+
     def getUniqueCores(self, binders=False):
         """Get only unique cores"""
 
@@ -546,7 +565,7 @@ class Predictor(object):
         return results
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
-                        length=11, names=None, alleles=[],
+                        length=11, overlap=1, names=None, alleles=[],
                         path=None, overwrite=True, cpu=1):
         """Get predictions for a set of proteins and/or over multiple alleles
           Args:
@@ -599,7 +618,7 @@ class Predictor(object):
             #print (len(results))
         else:
             results = self._predict_multiple(proteins, path, overwrite, alleles, length,
-                                             key=key, seqkey=seqkey)
+                                             overlap=overlap, key=key, seqkey=seqkey)
 
         print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
         if path is None:
@@ -610,7 +629,7 @@ class Predictor(object):
             print ('results saved to %s' %os.path.abspath(path))
         return
 
-    def _predict_multiple(self, proteins, path, overwrite, alleles, length,
+    def _predict_multiple(self, proteins, path, overwrite, alleles, length, overlap=1,
                           key='locus_tag', seqkey='sequence', queue=None):
         """Predictions for multiple proteins in a dataframe
             Args: as for predictProteins
@@ -627,7 +646,7 @@ class Predictor(object):
                     continue
             res = []
             for a in alleles:
-                df = self.predict(sequence=seq,length=length,
+                df = self.predict(sequence=seq,length=length,overlap=overlap,
                                     allele=a,name=name)
                 if df is not None:
                     res.append(df)
@@ -811,7 +830,7 @@ class NetMHCIIPanPredictor(Predictor):
         self.data = df
         return
 
-    def runSequence(self, seq, length, allele):
+    def runSequence(self, seq, length, allele, overlap=1):
         """Run netmhciipan for a single sequence"""
 
         seqfile = createTempSeqfile(seq)
@@ -822,7 +841,7 @@ class NetMHCIIPanPredictor(Predictor):
         df = pd.DataFrame(rows)
         return df
 
-    def predict(self, sequence=None, peptides=None, length=11,
+    def predict(self, sequence=None, peptides=None, length=11, overlap=1,
                     allele='HLA-DRB1*0101', name='',
                     pseudosequence=None):
         """Call netMHCIIpan command line"""
@@ -839,7 +858,7 @@ class NetMHCIIPanPredictor(Predictor):
                 temp = self.runSequence(p, len(p), allele)
                 res = res.append(temp,ignore_index=True)
         else:
-            res = self.runSequence(sequence, length, allele)
+            res = self.runSequence(sequence, length, allele, overlap)
         if len(res)==0:
             return res
         self.prepareData(res, name)
@@ -1002,7 +1021,7 @@ class TEpitopePredictor(Predictor):
         self.operator = '>'
         self.rankascending = 0
 
-    def predict(self, sequence=None, peptides=None, length=9,
+    def predict(self, sequence=None, peptides=None, length=9, overlap=1,
                     allele='HLA-DRB1*0101', name='',
                     pseudosequence=None):
 
@@ -1016,7 +1035,7 @@ class TEpitopePredictor(Predictor):
         else:
             m = self.pssms[allele]
         m = m.transpose().to_dict()
-        result = tepitope.getScores(m, sequence, peptides, length)
+        result = tepitope.getScores(m, sequence, peptides, length, overlap=overlap)
         df = self.prepareData(result, name, allele)
         self.data = df
         #print df[:12]

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    Module implementing peptide structure utilities.
+    Module implementing peptide sequence/structure utilities.
     Created March 2013
     Copyright (C) Damien Farrell
 """
@@ -34,6 +34,7 @@ def createRandomSequences(size=100,length=9):
 
 def createRandomPeptides(size=100,length=9):
     """Create random peptide structures of given length"""
+
     seqs = createRandomSequences(size, length)
     files=[]
     for seq in seqs:
@@ -43,6 +44,7 @@ def createRandomPeptides(size=100,length=9):
 
 def createFragments(protfile=None, seq=None, length=9, overlap=1, quiet=True):
     """generate peptide fragments from a sequence"""
+
     if protfile != None:
         rec = SeqIO.parse(open(protfile,'r'),'fasta').next()
         seq = str(rec.seq)
@@ -60,7 +62,7 @@ def createFragments(protfile=None, seq=None, length=9, overlap=1, quiet=True):
 
 def createProteinFragments(protfile, seqrange='', length=9):
     """Create peptide fragments for a protein"""
-    #homologyModel()
+
     seqs, seqstr = createFragments(protfile, length=length)
     filenames = []
     if seqrange != '':
@@ -74,6 +76,7 @@ def createProteinFragments(protfile, seqrange='', length=9):
     return filenames
 
 def getAllFragments(exp, length=11):
+
     import pandas as pd
     P=pd.read_csv(exp)
     peptides = P['SEQ_SEQUENCE']
@@ -91,6 +94,7 @@ def getAASubstitutions(template):
     """Get all the possible sequences from substituting every AA
       into the given sequence at each position. This gives a total of
        19aa * n positions """
+
     aas = AAletters
     seqs = []
     matrix = []
