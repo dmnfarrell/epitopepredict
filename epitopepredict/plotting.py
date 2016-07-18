@@ -391,13 +391,11 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
     """
 
     import seaborn as sns
-    if cmap == None:
-        cmap = sns.cubehelix_palette(light=1, as_cmap=True)
     df = P.data[P.data.name==name].sort('pos')
     w = 10
     l= base.getLength(df)
     seqlen = df.pos.max()+l
-    f,axs = plt.subplots(chunks,1,figsize=(15,5+2*chunks))
+    f,axs = plt.subplots(chunks,1,figsize=(15,3+2.5*chunks))
     if chunks == 1:
         axs = [axs]
     else:
@@ -405,10 +403,15 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
 
     if values == 'score':
         values = P.scorekey
+        if cmap == None: cmap='RdBu_r'
     X = df.pivot_table(index='allele', columns='pos', values=values)
+    if values == P.scorekey:
+        #normalise score across alleles for clarity
+        zscore = lambda x: (x - x.mean()) / x.std()
+        X = X.apply(zscore, 1)
     if values == 'rank':
         X[X > cutoff] = 0
-
+        if cmap == None: cmap='Blues'
     s = df.drop_duplicates(['peptide','pos'])
     seqlist = s.set_index('pos').peptide.apply( lambda x : x[0])
     #print seqlist
@@ -416,7 +419,9 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
     for c in range(chunks):
         ax = axs[c]
         p = X[seqchunks[c]]
-        sns.heatmap(p, cmap=cmap, cbar_kws={"shrink": .5}, #linewidth=0.1, linecolor='gray',
+        #plot heatmap
+        sns.heatmap(p, cmap=cmap, cbar_kws={"shrink": .5},
+                    vmin=min(X.min()), vmax=max(X.max()),
                     ax=ax, xticklabels=20)
         #show sequence on x-axis
         st = seqchunks[c][0]
@@ -425,8 +430,9 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
         ax.set_title(str(st)+'-'+str(end), loc='right')
         ax.spines['bottom'].set_visible(True)
         if len(seqchunks[c])<150:
+            fsize = 16-1*len(seqchunks[c])/20.
             ax.set_xticks(np.arange(0,len(xseq))+0.5)
-            ax.set_xticklabels(xseq, rotation=0, fontsize=10)
+            ax.set_xticklabels(xseq, rotation=0, fontsize=fsize)
 
     f.suptitle(name+' - '+P.name)
     plt.tight_layout()
