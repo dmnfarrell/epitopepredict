@@ -900,7 +900,7 @@ class IEDBMHCIPredictor(Predictor):
         self.iedbmethod = 'IEDB_recommended'
         #self.path = iedbmhc1path
 
-    def predict(self, sequence=None, peptides=None, length=11,
+    def predict(self, sequence=None, peptides=None, length=11, overlap=1,
                    allele='HLA-A*01:01', name=''):
         """Use iedb MHCII python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
@@ -1148,7 +1148,7 @@ class MHCFlurryPredictor(Predictor):
             print ('mhcflurry not installed!')
         return
 
-    def predict(self, sequence=None, peptides=None, length=11,
+    def predict(self, sequence=None, peptides=None, length=11, overlap=1,
                       allele='HLA-A0101', name=''):
         """Uses mhcflurry python classes for prediction"""
 

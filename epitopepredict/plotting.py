@@ -40,7 +40,7 @@ def plot_heatmap(df, ax=None, figsize=(6,6), **kwargs):
     plt.tight_layout()
     return ax
 
-def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
+def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
                 width=820, height=None, tools=True,
                 seqdepot=None, bcell=None, exp=None):
     """
@@ -156,7 +156,7 @@ def plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
     plot.xaxis.major_label_orientation = np.pi/4
     return plot
 
-def mpl_plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
+def plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
                 legend=False, colormap='Paired', figsize=None, ax=None):
     """
     Plot binders as bars per allele using matplotlib.
@@ -271,7 +271,60 @@ def mpl_draw_labels(labels, coords, ax):
     plt.subplots_adjust(bottom=0.1)
     return
 
-def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
+def plot_bars(P, name, chunks=1, how='median', perc=0.8, color='black'):
+    """
+    Bar plots for sequence using median/mean/total scores.
+    Args:
+        P: predictor with data
+        name: name of protein sequence
+        chunks: break sequence up into 1 or more chunks
+        how: method to calculate score bar value
+        perc: percentile cutoff to show peptide
+    """
+
+    import seaborn as sns
+    df = P.data[P.data.name==name].sort_values('pos')
+    w = 10
+    l= base.getLength(df)
+    seqlen = df.pos.max()+l
+    f,axs = plt.subplots(chunks,1,figsize=(15,2+2.5*chunks))
+    if chunks == 1:
+        axs = [axs]
+    else:
+        axs = list(axs.flat)
+
+    funcs = {'median': np.median, 'mean': np.mean, 'sum': np.sum}
+    #cb = P.consensusRankedBinders()
+    #cb = cb[cb['rank']<20]
+
+    grps = df.groupby('pos')
+    key = P.scorekey
+    X = grps.agg({key: np.median, 'peptide': base.first})
+    cutoff = X[key].quantile(perc)
+    X[key][X[key]<cutoff] = 0
+    seqlist = X.peptide.apply( lambda x : x[0])
+    seqchunks = np.array_split(X.index, chunks)
+
+    for c in range(chunks):
+        ax = axs[c]
+        st = seqchunks[c][0]
+        end = seqchunks[c][-1]
+        p = X[st:end]
+        #p = p[p.peptide.isin(cb.peptide)]
+        ax.bar(p.index, p[key], width=1, color=color)
+        ax.set_title(str(st)+'-'+str(end), loc='right')
+        xseq = seqlist[st:end]
+        if len(xseq)<150:
+            fsize = 16-1*len(xseq)/20.
+            ax.set_xlim(st,end)
+            ax.set_xticks(p.index+0.5)
+            ax.set_xticklabels(xseq, rotation=0, fontsize=fsize)
+        ax.set_ylim(X[key].min(), X[key].max())
+    f.suptitle(name+' - '+P.name)
+    plt.tight_layout()
+    return
+
+'''def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
                 legend=False, colormap='jet', figsize=(13,4), ax=None):
     """Bar plots for regions of proteins that can display score averages
     over multiple sequences"""
@@ -315,7 +368,7 @@ def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
         if seqlen>500: w=100
         ax.set_xticks(np.arange(0, seqlen, w))
     plt.tight_layout()
-    return ax
+    return ax'''
 
 def mpl_plot_seqdepot(annotation, ax):
     """Plot sedepot annotations"""
@@ -360,7 +413,7 @@ def plotResults(preds, names, regions=None, genome=None, **kwargs):
     """Plot multiple results"""
 
     for prot in names:
-        ax = mpl_plot_tracks(preds,name=prot,**kwargs)
+        ax = plot_tracks(preds,name=prot,**kwargs)
         if regions is not None:
             r = regions[regions.name==prot]
             print (r)
