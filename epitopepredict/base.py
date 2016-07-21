@@ -530,6 +530,8 @@ class Predictor(object):
         func = funcs[how]
         b = df.groupby(['peptide']).agg({'rank': func,'pos':first, 'name':first})
         b = b.reset_index().sort_values('rank')
+        if threshold != None:
+            b = b[b['rank'] < threshold]
         return b
 
     def getUniqueCores(self, binders=False):

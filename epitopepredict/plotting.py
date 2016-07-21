@@ -234,7 +234,8 @@ def plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
     ax.set_xticks(np.arange(0, seqlen, w))
     ax.set_ylabel('allele')
     ax.set_yticks(np.arange(.5,len(alleles)+.5))
-    ax.set_yticklabels(alleles)
+    fsize = 14-1*len(alleles)/40.
+    ax.set_yticklabels(alleles, fontsize=fsize )
     ax.grid(b=True, which='major', alpha=0.5)
     ax.set_title(name, fontsize=16, loc='right')
     if legend == True:
