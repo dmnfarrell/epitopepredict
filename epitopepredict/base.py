@@ -653,7 +653,7 @@ class Predictor(object):
                 #print (name, a, df.pos.max())
             res = pd.concat(res)
             #print (res.pos.max())
-            if path is not None:
+            if path is not None and len(res)>0:
                 res.to_csv(fname)
             else:
                 results.append(res)
@@ -852,6 +852,7 @@ class NetMHCIIPanPredictor(Predictor):
         except:
             print('invalid allele')
             return
+        allele = allele.replace(':','')
         if peptides != None:
             res = pd.DataFrame()
             for p in peptides:
@@ -1026,6 +1027,7 @@ class TEpitopePredictor(Predictor):
                     pseudosequence=None):
 
         self.sequence = sequence
+        allele = allele.replace(':','')
         if not allele in self.pssms:
             #print 'computing virtual matrix for %s' %allele
             m = tepitope.createVirtualPSSM(allele)

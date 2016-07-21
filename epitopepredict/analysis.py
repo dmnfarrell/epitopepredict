@@ -479,6 +479,55 @@ def getSeqDepot(seq):
         result=None
     return result
 
+def predictionCoverage(expdata, binders, key='sequence', perc=50):
+    """
+    Determine hit rate of predictions in experimental data
+    by finding how many top peptides are needed to cover % positives
+    Args:
+        expdata: dataframe of experimental data with peptide sequence and name column
+        binders: dataframe of ranked binders created from predictor
+        key: column name in expdata for sequence
+    Returns:
+        fraction of predicted binders required to find perc total response
+    """
+
+    def getcoverage(data, peptides, key):
+        #get coverage for single sequence
+        target = math.ceil(len(data)*perc/100.0)
+        print (len(data), target)
+        #print data[key]
+        #print peptides[peptides.isin(data[key])]
+        found=[]
+        count=0
+        for p in peptides:
+            for i,r in data.iterrows():
+                #print p, r[key]
+                if r[key] in found:
+                    continue
+                if r[key].find(p)!=-1 or p.find(r[key])!=-1:
+                    found.append(r[key])
+                    print (count, p, r[key])
+                    continue
+            count+=1
+            if len(found) >= target:
+                print (count, target)
+                return count
+        print ('not all sequences found', count, target)
+        return count
+
+    total = 0
+    for name, data in expdata.groupby('name'):
+        peptides = binders[binders.name==name].peptide
+        if len(peptides) == 0:
+            continue
+        print (name)
+        #print binders[binders.name==name][:5]
+        c = getcoverage(data, peptides, key)
+        total += c
+        print ('--------------')
+    print (total, total/float(len(binders))*100)
+    return round(total/float(len(binders))*100,2)
+
 def testFeatures():
     """test feature handling"""
 
@@ -577,7 +626,7 @@ def findConservedPeptide(peptide, recs):
     res = s.count()
     return s
 
-def getPredictions(path,tag,method='tepitope',q=0.96):
+'''def getPredictions(path,tag,method='tepitope',q=0.96):
     """Get predictions from file system"""
 
     q=round(q,2)
@@ -590,7 +639,7 @@ def getPredictions(path,tag,method='tepitope',q=0.96):
     pred = base.getPredictor(name=method, data=df)
     cutoffs = pred.allelecutoffs = getCutoffs(path, method, q)
     pred = pred
-    return pred
+    return pred'''
 
 def test():
     gname = 'ebolavirus'

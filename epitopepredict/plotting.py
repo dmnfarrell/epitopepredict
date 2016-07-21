@@ -301,7 +301,7 @@ def plot_bars(P, name, chunks=1, how='median', perc=0.8, color='black'):
     key = P.scorekey
     X = grps.agg({key: np.median, 'peptide': base.first})
     cutoff = X[key].quantile(perc)
-    X[key][X[key]<cutoff] = 0
+    X[key][X[key]<cutoff] = np.nan
     seqlist = X.peptide.apply( lambda x : x[0])
     seqchunks = np.array_split(X.index, chunks)
 
@@ -322,53 +322,7 @@ def plot_bars(P, name, chunks=1, how='median', perc=0.8, color='black'):
         ax.set_ylim(X[key].min(), X[key].max())
     f.suptitle(name+' - '+P.name)
     plt.tight_layout()
-    return
-
-'''def mpl_plot_bars(preds, name, n=2, perc=0.98, cutoff_method='default',
-                legend=False, colormap='jet', figsize=(13,4), ax=None):
-    """Bar plots for regions of proteins that can display score averages
-    over multiple sequences"""
-
-    if ax==None:
-        fig,axs=plt.subplots(len(preds),1,sharex=True,figsize=figsize)
-        grid=axs.flat
-
-    alleles = []
-    leg = []
-    i=0
-    handles = []
-    p = len(preds)
-    cmap = mpl.cm.get_cmap(colormap)
-    colors = { preds[i].name : cmap(float(i+0.1)/p) for i in range(p) }
-    for pred in preds:
-        ax=grid[i]
-        m = pred.name
-        df = pred.data
-        if df is None or len(df) == 0:
-            print('no data to plot for %s' %m)
-            continue
-        if name != None:
-            df = df[df.name==name]
-        sckey = pred.scorekey
-        binders = pred.getBinders(data=df, perc=perc, cutoff_method=cutoff_method)
-        grps = binders.groupby('pos')
-        vals = grps.agg({sckey:np.sum})
-
-        l = base.getLength(binders)
-        seqlen = df.pos.max()+l
-        c = colors[m]
-        rvals = pd.rolling_mean(vals, window=11, min_periods=2, center=True)
-        #print(rvals)
-        ax.bar(rvals.index, rvals[sckey],width=1,color=c)
-        ax.grid(b=True, which='major', alpha=0.5)
-        i+=1
-        ax.set_xlim(0, seqlen)
-        ax.set_title(m, loc='right')
-        w=20
-        if seqlen>500: w=100
-        ax.set_xticks(np.arange(0, seqlen, w))
-    plt.tight_layout()
-    return ax'''
+    return axs
 
 def mpl_plot_seqdepot(annotation, ax):
     """Plot sedepot annotations"""
@@ -409,11 +363,15 @@ def mpl_plot_seqdepot(annotation, ax):
     ax.set_ylim(y-1, ax.get_ylim()[1])
     return
 
-def plotResults(preds, names, regions=None, genome=None, **kwargs):
-    """Plot multiple results"""
+def plot_multiple(preds, names, kind='tracks', regions=None, genome=None, **kwargs):
+    """Plot results for multiple proteins"""
 
     for prot in names:
-        ax = plot_tracks(preds,name=prot,**kwargs)
+        if kind == 'tracks':
+            ax = plot_tracks(preds,name=prot,**kwargs)
+        elif kind == 'bar':
+            axs = plot_bars(preds[0],name=prot)
+            ax = axs[0]
         if regions is not None:
             r = regions[regions.name==prot]
             print (r)
