@@ -479,7 +479,7 @@ def getSeqDepot(seq):
         result=None
     return result
 
-def predictionCoverage(expdata, binders, key='sequence', perc=50):
+def predictionCoverage(expdata, binders, key='sequence', perc=50, verbose=False):
     """
     Determine hit rate of predictions in experimental data
     by finding how many top peptides are needed to cover % positives
@@ -494,7 +494,8 @@ def predictionCoverage(expdata, binders, key='sequence', perc=50):
     def getcoverage(data, peptides, key):
         #get coverage for single sequence
         target = math.ceil(len(data)*perc/100.0)
-        print (len(data), target)
+        if verbose == True:
+            print (len(data), target)
         #print data[key]
         #print peptides[peptides.isin(data[key])]
         found=[]
@@ -506,13 +507,17 @@ def predictionCoverage(expdata, binders, key='sequence', perc=50):
                     continue
                 if r[key].find(p)!=-1 or p.find(r[key])!=-1:
                     found.append(r[key])
-                    print (count, p, r[key])
+                    if verbose == True:
+                        print (count, p, r[key])
                     continue
             count+=1
             if len(found) >= target:
-                print (count, target)
+                if verbose == True:
+                    print (count, target)
+                    print ('--------------')
                 return count
-        print ('not all sequences found', count, target)
+        if verbose == True:
+            print ('not all sequences found', count, target)
         return count
 
     total = 0
@@ -520,12 +525,12 @@ def predictionCoverage(expdata, binders, key='sequence', perc=50):
         peptides = binders[binders.name==name].peptide
         if len(peptides) == 0:
             continue
-        print (name)
+        if verbose == True: print (name)
         #print binders[binders.name==name][:5]
         c = getcoverage(data, peptides, key)
         total += c
-        print ('--------------')
-    print (total, total/float(len(binders))*100)
+
+    #print (total, total/float(len(binders))*100)
     return round(total/float(len(binders))*100,2)
 
 def testFeatures():

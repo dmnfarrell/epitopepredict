@@ -488,17 +488,18 @@ class Predictor(object):
         else:
             func = max
             skname = 'max'
-        s = grps.agg({'allele':pd.Series.count, self.scorekey:[func,np.mean]})
+        s = grps.agg({'allele':pd.Series.count, self.scorekey:[func,np.mean],
+                      'rank': np.median})
         s.columns = s.columns.get_level_values(1)
         s.rename(columns={skname: self.scorekey, 'count': 'alleles'}, inplace=True)
 
         s = s[s.alleles>=n]
         s = s.reset_index()
-        #merge frequent binders with original data to retain fields
         p = list(data.groupby('allele'))[0][1]
-        p = p.drop(['allele','rank',self.scorekey],1)
+        p = p.drop(['allele',self.scorekey],1)
 
         if not s.empty:
+            #merge frequent binders with original data to retain fields
             final = pd.merge(p,s,how='right',on=['peptide','pos','name'])
             l = getLength(b)
             grpkey = 'core'
@@ -506,7 +507,7 @@ class Predictor(object):
                 final[grpkey] = final.peptide
             g = final.groupby(grpkey)
             final = g.agg({self.scorekey:max, 'name':first, 'peptide': first,
-                        'pos':first, 'alleles':first, 'mean':first})
+                        'pos':first, 'alleles':first, 'mean':first, 'rank':first})
             final = final.reset_index().sort_values('pos')
             #print final
             return final
