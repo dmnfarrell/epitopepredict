@@ -403,65 +403,7 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, by='score', cutoff_method='default', perc=0.98,
-                   data=None, name=None):
-        """
-        Get the top scoring binders using percentile ranking or single cutoff.
-        Args:
-            data: binding predictions for one or more proteins
-            cutoff_method: method to use for binder thresholds
-            perc: percentile threshold for ranking in each allele
-        Returns:
-            pandas DataFrame of all binders
-        """
-
-        if data is None:
-            if self.data is None:
-                print ('no prediction data available')
-                return
-            else:
-                data = self.data
-        if name != None:
-            if name not in list(data.name):
-                print ('no such protein in data')
-                return
-            data = data[data.name==name]
-
-        key = self.scorekey
-        op = self.operator
-        if op == '<':
-            q = 1-perc
-        else:
-            q = perc
-
-        cutoffs = {}
-        if cutoff_method == 'global':
-            #we derive cutoffs using all loaded data
-            for a,g in self.data.groupby('allele'):
-                cutoffs[a] = g[key].quantile(q=q)
-        else:
-            cutoffs = self.allelecutoffs
-        if cutoff_method == 'simple':
-            #we just use a single cutoff value for all
-            cutoff = self.cutoff
-            b = self.evaluate(data, key, cutoff, op)
-            return b
-        else:
-            res=[]
-            for a,g in data.groupby('allele'):
-                if a in cutoffs:
-                    cutoff = cutoffs[a]
-                else:
-                    cutoff = g[key].quantile(q=q)
-                #print (a,perc,value)
-                b = self.evaluate(g, key, cutoff, op)
-                if b is not None:
-                    res.append(b)
-            if len(res) > 0:
-                return pd.concat(res)
-        return
-
-    def getPromiscuousBinders(self, n=2, cutoff_method='default', perc=0.98,
+    '''def getPromiscuousBinders(self, n=2, cutoff_method='default', perc=0.98,
                               data=None, name=None):
         """
         Get top scoring binders present in at least n alleles.
@@ -512,9 +454,80 @@ class Predictor(object):
             #print final
             return final
         else:
-            return pd.DataFrame()
+            return pd.DataFrame()'''
 
-    def consensusRankedBinders(self, name=None, how='median', threshold=None):
+    def getBinders(self, name=None, cutoff=5, value='score', data=None):
+        """
+        Get the top scoring binders. If using scores cutoffs are derived
+        from the available prediction data stored in the object. For
+        per protein cutoffs the rank can used instead. This will give
+        slightly different results.
+        Args:
+            name: name of protein in predictions, optional
+            cutoff: percentile cutoff for score or rank cutoff if value='rank'
+            value: 'score' or 'rank'
+        """
+
+        if data is None:
+            if self.data is None:
+                return
+            data = self.data
+        if name != None:
+            data = data[data.name==name]
+        if value == 'score':
+            value = self.scorekey
+            q = (1-cutoff/100.) #score quantile value
+            cuts={}
+            for a,g in data.groupby('allele'):
+                cuts[a] = g[value].quantile(q=q)
+            cuts = pd.Series(cuts)
+            res=[]
+            for a,g in data.groupby('allele'):
+                #print cuts[a]
+                b = g[g[value]>cuts[a]]
+                res.append(b)
+            return pd.concat(res)
+        elif value == 'rank':
+            res = data[data['rank'] < cutoff]
+            return res
+
+    def promiscuousBinders(self, binders=None, name=None, value='score',
+                           cutoff=5, n=1, unique_core=True):
+        """
+        Use params for getbinders if no binders provided?
+        Args:
+            binders: can provide a precalculated list of binders
+            name: specific protein, optional
+            value: to pass to getBinders
+            cutoff: percentile cutoff for getBinders
+            n: min number of alleles
+            unique_cores: removes peptides with duplicate cores and picks the most
+            promiscuous and highest ranked
+        Returns:
+            a pandas dataframe
+        """
+
+        if binders is None:
+            binders = self.getBinders(name=name, cutoff=cutoff, value=value)
+        grps = binders.groupby(['peptide','pos','name'])
+        func = max
+        s = grps.agg({'allele':pd.Series.count,
+                      'core': first, self.scorekey:[func,np.mean],
+                      'rank': np.median})
+        s.columns = s.columns.get_level_values(1)
+        s.rename(columns={'max': self.scorekey, 'count': 'alleles','median':'median_rank',
+                         'first':'core'}, inplace=True)
+        s = s.reset_index()
+        s = s.sort_values(['alleles','median_rank'],ascending=[False,True])
+
+        #if we just want unique cores, drop duplicates takes most promiscuous in each group
+        #since we have sorted by alleles and median rank
+        if unique_core == True:
+            s = s.drop_duplicates('core')
+        s = s[s.alleles>=n]
+        return s
+
+    def consensusRankedBinders(self, name=None, how='median', cutoff=None):
         """
         Get the top percentile rank of each binder over all alleles.
         Args:
@@ -531,8 +544,8 @@ class Predictor(object):
         func = funcs[how]
         b = df.groupby(['peptide']).agg({'rank': func,'pos':first, 'name':first})
         b = b.reset_index().sort_values('rank')
-        if threshold != None:
-            b = b[b['rank'] < threshold]
+        if cutoff != None:
+            b = b[b['rank'] < cutoff]
         return b
 
     def getUniqueCores(self, binders=False):
@@ -1035,7 +1048,7 @@ class TEpitopePredictor(Predictor):
             #print 'computing virtual matrix for %s' %allele
             m = tepitope.createVirtualPSSM(allele)
             if m is None:
-                print ('no such allele')
+                #print ('no such allele')
                 return pd.DataFrame()
         else:
             m = self.pssms[allele]

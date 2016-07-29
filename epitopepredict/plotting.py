@@ -156,17 +156,19 @@ def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
     plot.xaxis.major_label_orientation = np.pi/4
     return plot
 
-def plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
+def plot_tracks(preds, name, n=2, cutoff=5, value='score',
                 legend=False, colormap='Paired', figsize=None, ax=None):
     """
     Plot binders as bars per allele using matplotlib.
     Args:
         preds: list of one or more predictors
-        name: name of protein
+        name: name of protein to plot
         n: number of alleles binder should be found in to be displayed
+        cutoff: percentile cutoff to determine binders to show
 
     """
 
+    import matplotlib as mpl
     from matplotlib.patches import Rectangle
     if ax==None:
         if figsize==None:
@@ -194,10 +196,11 @@ def plot_tracks(preds, name, n=2, perc=0.98, cutoff_method='default',
         if name != None:
             df = df[df.name==name]
         sckey = pred.scorekey
-        pb = pred.getPromiscuousBinders( n=n, perc=perc, name=name,
-                                        cutoff_method=cutoff_method)
-        #pb = pb[pb.name == name]
-        binders = pred.getBinders(data=df, perc=perc, cutoff_method=cutoff_method)
+
+        binders = pred.getBinders(name, cutoff=cutoff, value=value)
+        #pass binders so it's not recalculated
+        pb = pred.promiscuousBinders(binders=binders, n=n, value=value)
+
         if len(pb) == 0:
             continue
         l = base.getLength(pb)
