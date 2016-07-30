@@ -472,8 +472,13 @@ class Predictor(object):
             if self.data is None:
                 return
             data = self.data
+
         if name != None:
+            if name not in self.proteins():
+                print ('no such protein name in binder data')
+                return
             data = data[data.name==name]
+
         if value == 'score':
             value = self.scorekey
             q = (1-cutoff/100.) #score quantile value
@@ -488,6 +493,7 @@ class Predictor(object):
                 res.append(b)
             return pd.concat(res)
         elif value == 'rank':
+            #done per allele per protein rank
             res = data[data['rank'] < cutoff]
             return res
 
@@ -761,12 +767,15 @@ class Predictor(object):
 
         return summarize(self.data)
 
-    def alleleSummary(self, perc=0.98):
+    def alleleSummary(self, cutoff=5):
         """Allele based summary"""
 
-        b = self.getBinders(perc=perc)
+        b = self.getBinders(cutoff=cutoff)
         summary = b.groupby('allele').agg({'peptide':np.size,self.scorekey:np.mean})
         return summary
+
+    def proteins(self):
+        return list(self.data.name.unique())
 
     def reshape(self, name=None):
         """Return pivoted data over alleles for summary use"""
@@ -799,7 +808,7 @@ class Predictor(object):
         from . import plotting
         if name == None:
             return
-        plot = plotting.mpl_plot_tracks([self], name=name, **kwargs)
+        plot = plotting.plot_tracks([self], name=name, **kwargs)
         return plot
 
     def getAlleles(self):

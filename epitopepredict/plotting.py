@@ -435,8 +435,10 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
         ax = axs[c]
         p = X[seqchunks[c]]
         #plot heatmap
+        vmin=min(X.min()); vmax=max(X.max())
+        center = vmin+(vmax-vmin)/2
         sns.heatmap(p, cmap=cmap, cbar_kws={"shrink": .5},
-                    vmin=min(X.min()), vmax=max(X.max()),
+                    vmin=vmin, vmax=vmax, #center=center,
                     ax=ax, xticklabels=20)
         #show sequence on x-axis
         st = seqchunks[c][0]
