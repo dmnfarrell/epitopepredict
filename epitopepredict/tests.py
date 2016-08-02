@@ -25,7 +25,7 @@ class PredictorTests(unittest.TestCase):
             os.mkdir(self.testdir)
         return
 
-    def testTepitope(self):
+    def test_tepitope(self):
         """Tepitope test"""
 
         df = self.df
@@ -37,7 +37,7 @@ class PredictorTests(unittest.TestCase):
         P.getBinders(data=P.data)
         return
 
-    def testnetMHCIIpan(self):
+    def test_netmhciipan(self):
         """netMHCIIpan test"""
 
         #requires netmHCIIpan is installed
@@ -64,7 +64,7 @@ class PredictorTests(unittest.TestCase):
                            path=self.testdir)
         return'''
 
-    def testBcell(self):
+    def test_bcell(self):
         """IEDB BCell test"""
 
         df = self.df
@@ -74,7 +74,7 @@ class PredictorTests(unittest.TestCase):
         P.predictProteins(df, names=names, path=self.testdir)
         return
 
-    def testFasta(self):
+    def test_fasta(self):
         """Test fasta predictions"""
 
         fastafile = 'testing/zaire-ebolavirus.faa'
@@ -84,7 +84,7 @@ class PredictorTests(unittest.TestCase):
         P.predictProteins(df, length=11, alleles=alleles, path=self.testdir)
         return
 
-    def testLoad(self):
+    def test_load(self):
         """Test re-loading predictions"""
 
         infile = os.path.join(self.testdir, 'ZEBOVgp1.mpk')
@@ -93,12 +93,12 @@ class PredictorTests(unittest.TestCase):
         P.data = pred
         return
 
-    def testsave(self):
+    def test_save(self):
         """Test saving"""
 
         return
 
-    def testAnalysis(self):
+    def test_analysis(self):
         """Test analysis methods"""
 
         #get binders for an entire set of saved results
@@ -107,10 +107,11 @@ class PredictorTests(unittest.TestCase):
         #cl = analysis.findClusters(b, method, dist=9, minsize=3)
         return
 
-    def testFeatures(self):
+    def test_features(self):
         """Test genbank feature handling"""
 
-        df = self.df
+        fastafile = 'testing/zaire-ebolavirus.faa'
+        df = sequtils.fasta2Dataframe(fastafile)
         name = 'ZEBOVgp1'
         #row = df[df.locus_tag==name]
         sequtils.dataframe2Fasta(df)

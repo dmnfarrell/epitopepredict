@@ -248,7 +248,7 @@ FEATURES             Location/Qualifiers
                      /note="transmembrane anchor; transmembrane region"
      CDS             6039..7133
                      /gene="GP"
-                     /locus_tag="ZEBOVgp4"
+                     /locus_tag="ZEBOVgp4.1"
                      /note="sGP, small non-structural, secreted glycoprotein;
                      sGP secreted as a anti-parallel oriented homodimer"
                      /citation=[4]
@@ -266,7 +266,7 @@ FEATURES             Location/Qualifiers
                      QLKTTKSWLQKIPLQWFKCTVKEGKLQCRI"
      CDS             join(6039..6922,6924..6933)
                      /gene="GP"
-                     /locus_tag="ZEBOVgp4.1"
+                     /locus_tag="ZEBOVgp4.2"
                      /artificial_location="low-quality sequence region"
                      /note="ssGP; second non-structural secreted glycoprotein;
                      secreted in a monomeric form; one A residue is deleted or

@@ -25,7 +25,7 @@ from . import utilities, peptutils, sequtils, tepitope
 home = os.path.expanduser("~")
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'mhcdata')
-predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','bcell']
+predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','bcell']
 iedbmethods = ['arbpython','comblib','consensus3','IEDB_recommended',
                'NetMHCIIpan','nn_align','smm_align','tepitope']
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
@@ -49,11 +49,25 @@ iedbmhc2path = '/local/iedbmhc2/'
 iedbbcellpath = '/local/iedbbcell/'
 
 #six class I super-type alleles
-mhc1supertypes = ['HLA-A*01:01', 'HLA-A*02:01', 'HLA-A*03:01', 'HLA-A*24:02',
+mhc1_supertypes = ['HLA-A*01:01', 'HLA-A*02:01', 'HLA-A*03:01', 'HLA-A*24:02',
                   'HLA-B*07:02','HLA-B*44:03']
 #eight class II super-types
-mhc2supertypes = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0701'
+mhc2_supertypes = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0701'
                   'HLA-DRB1*0801','HLA-DRB1*1101','HLA-DRB1*1301','HLA-DRB1*1501']
+#26 class I alleles providing global broad coverage
+mhc1_broad_coverage = [
+'HLA-A*01:01', 'HLA-A*26:01', 'HLA-A*32:01', 'HLA-A*02:01', 'HLA-A*02:03', 'HLA-A*02:06',
+'HLA-A*68:02', 'HLA-A*2301', 'HLA-A*24:02', 'HLA-A*03:01', 'HLA-A*11:01', 'HLA-A*30:01',
+'HLA-A*31:01', 'HLA-A*33:01', 'HLA-A*68:01', 'HLA-B*40:01', 'HLA-B*44:02', 'HLA-B*44:03',
+'HLA-B*57:01', 'HLA-B*58:01', 'HLA-B*15:01', 'HLA-B*07:02', 'HLA-B*35:01', 'HLA-B*51:01',
+'HLA-B*53:01', 'HLA-B*08:01']
+
+#sequence for testing
+testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHASHTPGSVS'
+               'SAFILEAMVNVISGPKVLMKQIPIWLPLGVADQKTYSFDSTTAAIMLASYTITHFGKATNPLVRVNRLGP'
+               'GIPDHPLRLLRIGNQAFLQEFVLPPVQLPQYFTFDLTALKLITQPLPAATWTDDTPTGSNGALRPGISFH'
+               'PKLRPILLPNKSGKKGNSADLTSPEKIQAIMTSLQDFKIVPIDPTKNIMGIEVPETLVHKLTGKKVTSKN'
+               'GQPIIPVLLPKYIGLDPVAPGDLTMVITQDCDTCHSPASLPAVIEK')
 
 def first(x):
     return x.iloc[0]
@@ -233,7 +247,7 @@ def summarize(data):
                                         len(proteins),len(allelegrps)))
     return
 
-def getBindersfromPath(method, path, n=3, cutoff_method='default',
+'''def getBindersfromPath(method, path, n=3, cutoff_method='default',
                        perc=0.98, promiscuous=True):
     """
     Get all binders from a set of binding results stored in a directory.
@@ -317,7 +331,7 @@ def getScoreDistributions(predictor, path=None):
     #reverse if best values are lower
     if predictor.operator == '<':
         bins.index = pd.Series(bins.index).apply(lambda x: 1-x)
-    return bins
+    return bins'''
 
 def getStandardMHCI(name):
     """Taken from iedb mhc1 utils.py"""
@@ -508,20 +522,28 @@ class Predictor(object):
             cutoff: percentile cutoff for getBinders
             n: min number of alleles
             unique_cores: removes peptides with duplicate cores and picks the most
-            promiscuous and highest ranked
+            promiscuous and highest ranked, used for mhc-II predictions
         Returns:
             a pandas dataframe
         """
 
         if binders is None:
             binders = self.getBinders(name=name, cutoff=cutoff, value=value)
+
+        if 'core' not in binders.columns :
+            binders['core'] = binders.peptide
         grps = binders.groupby(['peptide','pos','name'])
-        func = max
+        if self.operator == '<':
+            func = min
+            skname = 'min'
+        else:
+            func = max
+            skname = 'max'
         s = grps.agg({'allele':pd.Series.count,
                       'core': first, self.scorekey:[func,np.mean],
                       'rank': np.median})
         s.columns = s.columns.get_level_values(1)
-        s.rename(columns={'max': self.scorekey, 'count': 'alleles','median':'median_rank',
+        s.rename(columns={skname: self.scorekey, 'count': 'alleles','median':'median_rank',
                          'first':'core'}, inplace=True)
         s = s.reset_index()
         s = s.sort_values(['alleles','median_rank'],ascending=[False,True])
@@ -588,7 +610,7 @@ class Predictor(object):
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
                         length=11, overlap=1, names=None, alleles=[],
-                        path=None, overwrite=True, cpu=1):
+                        path=None, overwrite=True):
         """Get predictions for a set of proteins and/or over multiple alleles
           Args:
             recs: protein sequences in a pandas DataFrame
@@ -598,7 +620,6 @@ class Predictor(object):
             path: if results are to be saved to disk provide a path, otherwise results
             for all proteins are stored in the data attribute of the predictor
             overwrite: over write existing protein files in path if present
-            cpu: number of processors to use
           Returns:
             a dataframe of predictions over multiple proteins"""
 
@@ -620,27 +641,8 @@ class Predictor(object):
             if not os.path.exists(path):
                 os.mkdir(path)
 
-        if cpu > 1:
-            #use more than one cpu
-            from multiprocessing import Process,Queue
-            grps = np.array_split(proteins, cpu)
-            procs = []
-            queue = Queue()
-            for df in grps:
-                p = Process(target=self._predict_multiple,
-                            kwargs={'proteins':df, 'alleles':alleles,
-                                    'path': path, 'overwrite':overwrite,
-                                    'length':length, key:key, seqkey:seqkey,
-                                    'queue':queue})
-                procs.append(p)
-                p.start()
-            #print ( [queue.get() for p in procs])
-            for p in procs:
-                p.join()
-            #print (len(results))
-        else:
-            results = self._predict_multiple(proteins, path, overwrite, alleles, length,
-                                             overlap=overlap, key=key, seqkey=seqkey)
+        results = self._predict_multiple(proteins, path, overwrite, alleles, length,
+                                         overlap=overlap, key=key, seqkey=seqkey)
 
         print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
         if path is None:
@@ -681,10 +683,25 @@ class Predictor(object):
                 results.append(res)
         if len(results)>0:
             results = pd.concat(results)
-        #if queue != None:
-            #print (path,len(results))
-            #queue.put(results)
         return results
+
+    '''def _multicpu_predict(self, **kwargs):
+
+        #use more than one cpu
+        from multiprocessing import Process,Queue
+        grps = np.array_split(proteins, cpu)
+        procs = []
+        queue = Queue()
+        for df in grps:
+            p = Process(target=self._predict_multiple,
+                        kwargs=kwargs)
+            procs.append(p)
+            p.start()
+        #print ( [queue.get() for p in procs])
+        for p in procs:
+            p.join()
+        #print (len(results))
+        return'''
 
     def load(self, filename=None, path=None, names=None,
                compression='infer', file_limit=None):
@@ -767,12 +784,16 @@ class Predictor(object):
 
         return summarize(self.data)
 
-    def alleleSummary(self, cutoff=5):
+    def allele_summary(self, cutoff=5):
         """Allele based summary"""
 
         b = self.getBinders(cutoff=cutoff)
-        summary = b.groupby('allele').agg({'peptide':np.size,self.scorekey:np.mean})
-        return summary
+        s = b.groupby('allele').agg({'peptide':np.size,self.scorekey:[np.median,np.mean]})
+        s.columns = s.columns.get_level_values(1)
+        return s
+
+    def protein_summary(self):
+        print ( self.data.groupby('name').agg({'peptide':np.size}) )
 
     def proteins(self):
         return list(self.data.name.unique())
@@ -1182,7 +1203,8 @@ class MHCFlurryPredictor(Predictor):
         self.sequence = sequence
         from mhcflurry import predict
         if peptides == None:
-            peptides, s = peptutils.createFragments(seq=sequence, length=length)
+            peptides, s = peptutils.createFragments(seq=sequence,
+                                                    length=length, overlap=overlap)
         scores=[]
         pos=0
         result = predict(alleles=[allele], peptides=peptides)

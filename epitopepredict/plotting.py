@@ -275,7 +275,7 @@ def mpl_draw_labels(labels, coords, ax):
     plt.subplots_adjust(bottom=0.1)
     return
 
-def plot_bars(P, name, chunks=1, how='median', perc=0.8, color='black'):
+def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
     """
     Bar plots for sequence using median/mean/total scores.
     Args:
@@ -304,7 +304,9 @@ def plot_bars(P, name, chunks=1, how='median', perc=0.8, color='black'):
     grps = df.groupby('pos')
     key = P.scorekey
     X = grps.agg({key: np.median, 'peptide': base.first})
-    cutoff = X[key].quantile(perc)
+
+    q = (1-cutoff/100.) #score quantile value
+    cutoff = X[key].quantile(q)
     X[key][X[key]<cutoff] = np.nan
     seqlist = X.peptide.apply( lambda x : x[0])
     seqchunks = np.array_split(X.index, chunks)

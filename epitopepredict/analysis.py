@@ -363,11 +363,13 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     x = x[x.clustersize<=max_size]
 
     #if genome data available merge to get peptide seq
+    cols = ['locus_tag','translation','gene']
     if genome is not None:
-        x = x.merge(genome[['locus_tag','translation','gene']],
+        x = x.merge(genome[cols],
                     left_on='name',right_on='locus_tag')
         x[colname] = x.apply(lambda r: r.translation[r.start:r.end], 1)
         x = x.drop(['locus_tag','translation'],1)
+        x = x.drop_duplicates(colname)
     x = x.sort_values(by=['binders'],ascending=False)
     x = x.reset_index(drop=True)
     print ('%s clusters found in %s proteins' %(len(x),len(x.groupby('name'))))
