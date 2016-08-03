@@ -201,14 +201,6 @@ def getSequencefromPredictionData(data):
 
     return seq
 
-'''def getOverlappingBinders(B):
-    for df in B:
-        df.set_index('peptide',inplace=True)
-    print (B)
-    x = pd.concat(B,join='inner')
-    #x =  x[['pos']].sort('pos')
-    return x'''
-
 def getNearest(df):
     """Get nearest binder"""
 
@@ -225,18 +217,6 @@ def getNearest(df):
     df = pd.concat(new)
     return df
 
-'''def getBinders(preds,n=3):
-    """Get binders for multiple predictors"""
-
-    b={}
-    for m in preds:
-        pred = preds[m]
-        binders = pred.getPromiscuousBinders(n=n)
-        if len(binders)>0:
-            binders = binders.sort('pos')
-            b[m] = binders
-    return b'''
-
 def summarize(data):
     """Summarise prediction data"""
 
@@ -247,91 +227,18 @@ def summarize(data):
                                         len(proteins),len(allelegrps)))
     return
 
-'''def getBindersfromPath(method, path, n=3, cutoff_method='default',
-                       perc=0.98, promiscuous=True):
+def get_cutoffs(pred, cutoff=5):
     """
-    Get all binders from a set of binding results stored in a directory.
-
-    Args:
-        path: The file path with all the binding prediction results
-        cutoff_method: Prediction method used to create the data
-        n: minimum number of alleles if using promiscuous binders
-        perc: percentile for cutoff(s)
-        promiscuous: whether to return only promiscuous binders
-
-    Returns:
-        A dataframe with all binders matching the required critieria
+    Get cutoffs
     """
 
-    binders = []
-    P = getPredictor(method)
-    files = glob.glob(os.path.join(path, '*.csv'))
-
-    #get allele specific cutoffs
-    if cutoff_method == 'default':
-        P.allelecutoffs = getCutoffs(P, path, perc, overwrite=True)
-
-    key = P.scorekey
-    for f in files:
-        df = pd.read_csv(f, index_col=0)
-        if not key in df.columns:
-            continue
-        #print (df[:3])
-        if promiscuous== True:
-            b = P.getPromiscuousBinders(data=df, n=n,
-                                        cutoff_method=cutoff_method)
-        else:
-            b = P.getBinders(data=df)
-        #print b[:5]
-        binders.append(b)
-    result = pd.concat(binders)
-    return result
-
-def getCutoffs(predictor, path=None, perc=0.98, overwrite=True):
-    """
-    Estimate global allele-based cutoffs for predictions.
-    Args:
-        predictor: A Predictor object with data loaded optionally
-        path: An optional file path with the binding prediction results
-        method: Prediction method
-        perc: percentile level of score to select cutoffs
-    Returns:
-        A dictionary with cutoff values per allele
-    """
-
-    if path != None:
-        binsfile = os.path.join(path, 'quantiles.csv')
-    else:
-        binsfile = ''
-    if not os.path.exists(binsfile) or overwrite==True:
-        bins = getScoreDistributions(predictor, path)
-        if bins is None:
-            return {}
-        if binsfile != '':
-            bins.to_csv(binsfile, float_format='%.3f')
-    else:
-        bins = pd.read_csv(binsfile, index_col=0)
-    cutoffs = dict(bins.ix[perc])
-    return cutoffs
-
-def getScoreDistributions(predictor, path=None):
-    """Get global score distributions and save quantile values for each allele
-       Assumes all the files in path represent related proteins"""
-
-    if path != None:
-        predictor.load(path=path, file_limit=500)
-    df = predictor.data
-    if df is None or len(df)==0:
-        print ('no prediction data loaded')
-        return
-    key = predictor.scorekey
-    x = df.pivot_table(index='peptide', columns='allele', values=key)
-    percs = np.arange(0.01,1,0.01)
-    bins = x.quantile(percs)
-    #reverse if best values are lower
-    if predictor.operator == '<':
-        bins.index = pd.Series(bins.index).apply(lambda x: 1-x)
-    return bins'''
+    q = (1-cutoff/100.) #score quantile value
+    cuts={}
+    data = pred.data
+    for a,g in data.groupby('allele'):
+        cuts[a] = g[pred.scorekey].quantile(q=q)
+    cuts = pd.Series(cuts)
+    return cuts
 
 def getStandardMHCI(name):
     """Taken from iedb mhc1 utils.py"""
@@ -359,6 +266,41 @@ def getDQPList(a):
 def getStandardMHCII(x):
     return 'HLA'+x.replace('_','*')
 
+def comparePredictors(p1, p2, by='allele', cutoff=5, n=2):
+    """
+    Compare predictions from 2 different predictors.
+    Args:
+        p1, p2: predictors with prediction results for the same
+        set of sequences andalleles
+        by: how to group the correlation plots
+    """
+
+    import pylab as plt
+    import seaborn as sns
+    a = p1.promiscuousBinders(n=n, cutoff=cutoff)
+    b = p2.promiscuousBinders(n=n, cutoff=cutoff)
+    f = utilities.venndiagram([a.peptide, b.peptide],[p1.name,p2.name],colors=('y','b'))
+    f.suptitle('common\npromiscuous binders n=%s' %n)
+    plt.tight_layout()
+
+    for p in [p1,p2]:
+        if not 'score' in p.data.columns:
+            p.data['score'] = p.data[p.scorekey]
+
+    #b1 = p1.getBinders(perc=perc)
+    #b2 = p2.getBinders(perc=perc)
+    #o = analysis.getOverlaps(b1,b2)
+    #merge data for plotting score correlation
+    df = pd.merge(p1.data, p2.data, on=['peptide','allele','name','pos'])
+    g = sns.lmplot(x='score_x', y='score_y', data=df, col=by, ci=None, #robust=True,
+               hue=by, col_wrap=3, markers='o', scatter_kws={'alpha':0.5,'s':30})
+
+    g.set_axis_labels(p1.name, p2.name)
+    #g.set(xlim=(0, 1))
+    #g.set(ylim=(0, 1))
+    #plotting.plot_tracks([pi,pf],'MAP_0005',n=2,perc=0.97,legend=True,colormap='jet')
+    return
+
 class Predictor(object):
     """Base class to handle generic predictor methods, usually these will
        wrap methods from other modules and/or call command line predictors.
@@ -371,7 +313,7 @@ class Predictor(object):
         self.operator = '<'
         self.rankascending = 1
         #can specify per allele cutoffs here
-        self.allelecutoffs = {}
+        self.allelecutoffs = None
         return
 
     def __repr__(self):
@@ -417,59 +359,6 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    '''def getPromiscuousBinders(self, n=2, cutoff_method='default', perc=0.98,
-                              data=None, name=None):
-        """
-        Get top scoring binders present in at least n alleles.
-        Args:
-            n: number of alleles
-            cutoff method: method to use for cutoffs - default or simple
-            data: a dataframe of prediction data, optional
-            name: name of the proteins to use, required if data contains multiple proteins
-            perc: percentile cutoff, applied per allele
-        Returns:
-            pandas DataFrame with binders
-        """
-
-        if data is None:
-            data = self.data
-        #get binders using the provided or current prediction data
-        b = self.getBinders(cutoff_method, data=data, name=name, perc=perc)
-        if b is None or len(b) == 0:
-            return pd.DataFrame()
-        grps = b.groupby(['peptide','pos','name'])
-        if self.operator == '<':
-            func = min
-            skname = 'min'
-        else:
-            func = max
-            skname = 'max'
-        s = grps.agg({'allele':pd.Series.count, self.scorekey:[func,np.mean],
-                      'rank': np.median})
-        s.columns = s.columns.get_level_values(1)
-        s.rename(columns={skname: self.scorekey, 'count': 'alleles'}, inplace=True)
-
-        s = s[s.alleles>=n]
-        s = s.reset_index()
-        p = list(data.groupby('allele'))[0][1]
-        p = p.drop(['allele',self.scorekey],1)
-
-        if not s.empty:
-            #merge frequent binders with original data to retain fields
-            final = pd.merge(p,s,how='right',on=['peptide','pos','name'])
-            l = getLength(b)
-            grpkey = 'core'
-            if not grpkey in final.columns:
-                final[grpkey] = final.peptide
-            g = final.groupby(grpkey)
-            final = g.agg({self.scorekey:max, 'name':first, 'peptide': first,
-                        'pos':first, 'alleles':first, 'mean':first, 'rank':first})
-            final = final.reset_index().sort_values('pos')
-            #print final
-            return final
-        else:
-            return pd.DataFrame()'''
-
     def getBinders(self, name=None, cutoff=5, value='score', data=None):
         """
         Get the top scoring binders. If using scores cutoffs are derived
@@ -500,6 +389,7 @@ class Predictor(object):
             for a,g in data.groupby('allele'):
                 cuts[a] = g[value].quantile(q=q)
             cuts = pd.Series(cuts)
+            #cuts = get_cutoffs(self, cutoff)
             res=[]
             for a,g in data.groupby('allele'):
                 #print cuts[a]
@@ -935,6 +825,7 @@ class NetMHCIIPanPredictor(Predictor):
 
 class IEDBMHCIPredictor(Predictor):
     """Using IEDB tools method, requires iedb-mhc1 tools"""
+
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc1'
