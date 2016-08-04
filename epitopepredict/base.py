@@ -196,12 +196,7 @@ def getSequence(seqfile):
     sequence = recs.seq.tostring()
     return sequence
 
-def getSequencefromPredictionData(data):
-    """Guess original sequence from predictions dataframe"""
-
-    return seq
-
-def getNearest(df):
+def get_nearest(df):
     """Get nearest binder"""
 
     grps = df.groupby('name')
@@ -302,7 +297,7 @@ def compare_predictors(p1, p2, by='allele', cutoff=5, n=2):
     #plotting.plot_tracks([pi,pf],'MAP_0005',n=2,perc=0.97,legend=True,colormap='jet')
     return
 
-def binders_allele_summary(pred, peptides, name=None, cutoff=5, values='score'):
+def reshape_data(pred, peptides=None, name=None, values='score'):
     """
     Create summary table per binder/allele with cutoffs applied.
     Args:
@@ -312,21 +307,15 @@ def binders_allele_summary(pred, peptides, name=None, cutoff=5, values='score'):
     """
 
     df = pred.data
-    idx = ['name','peptide']
+    idx = ['name','pos','peptide']
     if name != None:
         df = df[df.name==name]
-        idx = 'peptide'
-    x = df[df.peptide.isin(peptides)]
-    if values == 'score':
-        cuts = get_cutoffs(pred, cutoff)
-    else:
-        values = 'rank'
-        cuts = cutoff
-    p = x.pivot_table(index=idx, columns='allele', values=values)
+        idx = ['pos','peptide']
+    if peptides is not None:
+        df = df[df.peptide.isin(peptides)]
+    p = df.pivot_table(index=idx, columns='allele', values=values)
     p = p.round(3)
-
     #get all in p > cutoff for that allele
-    p[p < cuts] = np.nan
     order = p.mean(1).sort_values()
     p = p.reindex_axis(order.index, axis=0)
     return p
@@ -346,14 +335,15 @@ def plot_summary_heatmap(p, kind='default', name=None):
     ax = sns.heatmap(p, cbar_kws={"shrink": .5})
     #g = sns.clustermap(p, figsize=(10,h), standard_scale=1)#, col_cluster=False)
     #plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
-    if name!= None:
+    if name != None:
         ax.set_title(name)
     return ax
 
-def format_summary_table(p):
-    """Use pandas style to format dataframe"""
-    #p.fillna('', inplace=True)
-    return p.style.background_gradient(cmap='Reds', high=.2).highlight_null('white')
+def protein_summary(pred, peptides, name):
+    """formatted protein summary table"""
+
+    x = reshape_data(pred, peptides, name=name)
+    return x.style.background_gradient(cmap='Reds', high=.2).highlight_null('white')
 
 def summarize_by_protein(pred, pb):
     """Heatmaps or tables of binders per protein/allele"""
@@ -385,8 +375,9 @@ class Predictor(object):
             n = len(self.data.name.unique())
             return '%s predictor with results in %s proteins' %(self.name, n)
 
-    def predict(self, sequence, peptide):
-        """Does the actual scoring. Must override this.
+    def predict(self, sequence, peptide, length=9, overlap=1,
+                    allele='', name=''):
+        """Does the actual scoring of a sequence. Should be overriden.
            Should return a pandas DataFrame"""
         return
 
@@ -541,13 +532,17 @@ class Predictor(object):
         #print cores
         return cores
 
-    def predictPeptides(self, peptides, length=11,
-                        alleles=[], save=False):
-        """Predict a set of individual peptides"""
+    def predictSequences(self, sequences, alleles=[]):
+        """
+        Predict a set of arbitary sequences in a dictionary or dataframe. These are treated
+        as single peptides and not split into n-mers.
+        """
 
+        if type(peptides) is dict:
+            seqs = pd.DataFrame(sequences, orient='index')
         results=[]
-        for seq in peptides:
-            print (seq)
+        for i,seq in seqs:
+            print (i)
             if len(seq)<length: continue
             res=[]
             for a in alleles:
@@ -562,7 +557,8 @@ class Predictor(object):
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
                         length=11, overlap=1, names=None, alleles=[],
                         path=None, overwrite=True):
-        """Get predictions for a set of proteins and/or over multiple alleles
+        """
+        Get predictions for a set of proteins and/or over multiple alleles
           Args:
             recs: protein sequences in a pandas DataFrame
             length: length of peptides to predict
@@ -572,7 +568,8 @@ class Predictor(object):
             for all proteins are stored in the data attribute of the predictor
             overwrite: over write existing protein files in path if present
           Returns:
-            a dataframe of predictions over multiple proteins"""
+            a dataframe of predictions over multiple proteins
+        """
 
         if type(alleles) is str:
             alleles = [alleles]
@@ -815,6 +812,7 @@ class NetMHCIIPanPredictor(Predictor):
         return data
 
     def prepareData(self, df, name):
+        """Prepare netmhciipan results as a dataframe"""
 
         df = df.convert_objects(convert_numeric=True)
         #df = df.apply(pd.to_numeric)#, errors='ignore')

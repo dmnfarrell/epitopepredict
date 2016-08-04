@@ -247,7 +247,7 @@ def plot_tracks(preds, name, n=2, cutoff=5, value='score',
     #plt.tight_layout()
     return ax
 
-def mpl_plot_regions(coords, ax, color='red', label='', alpha=0.6):
+def plot_regions(coords, ax, color='red', label='', alpha=0.6):
     """Highlight regions in a prot binder plot"""
 
     from matplotlib.patches import Rectangle
@@ -384,7 +384,7 @@ def plot_multiple(preds, names, kind='tracks', regions=None, genome=None, **kwar
             #print genome[genome.locus_tag==prot]
             coords = (list(r.start),list(r.end-r.start))
             coords = zip(*coords)
-            mpl_plot_regions(coords, ax, color='gray')
+            plot_regions(coords, ax, color='gray')
         #labels = list(r.peptide)
         #plotting.mpl_draw_labels(labels, coords, ax)
         if genome is not None:

@@ -44,6 +44,31 @@ def isoelectricPoint(df):
         return X.isoelectric_point()
     return df.apply( lambda r: getpi(r.peptide),1)
 
+def peptide_properties(df):
+    """Find hydrophobicity and net charge for peptides"""
+
+    reload(peptides)
+    df['hydro'] = analysis.getAAContent(df)
+    df['net_charge'] = analysis.netCharge(df)
+    df['label'] = 'clusters'
+    #we use a set of known mtb T cell epitopes from IEDB to compare with.
+    iedb_tcell = pd.read_csv('iedb_myco_tcell.csv')
+    iedb_tcell['hydro'] = analysis.getAAContent(iedb_tcell)
+    iedb_tcell['net_charge'] = analysis.netCharge(iedb_tcell)
+    iedb_tcell['label'] = 'IEDB T cell epitopes'
+
+    x = pd.concat([df,iedb_tcell])#.fillna(0)
+    bins=np.linspace(min(x.hydro),max(x.hydro),15)
+    ax=x.reset_index().pivot('index','label','hydro').plot.hist(bins=bins, figsize=(8,4),lw=1.2,
+                                                                 subplots=True,cmap='Paired')
+    plt.suptitle('hydrophobic fraction')
+    bins=np.linspace(min(x.net_charge),max(x.net_charge),15)
+    ax=x.reset_index().pivot('index','label','net_charge').plot.hist(bins=bins, figsize=(8,4),lw=1.2,
+                                                                 subplots=True,cmap='Paired')
+    plt.suptitle('net charge')
+    df = df.drop('label',1)
+    return df
+
 def _center_nmer(x, n):
     """Get n-mer sequence for a peptide centered in the middle.
     This should be applied to a dataframe per row."""
