@@ -20,7 +20,7 @@ defaultcolors = {'tepitope':'green','netmhciipan':'orange',
            'iedbmhc1':'blue','iedbmhc2':'pink','threading':'purple'}
 
 def plot_heatmap(df, ax=None, figsize=(6,6), **kwargs):
-    """Plot a heatmap - move to plotting?"""
+    """Plot a generic heatmap """
 
     if ax==None:
         fig=plt.figure(figsize=figsize)

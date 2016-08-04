@@ -240,7 +240,7 @@ def get_cutoffs(pred, cutoff=5):
     cuts = pd.Series(cuts)
     return cuts
 
-def getStandardMHCI(name):
+def get_standard_mhc1(name):
     """Taken from iedb mhc1 utils.py"""
 
     temp = name.strip().split('-')
@@ -256,17 +256,18 @@ def getDRBList(a):
     s = s.apply(lambda x:'HLA-'+x.replace('_','*'))
     return list(s)
 
-def getDQPList(a):
+def get_dqp_list(a):
     """Get DRB list in standard format"""
+
     s = pd.Series(a)
     s = s[s.str.contains('DQ')]
     s = s.apply(lambda x:x.replace('_','*'))
     return list(s)
 
-def getStandardMHCII(x):
+def get_standard_mhc2(x):
     return 'HLA'+x.replace('_','*')
 
-def comparePredictors(p1, p2, by='allele', cutoff=5, n=2):
+def compare_predictors(p1, p2, by='allele', cutoff=5, n=2):
     """
     Compare predictions from 2 different predictors.
     Args:
@@ -300,6 +301,66 @@ def comparePredictors(p1, p2, by='allele', cutoff=5, n=2):
     #g.set(ylim=(0, 1))
     #plotting.plot_tracks([pi,pf],'MAP_0005',n=2,perc=0.97,legend=True,colormap='jet')
     return
+
+def binders_allele_summary(pred, peptides, name=None, cutoff=5, values='score'):
+    """
+    Create summary table per binder/allele with cutoffs applied.
+    Args:
+        pred: predictor with data
+        cutoff: percentile cutoff
+        n: number of alleles
+    """
+
+    df = pred.data
+    idx = ['name','peptide']
+    if name != None:
+        df = df[df.name==name]
+        idx = 'peptide'
+    x = df[df.peptide.isin(peptides)]
+    if values == 'score':
+        cuts = get_cutoffs(pred, cutoff)
+    else:
+        values = 'rank'
+        cuts = cutoff
+    p = x.pivot_table(index=idx, columns='allele', values=values)
+    p = p.round(3)
+
+    #get all in p > cutoff for that allele
+    p[p < cuts] = np.nan
+    order = p.mean(1).sort_values()
+    p = p.reindex_axis(order.index, axis=0)
+    return p
+
+def plot_summary_heatmap(p, kind='default', name=None):
+    """
+    Plot heatmap of binders using summary dataframe.
+    """
+
+    import pylab as plt
+    import seaborn as sns
+    sns.set_context("notebook", font_scale=1.2)
+    plt.rcParams['savefig.dpi']=100
+    h = int(2 + .2 *len(p))
+    #print h
+    plt.figure(figsize=(10,h))
+    ax = sns.heatmap(p, cbar_kws={"shrink": .5})
+    #g = sns.clustermap(p, figsize=(10,h), standard_scale=1)#, col_cluster=False)
+    #plt.setp(g.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+    if name!= None:
+        ax.set_title(name)
+    return ax
+
+def format_summary_table(p):
+    """Use pandas style to format dataframe"""
+    #p.fillna('', inplace=True)
+    return p.style.background_gradient(cmap='Reds', high=.2).highlight_null('white')
+
+def summarize_by_protein(pred, pb):
+    """Heatmaps or tables of binders per protein/allele"""
+
+    for i,g in pb.groupby('name'):
+        x = binders_allele_summary(pred, g.peptide, values='score', name=i)
+        ax=plot_summary_heatmap(x, name=i)
 
 class Predictor(object):
     """Base class to handle generic predictor methods, usually these will
@@ -896,7 +957,7 @@ class IEDBMHCIPredictor(Predictor):
         afile = os.path.join(iedbmhc1path, 'data/MHCI_mhcibinding20130222/consensus/model_list.txt')
         df = pd.read_csv(afile,sep='\t',names=['name','x'])
         alleles = list(df['name'])
-        alleles = sorted(list(set([getStandardMHCI(i) for i in alleles])))
+        alleles = sorted(list(set([get_standard_mhc1(i) for i in alleles])))
         return alleles
 
 class IEDBMHCIIPredictor(Predictor):

@@ -633,21 +633,6 @@ def findConservedPeptide(peptide, recs):
     res = s.count()
     return s
 
-'''def getPredictions(path,tag,method='tepitope',q=0.96):
-    """Get predictions from file system"""
-
-    q=round(q,2)
-    #preds = OrderedDict()
-    cutoffs = {}
-    filename = os.path.join(path, tag+'.mpk')
-    if not os.path.exists(filename):
-        return
-    df = pd.read_msgpack(filename)
-    pred = base.getPredictor(name=method, data=df)
-    cutoffs = pred.allelecutoffs = getCutoffs(path, method, q)
-    pred = pred
-    return pred'''
-
 def test():
     gname = 'ebolavirus'
     label = 'test'
