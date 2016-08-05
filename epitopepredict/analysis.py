@@ -187,15 +187,7 @@ def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
     print ('%s with overlapping binders' %len(result[result[label]>0]))
     return result
 
-def getLocalOrthologs(seq, db):
-    """Get alignment for a protein using local blast db"""
-
-
-    result_handle = open("my_blast.xml")
-    df = sequtils.getBlastResults(result_handle)
-    return df
-
-def getOrthologs(seq, db=None, expect=10, hitlist_size=400, equery=None,
+def get_orthologs(seq, db=None, expect=10, hitlist_size=400, equery=None,
                  email=''):
     """
     Fetch orthologous sequences using online blast and return the records
@@ -240,7 +232,7 @@ def getOrthologs(seq, db=None, expect=10, hitlist_size=400, equery=None,
     df = df[df['perc_ident']!=100]
     return df
 
-def alignBlastResults(df, aln=None, idkey='accession', productkey='definition'):
+def align_blast_results(df, aln=None, idkey='accession', productkey='definition'):
     """
     Get gapped alignment from blast results using muscle aligner.
     """
@@ -292,7 +284,7 @@ def find_conserved_sequences(seqs, alnrows):
     res = s.count()
     return s
 
-def epitopeConservation(peptides, alnrows=None, proteinseq=None, blastresult=None,
+def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=None,
                         blastdb=None, perc_ident=50, equery='srcdb_refseq[Properties]'):
     """
     Find and visualise conserved peptides in a set of aligned sequences.

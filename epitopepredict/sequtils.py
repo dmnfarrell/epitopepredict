@@ -99,7 +99,7 @@ def ETETree(seqs, ref, metric):
     t.show(tree_style=ts)
     return
 
-def localBlast(database, query, output=None, maxseqs=10, evalue=0.001,
+def local_blast(database, query, output=None, maxseqs=10, evalue=0.001,
                     compress=False):
     """Blast a local database"""
 
@@ -176,7 +176,7 @@ def blastSequences(database, seqs, labels=None, maxseqs=10):
     for seq, name in zip(seqs,labels):
         rec = SeqRecord(Seq(seq),id='temp')
         SeqIO.write([rec], 'tempseq.fa', "fasta")
-        localBlast(database, 'tempseq.fa', maxseqs=maxseqs)
+        local_blast(database, 'tempseq.fa', maxseqs=maxseqs)
         df = getBlastResults(filename='tempseq.xml')
         df['name'] = name
         res.append(df)
@@ -189,7 +189,7 @@ def testblast():
     print (df[:5])
     return
 
-def fasta2Dataframe(infile):
+def fasta_to_dataframe(infile):
     """Get fasta proteins into dataframe"""
 
     recs = SeqIO.parse(infile,'fasta')
@@ -217,7 +217,7 @@ def getCDS(df):
     cdstrans = cds[cds.translation.notnull()]
     return cdstrans
 
-def fastaFormatfromFeature(feature):
+def fasta_format_from_feature(feature):
     """Get fasta formatted sequence from a genome feature"""
 
     name = feature.qualifiers['locus_tag'][0]
@@ -270,7 +270,7 @@ def getORFs(sequence, treshold):
 
     return len(orfs), orfs
 
-def dataframe2Fasta(df, seqkey='translation', idkey='locus_tag',
+def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
                      descrkey='description',
                      outfile='out.faa'):
     """Genbank features to fasta file"""
@@ -283,7 +283,7 @@ def dataframe2Fasta(df, seqkey='translation', idkey='locus_tag',
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
 
-def genbank2Dataframe(infile, cds=False, quiet=True):
+def genbank_to_dataframe(infile, cds=False, quiet=True):
     """Get genome records from a genbank file into a dataframe
       returns a dataframe with a row for each cds/entry"""
 
@@ -312,7 +312,7 @@ def genbank2Dataframe(infile, cds=False, quiet=True):
     df = checkTags(df)
     if quiet == False:
         print('---- %s summary ----' %infile)
-        s = genbankSummary(df)
+        s = genbank_summary(df)
         for i in s:
             print (i,':',s[i])
     if cds == True:
@@ -331,7 +331,7 @@ def checkTags(df):
     df['locus_tag'] = df.apply(replace,1)
     return df
 
-def genbankSummary(df):
+def genbank_summary(df):
     """Genbank dataframe summary"""
 
     def hypo(val):
@@ -377,7 +377,7 @@ def findkeyword(f):
     l = list(OrderedDict.fromkeys(l))
     return l
 
-def indexGenbankFeatures(gb_record, feature_type, qualifier):
+def index_genbank_features(gb_record, feature_type, qualifier):
     """Index features by qualifier value for easy access"""
 
     answer = dict()
@@ -396,7 +396,7 @@ def indexGenbankFeatures(gb_record, feature_type, qualifier):
                         answer[value] = index
     return answer
 
-def getGenesbyLocation(genome, feature, within=20):
+def get_genes_by_location(genome, feature, within=20):
     """Gets all featues within a given distance of a gene"""
 
     start = feature.location.start
@@ -415,7 +415,7 @@ def getGenesbyLocation(genome, feature, within=20):
     F = [i[0] for i in sorted(F, key=operator.itemgetter(1))]
     return F
 
-def getTranslation(feature, genome, cds=True):
+def get_translation(feature, genome, cds=True):
     """Check the translation of a cds feature"""
 
     trtable = "Bacterial"
@@ -430,7 +430,7 @@ def getTranslation(feature, genome, cds=True):
         protein = ''
     return protein, e
 
-def pairwiseAlignment(rec1,rec2):
+def pairwise_alignment(rec1,rec2):
     from Bio import pairwise2
     from Bio.SubsMat import MatrixInfo as matlist
     matrix = matlist.blosum62
@@ -439,7 +439,7 @@ def pairwiseAlignment(rec1,rec2):
     alns = pairwise2.align.localds(rec1, rec2, matrix, gap_open, gap_extend)
     return alns
 
-def clustalAlignment(filename=None, seqs=None, command="clustalw"):
+def clustal_alignment(filename=None, seqs=None, command="clustalw"):
     """Align 2 sequences with clustal"""
 
     if filename == None:
@@ -453,7 +453,7 @@ def clustalAlignment(filename=None, seqs=None, command="clustalw"):
     align = AlignIO.read(name+'.aln', 'clustal')
     return align
 
-def needleAlignment(seq1,seq2,outfile='needle.txt'):
+def needle_alignment(seq1,seq2,outfile='needle.txt'):
     """Align 2 sequences with needle"""
 
     SeqIO.write(seq1, 'alpha.faa', "fasta")
@@ -465,7 +465,7 @@ def needleAlignment(seq1,seq2,outfile='needle.txt'):
     align = AlignIO.read('needle.txt',"emboss")
     return align
 
-def muscleAlignment(filename=None, seqs=None):
+def muscle_alignment(filename=None, seqs=None):
     """Align 2 sequences with muscle"""
 
     if filename == None:
@@ -478,7 +478,7 @@ def muscleAlignment(filename=None, seqs=None):
     align = AlignIO.read(name+'.txt', 'fasta')
     return align
 
-def showAlignment(aln, diff=False, offset=0):
+def show_alignment(aln, diff=False, offset=0):
     """Show diff alignment"""
 
     ref=aln[0]
@@ -501,7 +501,7 @@ def showAlignment(aln, diff=False, offset=0):
             print (('%20s' %a.id), a.seq[start:end])
     return
 
-def getIdentity(aln):
+def get_identity(aln):
     """Get sequence identity of alignment for overlapping region only"""
 
     j=0
@@ -523,7 +523,7 @@ def getIdentity(aln):
     percent = round(100.0*i/overlap,1)
     return percent, overlap
 
-def formatAlignment(aln):
+def format_alignment(aln):
     t=''
     for i in range(0,len(aln[0]),80):
         for a in aln:
@@ -531,13 +531,13 @@ def formatAlignment(aln):
         t+='\n'
     return t
 
-def getAlignment(f1,f2,genome1,genome2,checkcds=True):
+'''def get_alignment(f1,f2,genome1,genome2,checkcds=True):
     p1,e1 = getTranslation(f1, genome1, checkcds)
     p2,e2 = getTranslation(f2, genome2, checkcds)
     if len(p1) == 0 or len(p2) == 0:
         return None
     aln = needleAlignment(SeqRecord(p1,'a'),SeqRecord(p2,'b'))
-    return aln
+    return aln'''
 
 def alignment2Dataframe(aln):
     """Sequence alignment to dataframe"""
@@ -546,9 +546,47 @@ def alignment2Dataframe(aln):
     df = pd.DataFrame(alnrows,columns=['name','seq','description'])
     return df
 
-def getFeatureQualifier(f, qualifier):
+def get_feature_qualifier(f, qualifier):
     if f.qualifiers.has_key(qualifier):
         fq = f.qualifiers[qualifier][0].lower()
     else:
         fq = None
     return fq
+
+def get_sequence(genome, name):
+    return genome[genome.locus_tag==name].translation.iloc[0]
+
+def fetch_protein_sequences(searchterm, filename='found.fa' ):
+    """
+    Fetch protein seqs using ncbi esearch and save results to a
+    fasta file.
+    Args:
+        searchterm: entrez search term
+        filename: fasta file name to save results
+    Returns:
+        sequence records as a dataframe
+    """
+
+    from Bio import Entrez
+    from Bio import SeqIO
+    Entrez.email = "A.N.Other@example.com"
+
+    handle = Entrez.esearch(db="protein", term=searchterm, retmax=200)
+    record = Entrez.read(handle)
+    handle.close()
+    #fetch the sequences
+    handle = Entrez.efetch(db="protein", rettype="fasta", retmode="text", id=record['IdList'])
+    seq_record = SeqIO.parse(handle, "fasta")
+    recs = [r for r in seq_record]
+    handle.close()
+    outfile = open(filename, "w")
+    SeqIO.write(recs, outfile, "fasta")
+
+    df = fasta2Dataframe(filename)
+    #remove redundancy
+    df = df.drop_duplicates('translation')
+    df = df[-df.translation.str.contains('X')]
+    print ('%s non-redundant sequences retrieved' %len(df))
+    #save as fasta file
+    dataframe2Fasta(df, outfile=filename)
+    return recs

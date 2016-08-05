@@ -575,6 +575,7 @@ class Predictor(object):
             alleles = [alleles]
         elif type(alleles) is pd.Series:
             alleles = alleles.tolist()
+        #self.check_alleles(alleles)
         if len(alleles) == 0:
             print ('no alleles provided')
             return
@@ -783,6 +784,14 @@ class Predictor(object):
     def getAlleles(self):
         """Get available alleles - override"""
         return []
+
+    def check_alleles(self, alleles):
+        a = self.getAlleles()
+        found = list((set(a) & set(alleles)))
+        if len(found) == 0:
+            return
+        else:
+            return 1
 
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
