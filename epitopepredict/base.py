@@ -1162,7 +1162,7 @@ class MHCFlurryPredictor(Predictor):
         self.sequence = sequence
         from mhcflurry import predict
         if peptides == None:
-            peptides, s = peptutils.createFragments(seq=sequence,
+            peptides, s = peptutils.create_fragments(seq=sequence,
                                                     length=length, overlap=overlap)
         scores=[]
         pos=0

@@ -20,7 +20,7 @@ AAcodes3 ={'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
 'R':'ARG', 'K':'LYS', 'S':'SER', 'T':'THR', 'M':'MET', 'A':'ALA', \
 'G':'GLY', 'P':'PRO', 'C':'CYS'}
 
-def createRandomSequences(size=100,length=9):
+def create_random_sequences(size=100,length=9):
     """Create library of all possible peptides given length"""
     aa = list(IUPAC.IUPACProtein.letters)
     vals=[]
@@ -32,7 +32,7 @@ def createRandomSequences(size=100,length=9):
         vals.append(seq)
     return vals
 
-def createRandomPeptides(size=100,length=9):
+def create_random_peptides(size=100,length=9):
     """Create random peptide structures of given length"""
 
     seqs = createRandomSequences(size, length)
@@ -42,7 +42,7 @@ def createRandomPeptides(size=100,length=9):
         files.append(sfile)
     return files
 
-def createFragments(protfile=None, seq=None, length=9, overlap=1, quiet=True):
+def create_fragments(protfile=None, seq=None, length=9, overlap=1, quiet=True):
     """generate peptide fragments from a sequence"""
 
     if protfile != None:
@@ -60,10 +60,10 @@ def createFragments(protfile=None, seq=None, length=9, overlap=1, quiet=True):
             cw.writerow([f])
     return frags, seq
 
-def createProteinFragments(protfile, seqrange='', length=9):
-    """Create peptide fragments for a protein"""
+def create_protein_fragments(protfile, seqrange='', length=9):
+    """Create peptide structures for a protein sequence"""
 
-    seqs, seqstr = createFragments(protfile, length=length)
+    seqs, seqstr = create_fragments(protfile, length=length)
     filenames = []
     if seqrange != '':
         lims = utilities.getListfromConfig(seqrange)
@@ -75,7 +75,7 @@ def createProteinFragments(protfile, seqrange='', length=9):
         filenames.append(fname)
     return filenames
 
-def getAllFragments(exp, length=11):
+def get_all_fragments(exp, length=11):
 
     import pandas as pd
     P=pd.read_csv(exp)
@@ -90,7 +90,7 @@ def getAllFragments(exp, length=11):
     print ('got %s fragments' %len(allseqs))
     return allseqs
 
-def getAASubstitutions(template):
+def get_AAsubstitutions(template):
     """Get all the possible sequences from substituting every AA
       into the given sequence at each position. This gives a total of
        19aa * n positions """
@@ -112,7 +112,7 @@ def getAASubstitutions(template):
         matrix.append(x)
     return seqs, matrix
 
-def getAAFraction(seq, amino_acids=None):
+def get_AAfraction(seq, amino_acids=None):
     """Get fraction of give amino acids in a sequence"""
 
     X = ProteinAnalysis(seq)
@@ -128,7 +128,7 @@ def getAAFraction(seq, amino_acids=None):
     frac = round(float(count)/len(seq),2)
     return frac
 
-def netCharge(seq):
+def net_charge(seq):
     """Get net charge of a peptide sequence"""
 
     X = ProteinAnalysis(seq)

@@ -81,7 +81,7 @@ def getPSSMScore(seq, pssm):
 def scorePeptide(seq, pssm):
     """Score a single sequence in 9-mer frames"""
 
-    nmers, s = peptutils.createFragments(seq=seq, length=9)
+    nmers, s = peptutils.create_fragments(seq=seq, length=9)
     scores=[]
     for f in nmers:
         sc = getPSSMScore(f, pssm)
@@ -94,7 +94,7 @@ def getScores(pssm, sequence=None, peptide=None, length=11, overlap=1):
     """Score multiple fragments of a sequence in seperate fragments"""
 
     if peptide == None:
-        peptide, s = peptutils.createFragments(seq=sequence, length=length, overlap=overlap)
+        peptide, s = peptutils.create_fragments(seq=sequence, length=length, overlap=overlap)
     scores=[]
     pos=0
     for p in peptide:

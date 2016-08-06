@@ -53,7 +53,7 @@ def drawGenomeMap(infile, filename=None):
     gdd.write(filename, "PNG")
     return filename
 
-def distanceTree(seqfile=None, seqs=None, ref=None):
+def distance_tree(seqfile=None, seqs=None, ref=None):
     """Phylo tree for sequences"""
 
     aln = clustalAlignment(seqfile, seqs)
@@ -67,7 +67,7 @@ def distanceTree(seqfile=None, seqs=None, ref=None):
     Phylo.draw(tree)
     return
 
-def ETETree(seqs, ref, metric):
+def ETE_tree(seqs, ref, metric):
     """Tree showing alleles"""
 
     from ete2 import Tree,PhyloTree,TreeStyle,NodeStyle
@@ -119,7 +119,7 @@ def local_blast(database, query, output=None, maxseqs=10, evalue=0.001,
         utilities.compress(output, remove=True)
     return
 
-def parseBlastRec(rec):
+def parse_blast_record(rec):
     """Parse blast record alignment(s)"""
 
     if len(rec.alignments) == 0 : print('no alignments')
@@ -134,7 +134,7 @@ def parseBlastRec(rec):
                     hsp.positives, rec.query_length,hsp.sbjct])
     return recs
 
-def getBlastResults(handle=None, filename=None, n=80, local=True):
+def get_blast_results(handle=None, filename=None, n=80, local=True):
     """Get blast results into dataframe"""
 
     from Bio.Blast import NCBIXML
@@ -147,7 +147,7 @@ def getBlastResults(handle=None, filename=None, n=80, local=True):
     blastrecs = NCBIXML.parse(handle)
     rows=[]
     for rec in blastrecs:
-        r = parseBlastRec(rec)
+        r = parse_blast_record(rec)
         rows.extend(r)
     df = pd.DataFrame(rows, columns=['subj','score','expect','identity',
                             'positive','query_length','sequence'])
@@ -160,7 +160,7 @@ def getBlastResults(handle=None, filename=None, n=80, local=True):
     df['perc_ident'] = df.identity/df.query_length*100
     return df
 
-def blastSequences(database, seqs, labels=None, maxseqs=10):
+def blast_sequences(database, seqs, labels=None, maxseqs=10):
     """
     Blast a set of sequences to a local blast database
     Args:
@@ -177,12 +177,12 @@ def blastSequences(database, seqs, labels=None, maxseqs=10):
         rec = SeqRecord(Seq(seq),id='temp')
         SeqIO.write([rec], 'tempseq.fa', "fasta")
         local_blast(database, 'tempseq.fa', maxseqs=maxseqs)
-        df = getBlastResults(filename='tempseq.xml')
+        df = get_blast_results(filename='tempseq.xml')
         df['name'] = name
         res.append(df)
     return pd.concat(res)
 
-def testblast():
+def test_blast():
     database = 'all_genomes'
     f='test.faa'
     df=getBlastResults(filename='test.xml.gz')
@@ -199,7 +199,7 @@ def fasta_to_dataframe(infile):
     df['type'] = 'CDS'
     return df
 
-def convertSequenceFormat(infile, outformat='embl'):
+def convert_sequence_format(infile, outformat='embl'):
 
     informat = os.path.splitext(infile)[1][1:]
     if informat == 'fa':
@@ -228,47 +228,6 @@ def fasta_format_from_feature(feature):
                 description=feature.qualifiers['product'][0])
     fastafmt = rec.format("fasta")
     return fastafmt
-
-def getORFs(sequence, treshold):
-
-    from Bio.Data import CodonTable
-    start_codon_index = 0
-    end_codon_index = 0
-    start_codon_found = False
-    btable = CodonTable.unambiguous_dna_by_name["Bacterial"]
-    start_codons = btable.start_codons
-    stop_codons = btable.stop_codons
-    orfs = []
-
-    for j in range(0, 3):
-        for indx in range(j, len(sequence), 3):
-            current_codon = sequence[indx:indx+3]
-            if current_codon in start_codons and not start_codon_found:
-                start_codon_found = True
-                start_codon_index = indx
-            if current_codon in stop_codons and start_codon_found:
-                end_codon_index = indx
-                length = end_codon_index - start_codon_index
-                if length >= treshold * 3:
-                    print(length, start_codon_index,end_codon_index)
-                    orfs.append(start_codon_index)
-                    if length % 3 != 0:
-                        print("it's going to complain")
-                    #print len(sequence)-end_codon_index-3
-                    snippet = Seq(sequence[start_codon_index:end_codon_index])
-                    print(snippet)
-                    try:
-                        protein = Seq.translate(snippet, table=11, cds=True)
-                        print("%i %s" % (length/3, protein))
-                    except Exception as e:
-                        print(e)
-                        pass
-                start_codon_found = False
-        start_codon_index = 0
-        end_codon_index = 0
-        start_codon_found = False
-
-    return len(orfs), orfs
 
 def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
                      descrkey='description',
@@ -309,7 +268,7 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
 
     df = pd.DataFrame(allfeat,columns=featurekeys)
     df['length'] = df.translation.str.len()
-    df = checkTags(df)
+    df = check_tags(df)
     if quiet == False:
         print('---- %s summary ----' %infile)
         s = genbank_summary(df)
@@ -320,7 +279,7 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
         df['order'] = range(1,len(df)+1)
     return df
 
-def checkTags(df):
+def check_tags(df):
     """Check genbank tags to make sure they are not empty"""
 
     def replace(x):
@@ -364,7 +323,7 @@ def genbank_summary(df):
 
     return s
 
-def findkeyword(f):
+def find_keyword(f):
     """Get keyword from a field"""
 
     f = f[:100]
@@ -539,7 +498,7 @@ def format_alignment(aln):
     aln = needleAlignment(SeqRecord(p1,'a'),SeqRecord(p2,'b'))
     return aln'''
 
-def alignment2Dataframe(aln):
+def alignment_to_dataframe(aln):
     """Sequence alignment to dataframe"""
 
     alnrows = [[a.id,str(a.seq),a.description] for a in aln]
@@ -582,11 +541,11 @@ def fetch_protein_sequences(searchterm, filename='found.fa' ):
     outfile = open(filename, "w")
     SeqIO.write(recs, outfile, "fasta")
 
-    df = fasta2Dataframe(filename)
+    df = fasta_to_dataframe(filename)
     #remove redundancy
     df = df.drop_duplicates('translation')
     df = df[-df.translation.str.contains('X')]
     print ('%s non-redundant sequences retrieved' %len(df))
     #save as fasta file
-    dataframe2Fasta(df, outfile=filename)
+    dataframe_to_fasta(df, outfile=filename)
     return recs

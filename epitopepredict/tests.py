@@ -19,7 +19,7 @@ class PredictorTests(unittest.TestCase):
 
     def setUp(self):
         genbankfile = 'testing/zaire-ebolavirus.gb'
-        self.df = sequtils.genbank2Dataframe(genbankfile, cds=True)
+        self.df = sequtils.genbank_to_dataframe(genbankfile, cds=True)
         self.testdir = 'testing'
         if not os.path.exists(self.testdir):
             os.mkdir(self.testdir)
@@ -78,7 +78,7 @@ class PredictorTests(unittest.TestCase):
         """Test fasta predictions"""
 
         fastafile = 'testing/zaire-ebolavirus.faa'
-        df = sequtils.fasta2Dataframe(fastafile)
+        df = sequtils.fasta_to_dataframe(fastafile)
         alleles = ["HLA-DRB1*0101"]
         P = base.getPredictor('tepitope')
         P.predictProteins(df, length=11, alleles=alleles, path=self.testdir)
@@ -87,10 +87,9 @@ class PredictorTests(unittest.TestCase):
     def test_load(self):
         """Test re-loading predictions"""
 
-        infile = os.path.join(self.testdir, 'ZEBOVgp1.mpk')
-        pred = pd.read_msgpack(infile)
+        infile = os.path.join(self.testdir, 'ZEBOVgp1.csv')
         P = base.getPredictor('iedbmhc1')
-        P.data = pred
+        P.load(infile)
         return
 
     def test_save(self):
@@ -111,12 +110,10 @@ class PredictorTests(unittest.TestCase):
         """Test genbank feature handling"""
 
         fastafile = 'testing/zaire-ebolavirus.faa'
-        df = sequtils.fasta2Dataframe(fastafile)
+        df = sequtils.fasta_to_dataframe(fastafile)
         name = 'ZEBOVgp1'
-        #row = df[df.locus_tag==name]
-        sequtils.dataframe2Fasta(df)
-        sequtils.checkTags(df)
-        #sequtils.fastaFormatfromFeature(feat)
+        sequtils.dataframe_to_fasta(df)
+        sequtils.check_tags(df)
         return
 
     def quit(self):

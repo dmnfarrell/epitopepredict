@@ -30,43 +30,25 @@ home = os.path.expanduser("~")
 genomespath = os.path.join(home, 'epitopedata')
 datadir = os.path.join(home, 'testpredictions')
 
-def getAAContent(df, amino_acids=None):
+def get_AAcontent(df, colname, amino_acids=None):
     """Amino acid composition for dataframe with sequences"""
-    return df.apply( lambda r: peptides.getAAFraction(str(r.peptide), amino_acids), 1)
+    return df.apply( lambda r: peptutils.get_AAfraction(str(r[colname]), amino_acids), 1)
 
-def netCharge(df):
+def net_charge(df, colname):
     """Net peptide charge for dataframe with sequences"""
-    return df.apply( lambda r: peptides.netCharge(r.peptide),1)
+    return df.apply( lambda r: peptutils.net_charge(r[colname]),1)
 
-def isoelectricPoint(df):
+def isoelectric_point(df):
     def getpi(seq):
         X = ProteinAnalysis(seq)
         return X.isoelectric_point()
     return df.apply( lambda r: getpi(r.peptide),1)
 
-def peptide_properties(df):
+def peptide_properties(df, colname='peptide'):
     """Find hydrophobicity and net charge for peptides"""
 
-    reload(peptides)
-    df['hydro'] = analysis.getAAContent(df)
-    df['net_charge'] = analysis.netCharge(df)
-    df['label'] = 'clusters'
-    #we use a set of known mtb T cell epitopes from IEDB to compare with.
-    iedb_tcell = pd.read_csv('iedb_myco_tcell.csv')
-    iedb_tcell['hydro'] = analysis.getAAContent(iedb_tcell)
-    iedb_tcell['net_charge'] = analysis.netCharge(iedb_tcell)
-    iedb_tcell['label'] = 'IEDB T cell epitopes'
-
-    x = pd.concat([df,iedb_tcell])#.fillna(0)
-    bins=np.linspace(min(x.hydro),max(x.hydro),15)
-    ax=x.reset_index().pivot('index','label','hydro').plot.hist(bins=bins, figsize=(8,4),lw=1.2,
-                                                                 subplots=True,cmap='Paired')
-    plt.suptitle('hydrophobic fraction')
-    bins=np.linspace(min(x.net_charge),max(x.net_charge),15)
-    ax=x.reset_index().pivot('index','label','net_charge').plot.hist(bins=bins, figsize=(8,4),lw=1.2,
-                                                                 subplots=True,cmap='Paired')
-    plt.suptitle('net charge')
-    df = df.drop('label',1)
+    df['hydro'] = get_AAcontent(df, colname)
+    df['net_charge'] = net_charge(df, colname)
     return df
 
 def _center_nmer(x, n):
@@ -117,7 +99,7 @@ def _split_nmer(x, n, key):
         seqs = pd.Series(seqs)
         return seqs
 
-def getNmer(df, genome, length=20, seqkey='peptide', how='center'):
+def get_nmer(df, genome, length=20, seqkey='peptide', how='center'):
     """
     Get n-mer peptide surrounding a set of sequences using the host
     protein sequence.
@@ -147,7 +129,7 @@ def getNmer(df, genome, length=20, seqkey='peptide', how='center'):
         res.index = res.index.droplevel(1)
     return res
 
-def getOverlaps(binders1, binders2, label='overlaps', how='inside'):
+def get_overlaps(binders1, binders2, label='overlaps', how='inside'):
     """
     Overlaps for 2 sets of sequences where positions in host sequence are stored
     in each dataframe.
@@ -210,9 +192,9 @@ def get_orthologs(seq, db=None, expect=10, hitlist_size=400, equery=None,
     if db != None:
         #local blast
         SeqIO.write(SeqRecord(Seq(seq)), 'tempseq.faa', "fasta")
-        sequtils.localBlast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=30)
+        sequtils.local_blast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=30)
         result_handle = open("my_blast.xml")
-        df = sequtils.getBlastResults(result_handle)
+        df = sequtils.get_blast_results(result_handle)
     else:
         try:
             result_handle = NCBIWWW.qblast("blastp", "nr", seq, expect=expect,
@@ -222,7 +204,7 @@ def get_orthologs(seq, db=None, expect=10, hitlist_size=400, equery=None,
             savefile.write(result_handle.read())
             savefile.close()
             result_handle = open("my_blast.xml")
-            df = sequtils.getBlastResults(result_handle, local=False)
+            df = sequtils.get_blast_results(result_handle, local=False)
         except Exception as e:
             print ('blast timeout')
             return
@@ -237,9 +219,9 @@ def align_blast_results(df, aln=None, idkey='accession', productkey='definition'
     Get gapped alignment from blast results using muscle aligner.
     """
 
-    sequtils.dataframe2Fasta(df, idkey=idkey, seqkey='sequence',
+    sequtils.dataframe_to_fasta(df, idkey=idkey, seqkey='sequence',
                         descrkey=productkey, outfile='blast_found.faa')
-    aln = sequtils.muscleAlignment("blast_found.faa")
+    aln = sequtils.muscle_alignment("blast_found.faa")
     alnrows = [[a.id,str(a.seq)] for a in aln]
     alndf = pd.DataFrame(alnrows,columns=['accession','seq'])
     #res = df.merge(alndf, left_index=True, right_index=True)
@@ -340,7 +322,7 @@ def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=No
     df['accession'] = df.accession.apply(makelink)
     return df'''
 
-def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
+def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
                  genome=None, colname='peptide'):
     """
     Get clusters of binders for a set of binders.
@@ -393,10 +375,10 @@ def findClusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     print
     return x
 
-def randomizedLists(df, n=94, seed=8, filename='peptide_lists'):
+def randomized_lists(df, n=94, seed=8, filename='peptide_lists'):
     """
     Return a randomized lists of sequences from a dataframe. Used for
-    providing peptide lists for aassying etc.
+    providing peptide lists for assaying etc.
     """
 
     #cols for excel file
@@ -421,7 +403,7 @@ def randomizedLists(df, n=94, seed=8, filename='peptide_lists'):
     plist.to_excel(writer,'original data', float_format='%.2f')
     writer.save()
 
-def genomeAnalysis(datadir,label,gname,method):
+'''def genome_analysis(datadir,label,gname,method):
     """this method should be made independent of web app paths etc"""
 
     path = os.path.join(datadir, '%s/%s/%s' %(label,gname,method))
@@ -445,7 +427,7 @@ def genomeAnalysis(datadir,label,gname,method):
         gc = cl.groupby('name').agg({'density':np.max})
         res = res.merge(gc,left_on='locus_tag',right_index=True)
     #print res[:10]
-    return res
+    return res'''
 
 def tmhmm(fastafile=None, infile=None):
     """
@@ -484,7 +466,7 @@ def signalP(infile=None,genome=None):
     #print sp[sp.SP=='Y']
     return sp
 
-def getSeqDepot(seq):
+def get_seqdepot(seq):
     """Fetch seqdepot annotation for sequence"""
 
     from epitopepredict import seqdepot
@@ -498,7 +480,7 @@ def getSeqDepot(seq):
         result=None
     return result
 
-def predictionCoverage(expdata, binders, key='sequence', perc=50, verbose=False):
+def prediction_coverage(expdata, binders, key='sequence', perc=50, verbose=False):
     """
     Determine hit rate of predictions in experimental data
     by finding how many top peptides are needed to cover % positives
@@ -552,7 +534,7 @@ def predictionCoverage(expdata, binders, key='sequence', perc=50, verbose=False)
     #print (total, total/float(len(binders))*100)
     return round(total/float(len(binders))*100,2)
 
-def testFeatures():
+def test_features():
     """test feature handling"""
 
     fname = os.path.join(datadir,'MTB-H37Rv.gb')
@@ -599,18 +581,7 @@ def testrun(gname):
     base.getScoreDistributions(method, path)
     return
 
-def testBcell(gname):
-    path='test'
-    gfile = os.path.join(genomespath,'%s.gb' %gname)
-    df = sequtils.genbank2Dataframe(gfile, cds=True)
-    names=['VP24']
-    P = base.getPredictor('bcell')
-    P.iedbmethod='Chou-Fasman'
-    P.predictProteins(df,names=names,save=True,path=path)
-    print (P.data)
-    return
-
-def testconservation(label,gname):
+def test_conservation(label,gname):
     """Conservation analysis"""
 
     tag='VP24'
@@ -636,7 +607,7 @@ def testconservation(label,gname):
     b = P.getBinders()'''
     return
 
-def findConservedPeptide(peptide, recs):
+def find_conserved_peptide(peptide, recs):
     """Find sequences where a peptide is conserved"""
 
     f=[]
