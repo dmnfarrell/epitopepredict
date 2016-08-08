@@ -95,15 +95,6 @@ def getOverlapping(index, s, length=9, cutoff=25):
             break
     return g
 
-def checkMembers(g,clusts):
-    """Check if a group intersects any of the current clusters"""
-    for i in clusts:
-        common = list(set(g) & set(i))
-        if len(common)>0 or len(g)<2:
-            #print i,common
-            return False
-    return True
-
 def dbscan(B=None, x=None, dist=7, minsize=4):
     """Density-Based Spatial clustering. Finds core samples of
       high density and expands clusters from them."""
@@ -127,7 +118,7 @@ def dbscan(B=None, x=None, dist=7, minsize=4):
     #print clusts
     return clusts
 
-def getPredictor(name='tepitope', **kwargs):
+def get_predictor(name='tepitope', **kwargs):
     """Get a predictor"""
 
     if name == 'netmhciipan':
@@ -146,14 +137,14 @@ def getPredictor(name='tepitope', **kwargs):
         print ('no such predictor %s' %name)
         return
 
-def getLength(data):
+def get_length(data):
     """Get peptide length of a dataframe of predictions"""
 
     if len(data)>0:
         return len(data.head(1).peptide.max())
     return
 
-def getCoordsfromSequence(df, genome):
+def get_coords_from_sequence(df, genome):
     """Get peptide coords from parent protein sequences"""
 
     def func(x):
@@ -167,7 +158,7 @@ def getCoordsfromSequence(df, genome):
     df = df.drop(['start','end'],1)
     return df.join(temp)
 
-def getCoords(df):
+def get_coords(df):
     """Get start end coords from position and length of peptides"""
 
     if 'start' in df.columns:
@@ -497,14 +488,14 @@ class Predictor(object):
         s = s[s.alleles>=n]
         return s
 
-    def consensusRankedBinders(self, name=None, how='median', cutoff=None):
+    def rankedBinders(self, name=None, how='median', cutoff=None):
         """
-        Get the top percentile rank of each binder over all alleles.
+        Get the median/mean rank of each binder over all alleles.
         Args:
             name: specify protein name, otherwise all current data used
-            how: method to use for rank selection, 'median', 'best' or
-                 'mean'
-            threshold: apply a threshold
+            how: method to use for rank selection, 'median' (default),
+            'best' or 'mean',
+            cutoff: apply a rank cutoff if we want to filter (optional)
         """
 
         df = self.data

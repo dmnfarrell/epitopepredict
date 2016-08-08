@@ -106,7 +106,7 @@ def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
         pb = pred.getPromiscuousBinders(data=df,n=n, cutoff_method=cutoff_method)
         if len(pb) == 0:
             continue
-        l = base.getLength(pb)
+        l = base.get_length(pb)
         grps = df.groupby('allele')
         alleles = grps.groups.keys()
         if len(pb)==0:
@@ -203,7 +203,7 @@ def plot_tracks(preds, name, n=2, cutoff=5, value='score',
 
         if len(pb) == 0:
             continue
-        l = base.getLength(pb)
+        l = base.get_length(pb)
         seqlen = df.pos.max()+l
         #print (m,df.pos.max())
         grps = df.groupby('allele')
@@ -289,7 +289,7 @@ def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
     import seaborn as sns
     df = P.data[P.data.name==name].sort_values('pos')
     w = 10
-    l= base.getLength(df)
+    l= base.get_length(df)
     seqlen = df.pos.max()+l
     f,axs = plt.subplots(chunks,1,figsize=(15,2+2.5*chunks))
     if chunks == 1:
@@ -410,7 +410,7 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
     import seaborn as sns
     df = P.data[P.data.name==name].sort('pos')
     w = 10
-    l= base.getLength(df)
+    l= base.get_length(df)
     seqlen = df.pos.max()+l
     f,axs = plt.subplots(chunks,1,figsize=(15,3+2.5*chunks))
     if chunks == 1:
