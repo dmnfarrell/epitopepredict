@@ -118,8 +118,8 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center'):
                     left_on='name',right_on='locus_tag',how='left')
 
     if not 'end' in list(temp.columns):
-        temp = base.getCoords(temp)
-    temp =  base.getCoords(temp)
+        temp = base.get_coords(temp)
+    temp =  base.get_coords(temp)
     if how == 'center':
         res = temp.apply( lambda r: _center_nmer(r, length), 1)
     elif how == 'split':
@@ -142,8 +142,8 @@ def get_overlaps(binders1, binders2, label='overlaps', how='inside'):
         First DataFrame with no. of overlaps stored in a new column
     """
     new=[]
-    a = base.getCoords(binders1)
-    b = base.getCoords(binders2)
+    a = base.get_coords(binders1)
+    b = base.get_coords(binders2)
 
     def overlap(x,y):
         f=0
