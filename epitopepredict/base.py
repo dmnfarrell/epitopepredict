@@ -643,19 +643,18 @@ class Predictor(object):
         #print (len(results))
         return'''
 
-    def load(self, filename=None, path=None, names=None,
+    def load(self, path=None, names=None,
                compression='infer', file_limit=None):
         """
         Load results for one or more proteins
         Args:
-            filename: name of a csv file with predictions
-            path: directory with one or more csv files
+            path: name of a csv file or directory with one or more csv files
             file_limit: limit to load only the this number of proteins
         """
 
-        if filename != None:
-            self.data = pd.read_csv(filename, index_col=0)
-        elif path != None:
+        if os.path.isfile(path):
+            self.data = pd.read_csv(path, index_col=0)
+        elif os.path.isdir(path):
             if not os.path.exists(path):
                 print('no such path %s' %path)
                 return

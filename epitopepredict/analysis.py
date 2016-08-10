@@ -108,13 +108,15 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center'):
         genome: genome dataframe with host sequences
         length: length of nmer to return
         seqkey: column name of sequence to be processed
-        how: method to create the n-mer, split will try to split up
+        how: method to create the n-mer, 'split' will try to split up
             the sequence into overlapping n-mes of length is larger than size
     Returns:
         pandas Series with nmer values
     """
 
-    temp = df.merge(genome[['locus_tag','gene','translation','length']],
+    cols = ['locus_tag','gene','translation','length']
+    cols = list(set(cols) & set(genome.columns))
+    temp = df.merge(genome[cols],
                     left_on='name',right_on='locus_tag',how='left')
 
     if not 'end' in list(temp.columns):
@@ -362,7 +364,9 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     x = x[x.clustersize<=max_size]
 
     #if genome data available merge to get peptide seq
-    cols = ['locus_tag','translation','gene']
+    cols = ['locus_tag','translation']
+    if 'gene' in genome.columns:
+        cols.append('gene')
     if genome is not None:
         x = x.merge(genome[cols],
                     left_on='name',right_on='locus_tag')
