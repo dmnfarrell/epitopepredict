@@ -359,8 +359,8 @@ def mpl_plot_seqdepot(annotation, ax):
         text = [i[0] for i in vals]
         pos = [i[1]+(i[2]-i[1])/2.0 for i in vals]
         widths = [i[2]-i[1] for i in vals]
-        print (pos,widths,text)
-        bbox_args = dict(boxstyle='round', fc='coral', lw=1, alpha=0.8)
+        #print (pos,widths,text)
+        bbox_args = dict(boxstyle='round', fc='white', lw=1, alpha=0.8)
         for x,w,t in zip(pos,widths,text):
             an = ax.annotate(t, xy=(x,y), xycoords='data',
                        ha='left', va="center", bbox=bbox_args,
@@ -390,7 +390,8 @@ def plot_multiple(preds, names, kind='tracks', regions=None, genome=None, **kwar
         if genome is not None:
             p = genome[genome['locus_tag']==prot]
             seq = p.translation.iloc[0]
-            sd = analysis.getSeqDepot(seq)['t']
+            from . import analysis
+            sd = analysis.get_seqdepot(seq)['t']
             mpl_plot_seqdepot(sd, ax)
         plt.tight_layout()
         plt.show()
