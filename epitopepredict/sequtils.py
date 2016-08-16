@@ -53,10 +53,11 @@ def drawGenomeMap(infile, filename=None):
     gdd.write(filename, "PNG")
     return filename
 
-def distance_tree(seqfile=None, seqs=None, ref=None):
+def distance_tree(aln=None, seqfile=None, seqs=None, ref=None):
     """Phylo tree for sequences"""
 
-    aln = clustalAlignment(seqfile, seqs)
+    if aln == None:
+        aln = clustal_alignment(seqfile, seqs)
     from Bio import Phylo
     tree = Phylo.read('temp.dnd', 'newick')
     leafList = tree.get_terminals()
@@ -67,13 +68,12 @@ def distance_tree(seqfile=None, seqs=None, ref=None):
     Phylo.draw(tree)
     return
 
-def ETE_tree(seqs, ref, metric):
+def ete_tree(aln):
     """Tree showing alleles"""
 
     from ete2 import Tree,PhyloTree,TreeStyle,NodeStyle
-    aln = Genome.clustalAlignment(seqs=seqs)
+
     t = Tree('temp.dnd')
-    #t.set_outgroup(t&ref)
     ts = TreeStyle()
     ts.show_leaf_name = True
     ts.mode = "c"
@@ -81,10 +81,10 @@ def ETE_tree(seqs, ref, metric):
     ts.arc_span = 180
     cutoff=0.25
     def func(node):
-        if node.name=='NoName' or not node.name in metric:
+        if node.name=='NoName': #or not node.name in metric:
             return False
-        if metric[node.name]<=cutoff:
-            return True
+        #if metric[node.name]<=cutoff:
+        #    return True
     matches = filter(func, t.traverse())
     print (len(matches), "nodes have distance <=%s" %cutoff)
     nst1 = NodeStyle()
@@ -93,9 +93,9 @@ def ETE_tree(seqs, ref, metric):
         n.set_style(nst1)
     nst2 = NodeStyle()
     nst2["bgcolor"] = "LightGreen"
-    hlanodes = [t.get_leaves_by_name(name=r)[0] for r in refalleles]
-    for n in hlanodes:
-        n.set_style(nst2)
+    #hlanodes = [t.get_leaves_by_name(name=r)[0] for r in refalleles]
+    #for n in hlanodes:
+    #    n.set_style(nst2)
     t.show(tree_style=ts)
     return
 

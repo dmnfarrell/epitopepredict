@@ -331,7 +331,7 @@ def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
     return axs
 
 def mpl_plot_seqdepot(annotation, ax):
-    """Plot sedepot annotations"""
+    """Plot sedepot annotations - replace with generic plot coords track"""
 
     from matplotlib.patches import Rectangle
     y=-1.5
@@ -457,3 +457,122 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
     f.suptitle(name+' - '+P.name)
     plt.tight_layout()
     return ax
+
+def binders_to_coords(df):
+    """Convert binder results to dict of coords for plotting"""
+    coords = {}
+    if 'start' in df.columns:
+        for i,g in df.groupby('name'):
+            l = df.end-df.start
+            coords[i] = zip(g.start,l)
+    return coords
+
+def plot_overview(genome, coords=None, cols=2, colormap='Paired', labels=None):
+    """
+    Plot overview of epitopes in a group of protein sequences. Useful for
+    seeing how your epitopes are distributed in a small genone or subset of genes.
+    Args:
+        genome: dataframe with protein sequences
+        coords: a dict of tuple lists of the form {protein name: [(start,length)..]}
+        cols: number of columns for plot, integer
+    """
+
+    if type(coords) is not list:
+        coords = [coords]
+    import seaborn as sns
+    #sns.reset_orig()
+    cmap = mpl.cm.get_cmap(colormap)
+    t = len(coords)
+    colors = [cmap(float(i)/t) for i in range(t)]
+    from matplotlib.patches import Rectangle
+
+    names = coords[0].keys()
+    #print names
+    df = genome[genome.locus_tag.isin(names)]
+    h = round(len(names)*.2+10/cols)
+    rows = int(np.ceil(len(names)/float(cols)))
+    f,axs=plt.subplots(rows,cols,figsize=(14,h))
+    grid=axs.flat
+    leg=[]
+    i=0
+    for idx,prot in df.iterrows():
+        ax=grid[i]
+        protname = prot.locus_tag
+        seq = prot.translation
+        if 'description' in prot:
+            title = prot.description
+        else:
+            title = protname
+        y=0
+        for c in coords:
+            if not protname in c:
+                continue
+            vals = c[protname]
+            #print vals
+            for v in vals:
+                x,l = v[0],v[1]
+                rect = ax.add_patch(Rectangle((x,y), l, .9,
+                                facecolor=colors[y],
+                                lw=1.2, alpha=0.8))
+                if len(v)>2:
+                    s = v[2]
+                    bbox_args = dict(fc=colors[y], lw=1.2, alpha=0.8)
+                    ax.annotate(s, (x+l/2, y),
+                        fontsize=12, ha='center', va='bottom')
+            y+=1
+        i+=1
+        slen = len(seq)
+        w = round(float(slen)/20)
+
+        w = math.ceil(w/20)*20
+        ax.set_xlim(0, slen)
+        ax.set_ylim(0, t)
+        ax.set_xticks(np.arange(0, slen, w))
+        ax.set_yticks([])
+        ax.set_title(title, fontsize=16, loc='right')
+    #labels=['a','b','c']
+    if i|2!=0 and cols>1:
+        f.delaxes(grid[i])
+    #f.legend(leg,labels)
+    plt.tight_layout()
+    return
+
+def seqdepot_to_coords(sd, key='pfam27'):
+    """
+    Convert seqdepot annotations to coords for plotting
+    """
+
+    coords=[]
+    if len(sd['t'])==0 or not key in sd['t']:
+        return []
+    x = sd['t'][key]
+    #print x
+
+    if key in ['pfam27','pfam28']:
+        coords = [(i[1],i[2]-i[1],i[0]) for i in x]
+    elif key in ['gene3d','prints']:
+        coords = [(i[2],i[3]-i[2],i[1]) for i in x]
+    elif key == 'tmhmm':
+        coords = [(i[0],i[1]-i[0]) for i in x]
+    elif key == 'signalp':
+        x = x.items()
+        coords = [(i[1],10,'SP') for i in x]
+    return coords
+
+def seqdepot_annotation(genome, key='pfam27'):
+    """
+    Get seqdepot annotations for aset of proteins in dataframe.
+    """
+    annot={}
+    for i,row in genome.iterrows():
+        n = row.locus_tag
+        seq = row.translation
+        #print n,seq
+        sd = seqdepot.new()
+        aseqid = sd.aseqIdFromSequence(seq)
+        result = sd.findOne(aseqid)
+        #for x in result['t']:
+        #    print x, result['t'][x]
+        x = seqdepot_to_coords(result, key)
+        annot[n] = x
+    return annot
