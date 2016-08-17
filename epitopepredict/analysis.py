@@ -171,8 +171,8 @@ def get_overlaps(binders1, binders2, label='overlaps', how='inside'):
     print ('%s with overlapping binders' %len(result[result[label]>0]))
     return result
 
-def get_orthologs(seq, db=None, expect=10, hitlist_size=400, equery=None,
-                 email=''):
+def get_orthologs(seq, db=None, expect=1, hitlist_size=400, equery=None,
+                  email=''):
     """
     Fetch orthologous sequences using online blast and return the records
     as a dataframe.
@@ -194,7 +194,7 @@ def get_orthologs(seq, db=None, expect=10, hitlist_size=400, equery=None,
     if db != None:
         #local blast
         SeqIO.write(SeqRecord(Seq(seq)), 'tempseq.faa', "fasta")
-        sequtils.local_blast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=30)
+        sequtils.local_blast(db, 'tempseq.faa', output='my_blast.xml', maxseqs=100)
         result_handle = open("my_blast.xml")
         df = sequtils.get_blast_results(result_handle)
     else:

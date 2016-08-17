@@ -24,7 +24,7 @@ featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
                'product', 'note', 'translation','pseudo','start','end']
 typecolors = ['blue','green','brown','orange','purple','lightblue','yellow','red']
 
-def drawGenomeMap(infile, filename=None):
+def draw_genome_map(infile, filename=None):
     """Draw whole circular genome"""
 
     from Bio.Graphics import GenomeDiagram
@@ -53,20 +53,24 @@ def drawGenomeMap(infile, filename=None):
     gdd.write(filename, "PNG")
     return filename
 
-def distance_tree(aln=None, seqfile=None, seqs=None, ref=None):
-    """Phylo tree for sequences"""
+def distance_tree(filename=None, seqs=None, ref=None):
+    """Basic phylogenetic tree for an alignment"""
 
-    if aln == None:
-        aln = clustal_alignment(seqfile, seqs)
     from Bio import Phylo
-    tree = Phylo.read('temp.dnd', 'newick')
+    if seqs is not None:
+        aln = clustal_alignment(None, seqs)
+        filename = 'temp.dnd'
+    tree = Phylo.read(filename, 'newick')
     leafList = tree.get_terminals()
     if ref != None:
         tree.root_with_outgroup(ref)
-    f=plt.figure()
+
     #Phylo.draw_graphviz(tree,font_size='9', prog='neato')
-    Phylo.draw(tree)
-    return
+    f = plt.figure(figsize=(8,10))
+    ax=f.add_subplot(111)
+    ax.set_axis_bgcolor('white')
+    Phylo.draw(tree, axes=ax)
+    return tree
 
 def ete_tree(aln):
     """Tree showing alleles"""
@@ -99,7 +103,7 @@ def ete_tree(aln):
     t.show(tree_style=ts)
     return
 
-def local_blast(database, query, output=None, maxseqs=10, evalue=0.001,
+def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
                     compress=False):
     """Blast a local database"""
 
@@ -182,13 +186,6 @@ def blast_sequences(database, seqs, labels=None, maxseqs=10):
         res.append(df)
     return pd.concat(res)
 
-def test_blast():
-    database = 'all_genomes'
-    f='test.faa'
-    df=getBlastResults(filename='test.xml.gz')
-    print (df[:5])
-    return
-
 def fasta_to_dataframe(infile):
     """Get fasta proteins into dataframe"""
 
@@ -200,6 +197,7 @@ def fasta_to_dataframe(infile):
     return df
 
 def convert_sequence_format(infile, outformat='embl'):
+    """convert sequence files using SeqIO"""
 
     informat = os.path.splitext(infile)[1][1:]
     if informat == 'fa':
@@ -212,7 +210,8 @@ def convert_sequence_format(infile, outformat='embl'):
     return
 
 def getCDS(df):
-    """Get CDS with transaltions from genome dataframe"""
+    """Get CDS with transaltions from genbank dataframe"""
+
     cds = df[df.type=='CDS']
     cdstrans = cds[cds.translation.notnull()]
     return cdstrans
@@ -407,7 +406,6 @@ def clustal_alignment(filename=None, seqs=None, command="clustalw"):
     name = os.path.splitext(filename)[0]
     from Bio.Align.Applications import ClustalwCommandline
     cline = ClustalwCommandline(command, infile=filename)
-    #print ('performing clustal alignment..')
     stdout, stderr = cline()
     align = AlignIO.read(name+'.aln', 'clustal')
     return align
@@ -438,26 +436,37 @@ def muscle_alignment(filename=None, seqs=None):
     return align
 
 def show_alignment(aln, diff=False, offset=0):
-    """Show diff alignment"""
+    """
+    Show a sequence alignment
+        Args:
+            aln: alignment
+            diff: whether to show differences
+    """
 
-    ref=aln[0]
-    start=0; end=80
-    #offset=28
-    lbls = np.arange(start,end,10)-offset
-    print (('%-20s' %'name'),''.join([('%-10s' %i) for i in lbls]))
-    print (('%20s' %ref.id), ref.seq[start:end])
-    if diff == True:
-        for a in aln[1:]:
-            diff=''
-            for i,j in zip(ref,a):
-                if i != j:
-                    diff+=j
-                else:
-                    diff+='-'
-            print (('%20s' %a.id), diff[start:end])
-    else:
-        for a in aln[1:]:
-            print (('%20s' %a.id), a.seq[start:end])
+    ref = aln[0]
+    l = len(aln[0])
+    n=60
+    chunks = [(i,i+n) for i in range(0, l, n)]
+    for c in chunks:
+        start,end = c
+        lbls = np.arange(start,end,10)-offset
+        print (('%-21s' %'name'),''.join([('%-10s' %i) for i in lbls]))
+        print (('%21s' %ref.id[:20]), ref.seq[start:end])
+
+        if diff == True:
+            for a in aln[1:]:
+                diff=''
+                for i,j in zip(ref,a):
+                    if i != j:
+                        diff+=j
+                    else:
+                        diff+='-'
+                name = a.id[:20]
+                print (('%21s' %name), diff[start:end])
+        else:
+            for a in aln[1:]:
+                name = a.id[:20]
+                print (('%21s' %name), a.seq[start:end])
     return
 
 def get_identity(aln):
