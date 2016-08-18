@@ -552,3 +552,72 @@ def fetch_protein_sequences(searchterm, filename='found.fa' ):
     #save as fasta file
     dataframe_to_fasta(df, outfile=filename)
     return recs
+
+
+def show_alignment_html(alnrows, seqs, width=80, fontsize=15, label='name'):
+    """
+    Get html display of sub-sequences on multiple protein alignment.
+    Args:
+        alnrows: a dataframe of aligned sequences
+        seqs: sub-sequences/epitopes to draw if present
+        label: key from dataframe to use as label for sequences
+    Returns:
+        html code
+    """
+
+    import matplotlib as mpl
+    l=len(seqs[0])
+    found = []
+    for row in alnrows.seq:
+        x = [row.find(s) for s in seqs]
+        x = [i for i in x if i!=-1]
+        #print x
+        found.append(x)
+
+    seqhtml=[]
+    f=[]
+    [f.extend(i) for i in found]
+    f = sorted(list(set(f)))
+    cmap = mpl.cm.get_cmap('Set3')
+    c=1
+    #unique color for each found sub-sequence
+    colors={}
+    for i in f:
+        clr = cmap(float(c+0.1)/len(f))
+        colors[i] = mpl.colors.rgb2hex(clr)
+        c+=1
+
+    seqhtml.append('<div style="font-family: monospace;letter-spacing: -.3em;font-size:%spx">' %fontsize)
+    clr = ''
+    chunks = []
+    alnlength = len(alnrows.iloc[0].seq)
+    l = 11
+    for idx in range(0,alnlength,width):
+        f=0
+        seqhtml.append('<span style="letter-spacing:.2em;font-weight: bold">%s</span><br>' %idx)
+        cidx=0
+        for x,row in alnrows.iterrows():
+            if len(found[f])==0:
+                f+=1
+                continue
+            try:
+                name = row[label]
+            except:
+                name = row.definition
+            seq  = row.seq
+            for i in range(idx,idx+width):
+                if i>alnlength-1: continue
+                if i in found[f]:
+                    cidx = i
+                    clr = colors[cidx]
+                elif i-cidx >= l:
+                    clr = ''
+                seqhtml.append('<span style="background-color:%s">%s </span>' %(clr,seq[i]))
+
+            clr = ''
+            seqhtml.append('<span> &nbsp </span>')
+            seqhtml.append('<span style="letter-spacing:.1em; font-weight: bold">%s </span>' %name)
+            seqhtml.append('<br>')
+            f+=1
+    seqhtml = ''.join(seqhtml)
+    return seqhtml
