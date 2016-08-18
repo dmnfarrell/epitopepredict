@@ -167,10 +167,10 @@ def get_coords(df):
     df['end'] = ( df.pos + df.peptide.str.len() ).astype(int)
     return df
 
-def createTempSeqfile(sequences, seqfile='tempseq.fa'):
+def write_fasta(sequences, seqfile='tempseq.fa'):
 
-    if isinstance(sequences, str):
-        sequences=[sequences]
+    if isinstance(sequences, basestring):
+        sequences = [sequences]
     out = open(seqfile, 'w')
     i=1
     for seq in sequences:
@@ -180,12 +180,18 @@ def createTempSeqfile(sequences, seqfile='tempseq.fa'):
     out.close()
     return seqfile
 
-def getSequence(seqfile):
+def get_sequence(seqfile):
     """Get sequence from fasta file"""
 
     recs = list(SeqIO.parse(seqfile, 'fasta'))[0]
     sequence = recs.seq.tostring()
     return sequence
+
+def clean_sequence(seq):
+    """clean a sequence of invalid characters before prediction"""
+    import re
+    new = re.sub('[-*_#X]', '', seq)
+    return new
 
 def get_nearest(df):
     """Get nearest binder"""
@@ -571,7 +577,6 @@ class Predictor(object):
             print ('no alleles provided')
             return
         self.length = length
-        #recs = sequtils.getCDS(recs)
 
         if names != None:
             recs = recs[recs[seqkey].isin(names)]
@@ -603,6 +608,8 @@ class Predictor(object):
         results = []
         for i,row in proteins:
             seq = row[seqkey]
+            seq = clean_sequence(seq) #clean the sequence of non-aa characters
+            #print (seq)
             name = row[key]
             if path is not None:
                 fname = os.path.join(path, name+'.csv')
@@ -827,7 +834,7 @@ class NetMHCIIPanPredictor(Predictor):
     def runSequence(self, seq, length, allele, overlap=1):
         """Run netmhciipan for a single sequence"""
 
-        seqfile = createTempSeqfile(seq)
+        seqfile = write_fasta(seq)
         cmd = 'netMHCIIpan -s -length %s -a %s -f %s' %(length, allele, seqfile)
         #print cmd
         temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
@@ -901,7 +908,7 @@ class IEDBMHCIPredictor(Predictor):
         """Use iedb MHCII python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
 
-        seqfile = createTempSeqfile(sequence)
+        seqfile = write_fasta(sequence)
         path = iedbmhc1path
         if not os.path.exists(path):
             print ('iedb mhcI tools not found')
@@ -990,7 +997,7 @@ class IEDBMHCIIPredictor(Predictor):
         """Use iedb MHCII python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
 
-        seqfile = createTempSeqfile(sequence)
+        seqfile = write_fasta(sequence)
         path = iedbmhc2path
         if not os.path.exists(path):
             print ('iedb mhcII tools not found')

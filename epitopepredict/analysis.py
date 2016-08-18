@@ -269,7 +269,7 @@ def find_conserved_sequences(seqs, alnrows):
     return s
 
 def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=None,
-                        blastdb=None, perc_ident=50, equery='srcdb_refseq[Properties]'):
+                         blastdb=None, perc_ident=50, equery='srcdb_refseq[Properties]'):
     """
     Find and visualise conserved peptides in a set of aligned sequences.
     Args:
@@ -290,7 +290,7 @@ def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=No
             print ('protein sequence to blast or alignment required')
             return
         if blastresult == None or not os.path.exists(blastresult):
-            blr = getOrthologs(proteinseq, equery=equery, blastdb=blastdb)
+            blr = get_orthologs(proteinseq, equery=equery, blastdb=blastdb)
             if blr is None:
                 return
             #if filename == None: filename = 'blast_%s.csv' %label
@@ -298,7 +298,7 @@ def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=No
         else:
             blr = pd.read_csv(blastresult, index_col=0)
         #blr = blr[blr.perc_ident>=perc_ident]
-        alnrows, aln = alignBlastResults(blr)
+        alnrows, aln = align_blast_results(blr)
         #print (sequtils.formatAlignment(aln))
 
     if 'perc_ident' in alnrows.columns:
@@ -306,7 +306,7 @@ def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=No
     if 'definition' in alnrows.columns:
         alnrows['species'] = alnrows.definition.apply(get_species_name)
     c = find_conserved_sequences(peptides, alnrows).T
-    #print (c)
+
     c = c.dropna(how='all')
     c = c.reindex_axis(c.sum(1).sort_values().index)
     if len(c) == 0:

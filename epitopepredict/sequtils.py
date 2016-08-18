@@ -499,14 +499,6 @@ def format_alignment(aln):
         t+='\n'
     return t
 
-'''def get_alignment(f1,f2,genome1,genome2,checkcds=True):
-    p1,e1 = getTranslation(f1, genome1, checkcds)
-    p2,e2 = getTranslation(f2, genome2, checkcds)
-    if len(p1) == 0 or len(p2) == 0:
-        return None
-    aln = needleAlignment(SeqRecord(p1,'a'),SeqRecord(p2,'b'))
-    return aln'''
-
 def alignment_to_dataframe(aln):
     """Sequence alignment to dataframe"""
 
@@ -522,6 +514,8 @@ def get_feature_qualifier(f, qualifier):
     return fq
 
 def get_sequence(genome, name):
+    """Get the sequence for a protein in a dataframe with
+       genbank/sequence data"""
     return genome[genome.locus_tag==name].translation.iloc[0]
 
 def fetch_protein_sequences(searchterm, filename='found.fa' ):
