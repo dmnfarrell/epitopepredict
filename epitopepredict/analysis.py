@@ -131,21 +131,22 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center'):
         res.index = res.index.droplevel(1)
     return res
 
-def get_overlaps(binders1, binders2, label='overlaps', how='inside'):
+def get_overlaps(df1, df2, label='overlaps', how='inside'):
     """
     Overlaps for 2 sets of sequences where positions in host sequence are stored
     in each dataframe.
     Args:
-        binders1: first set of sequences, a dataframe with pos field
-        binders2: second set of sequences
+        df1 : first set of sequences, a pandas dataframe with columns called
+                start/end or pos
+        df2: second set of sequences
         label: label for overlaps column
         how: may be 'any' or 'inside'
     Returns:
         First DataFrame with no. of overlaps stored in a new column
     """
     new=[]
-    a = base.get_coords(binders1)
-    b = base.get_coords(binders2)
+    a = base.get_coords(df1)
+    b = base.get_coords(df2)
 
     def overlap(x,y):
         f=0

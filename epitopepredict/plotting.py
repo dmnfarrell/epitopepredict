@@ -6,7 +6,7 @@
     Copyright (C) Damien Farrell
 """
 
-import sys, os
+import sys, os, math
 from collections import OrderedDict
 import pylab as plt
 import matplotlib as mpl
@@ -467,18 +467,19 @@ def binders_to_coords(df):
             coords[i] = zip(g.start,l)
     return coords
 
-def plot_overview(genome, coords=None, cols=2, colormap='Paired', labels=None):
+def plot_overview(genome, coords=None, cols=2, colormap='Paired', legend=True):
     """
-    Plot overview of epitopes in a group of protein sequences. Useful for
-    seeing how your epitopes are distributed in a small genone or subset of genes.
+    Plot regions of interest in a group of protein sequences. Useful for
+    seeing how your binders/epitopes are distributed in a small genome or subset of genes.
     Args:
         genome: dataframe with protein sequences
-        coords: a dict of tuple lists of the form {protein name: [(start,length)..]}
+        coords: a list/dict of tuple lists of the form {protein name: [(start,length)..]}
         cols: number of columns for plot, integer
     """
 
-    if type(coords) is not list:
-        coords = [coords]
+    if type(coords) is list:
+        coords = { i:coords[i] for i in range(len(coords)) }
+        legend=False
     import seaborn as sns
     #sns.reset_orig()
     cmap = mpl.cm.get_cmap(colormap)
@@ -486,14 +487,14 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired', labels=None):
     colors = [cmap(float(i)/t) for i in range(t)]
     from matplotlib.patches import Rectangle
 
-    names = coords[0].keys()
-    #print names
+    names = [coords[c].keys() for c in coords][0]
+
     df = genome[genome.locus_tag.isin(names)]
-    h = round(len(names)*.2+10/cols)
+    h = round(len(names)*.2+10./cols)
     rows = int(np.ceil(len(names)/float(cols)))
     f,axs=plt.subplots(rows,cols,figsize=(14,h))
     grid=axs.flat
-    leg=[]
+    rects = {}
     i=0
     for idx,prot in df.iterrows():
         ax=grid[i]
@@ -504,7 +505,8 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired', labels=None):
         else:
             title = protname
         y=0
-        for c in coords:
+        for label in coords:
+            c = coords[label]
             if not protname in c:
                 continue
             vals = c[protname]
@@ -519,6 +521,8 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired', labels=None):
                     bbox_args = dict(fc=colors[y], lw=1.2, alpha=0.8)
                     ax.annotate(s, (x+l/2, y),
                         fontsize=12, ha='center', va='bottom')
+            if not label in rects:
+                rects[label] = rect
             y+=1
         i+=1
         slen = len(seq)
@@ -530,10 +534,11 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired', labels=None):
         ax.set_xticks(np.arange(0, slen, w))
         ax.set_yticks([])
         ax.set_title(title, fontsize=16, loc='right')
-    #labels=['a','b','c']
+
     if i|2!=0 and cols>1:
         f.delaxes(grid[i])
-    #f.legend(leg,labels)
+    if legend == True:
+        f.legend(rects.values(), rects.keys(), loc=8)
     plt.tight_layout()
     return
 
