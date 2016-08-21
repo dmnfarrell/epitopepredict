@@ -526,8 +526,7 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired', legend=True):
             y+=1
         i+=1
         slen = len(seq)
-        w = round(float(slen)/20)
-
+        w = round(float(slen)/20.)
         w = math.ceil(w/20)*20
         ax.set_xlim(0, slen)
         ax.set_ylim(0, t)
@@ -564,10 +563,11 @@ def seqdepot_to_coords(sd, key='pfam27'):
         coords = [(i[1],10,'SP') for i in x]
     return coords
 
-def seqdepot_annotation(genome, key='pfam27'):
+def get_seqdepot_annotation(genome, key='pfam27'):
     """
-    Get seqdepot annotations for aset of proteins in dataframe.
+    Get seqdepot annotations for a set of proteins in dataframe.
     """
+    from . import seqdepot
     annot={}
     for i,row in genome.iterrows():
         n = row.locus_tag

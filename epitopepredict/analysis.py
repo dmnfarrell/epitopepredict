@@ -131,10 +131,10 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center'):
         res.index = res.index.droplevel(1)
     return res
 
-def get_overlaps(df1, df2, label='overlaps', how='inside'):
+def get_overlaps(df1, df2, label='overlap', how='inside'):
     """
-    Overlaps for 2 sets of sequences where positions in host sequence are stored
-    in each dataframe.
+    Overlaps for 2 sets of sequences where the positions in host sequence are stored
+    in each dataframe as 'start' and 'end' columns
     Args:
         df1 : first set of sequences, a pandas dataframe with columns called
                 start/end or pos
@@ -144,6 +144,7 @@ def get_overlaps(df1, df2, label='overlaps', how='inside'):
     Returns:
         First DataFrame with no. of overlaps stored in a new column
     """
+    
     new=[]
     a = base.get_coords(df1)
     b = base.get_coords(df2)
@@ -151,7 +152,7 @@ def get_overlaps(df1, df2, label='overlaps', how='inside'):
     def overlap(x,y):
         f=0
         #print x['name'],x.peptide
-        #print x.start,x.end
+        #print (x.start,x.end)
         for i,r in y.iterrows():
             if how == 'inside':
                 if ((x.start<=r.start) & (x.end>=r.end)):
@@ -159,8 +160,10 @@ def get_overlaps(df1, df2, label='overlaps', how='inside'):
             elif how == 'any':
                 if ((x.start<r.start) & (x.end>r.start)) or \
                    ((x.start>r.start) & (x.start<r.end)):
+                    #t = abs(r.start-x.start)
+                    #print (a, b)
                     f+=1
-            #print r.start,r.end, f
+            #print (r.start,r.end, f)
         return f
 
     for n,df in a.groupby('name'):
@@ -169,7 +172,7 @@ def get_overlaps(df1, df2, label='overlaps', how='inside'):
         new.append(df)
     result = pd.concat(new)
     #print (len(a), len(b))
-    print ('%s with overlapping binders' %len(result[result[label]>0]))
+    print ('%s with overlapping sequences' %len(result[result[label]>0]))
     return result
 
 def get_orthologs(seq, db=None, expect=1, hitlist_size=400, equery=None,
@@ -259,10 +262,10 @@ def find_conserved_sequences(seqs, alnrows):
         sequence = a.seq
         found = [sequence.find(j) for j in seqs]
         f.append(found)
-    try:
-        ind = alnrows.species #alnrows.accession
-    except:
-        ind = alnrows.name
+    for n in ['species','accession','name']:
+        if n in alnrows.columns:
+            ind = alnrows[n]
+            break
     s = pd.DataFrame(f,columns=seqs,index=ind)
     s = s.replace(-1,np.nan)
     s[s>0] = 1
@@ -319,12 +322,6 @@ def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=No
                 cbar=False, square=True)
     return c
 
-'''def setBlastLink(df):
-    def makelink(x):
-        return '<a href=http://www.ncbi.nlm.nih.gov/protein/%s> %s </a>' %(x,x)
-    df['accession'] = df.accession.apply(makelink)
-    return df'''
-
 def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
                  genome=None, colname='peptide'):
     """
@@ -346,7 +343,7 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     length = len(binders.head(1).peptide.max())
     if dist == None:
         dist = length+1
-        print ('using dist for clusters: %s' %dist)
+        #print ('using dist for clusters: %s' %dist)
     for n,b in grps:
         if len(b)==0: continue
         clusts = base.dbscan(b,dist=dist,minsize=min_binders)

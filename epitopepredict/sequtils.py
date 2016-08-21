@@ -66,7 +66,7 @@ def distance_tree(filename=None, seqs=None, ref=None):
         tree.root_with_outgroup(ref)
 
     #Phylo.draw_graphviz(tree,font_size='9', prog='neato')
-    f = plt.figure(figsize=(8,10))
+    f = plt.figure(figsize=(8,8))
     ax=f.add_subplot(111)
     ax.set_axis_bgcolor('white')
     Phylo.draw(tree, axes=ax)
