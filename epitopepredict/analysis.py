@@ -76,12 +76,12 @@ def _center_nmer(x, n):
     #print(size, x.peptide, x.start, x.end, l, l1, start, end, seq, len(seq))
     return seq
 
-def _split_nmer(x, n, key):
+def _split_nmer(x, n, key, margin=3):
     """Row based method to split a peptide in to multiple nmers
     if it's too large"""
 
     size = x.end-x.start
-    m = 3 #margin
+    m = margin
     if size <= n+m:
         return pd.Series(_center_nmer(x, n))
     else:
@@ -99,7 +99,7 @@ def _split_nmer(x, n, key):
         seqs = pd.Series(seqs)
         return seqs
 
-def get_nmer(df, genome, length=20, seqkey='peptide', how='center'):
+def get_nmer(df, genome, length=20, seqkey='peptide', how='center', margin=3):
     """
     Get n-mer peptide surrounding a set of sequences using the host
     protein sequence.
@@ -121,11 +121,11 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center'):
 
     if not 'end' in list(temp.columns):
         temp = base.get_coords(temp)
-    temp =  base.get_coords(temp)
+    temp = base.get_coords(temp)
     if how == 'center':
         res = temp.apply( lambda r: _center_nmer(r, length), 1)
     elif how == 'split':
-        res = temp.apply( lambda r: _split_nmer(r, length, seqkey), 1)
+        res = temp.apply( lambda r: _split_nmer(r, length, seqkey, margin), 1)
         res.index = temp.index
         res = res.stack().drop_duplicates()
         res.index = res.index.droplevel(1)
@@ -137,12 +137,11 @@ def create_nmers(df, genome, key='nmer', length=20):
     and updating the start/end coords of each row in the dataframe
     """
 
-    x = get_nmer(df, genome, how='split', length=length)
+    x = get_nmer(df, genome, how='split', length=length, margin=4)
     x = pd.DataFrame(x, columns=['peptide'])
     x = x.rename(columns={'peptide':key})
     x = df.merge(x,left_index=True,right_index=True).reset_index(drop=True)
     x = base.get_coords_from_sequence(x, genome, key=key)
-    print( 'final list of %s peptides:' %len(x) )
     return x
 
 def get_overlaps(df1, df2, label='overlap', how='inside'):
