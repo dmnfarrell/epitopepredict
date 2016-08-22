@@ -460,10 +460,11 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
 
 def binders_to_coords(df):
     """Convert binder results to dict of coords for plotting"""
+
     coords = {}
     if 'start' in df.columns:
         for i,g in df.groupby('name'):
-            l = df.end-df.start
+            l = g.end-g.start
             coords[i] = zip(g.start,l)
     return coords
 

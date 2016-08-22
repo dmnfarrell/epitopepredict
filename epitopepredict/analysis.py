@@ -131,6 +131,20 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center'):
         res.index = res.index.droplevel(1)
     return res
 
+def create_nmers(df, genome, key='nmer', length=20):
+    """
+    Add n-mers to a dataframe of sequences by splitting them up
+    and updating the start/end coords of each row in the dataframe
+    """
+
+    x = get_nmer(df, genome, how='split', length=length)
+    x = pd.DataFrame(x, columns=['peptide'])
+    x = x.rename(columns={'peptide':key})
+    x = df.merge(x,left_index=True,right_index=True).reset_index(drop=True)
+    x = base.get_coords_from_sequence(x, genome, key=key)
+    print( 'final list of %s peptides:' %len(x) )
+    return x
+
 def get_overlaps(df1, df2, label='overlap', how='inside'):
     """
     Overlaps for 2 sets of sequences where the positions in host sequence are stored
@@ -144,7 +158,7 @@ def get_overlaps(df1, df2, label='overlap', how='inside'):
     Returns:
         First DataFrame with no. of overlaps stored in a new column
     """
-    
+
     new=[]
     a = base.get_coords(df1)
     b = base.get_coords(df2)
@@ -171,7 +185,6 @@ def get_overlaps(df1, df2, label='overlap', how='inside'):
         df[label] = df.apply(lambda r: overlap(r,found),axis=1)
         new.append(df)
     result = pd.concat(new)
-    #print (len(a), len(b))
     print ('%s with overlapping sequences' %len(result[result[label]>0]))
     return result
 
@@ -357,9 +370,9 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
         print ('no clusters')
         return pd.DataFrame()
     x = pd.DataFrame(C,columns=['name','start','end','binders'])
-    x['clustersize'] = (x.end-x.start)
-    x = x[x.clustersize>=min_size]
-    x = x[x.clustersize<=max_size]
+    x['length'] = (x.end-x.start)
+    x = x[x['length']>=min_size]
+    x = x[x['length']<=max_size]
 
     #if genome data available merge to get peptide seq
     cols = ['locus_tag','translation']
