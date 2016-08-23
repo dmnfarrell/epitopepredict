@@ -77,27 +77,36 @@ def _center_nmer(x, n):
     return seq
 
 def _split_nmer(x, n, key, margin=3):
-    """Row based method to split a peptide in to multiple nmers
-    if it's too large"""
+    """Row based method to split a peptide in to multiple n-mers
+        if it's too large. Returns a dataframe of 3 cols so should be
+        applied using iterrows and then use concat"""
 
     size = x.end-x.start
     m = margin
     if size <= n+m:
-        return pd.Series(_center_nmer(x, n))
+        #return pd.Series(_center_nmer(x, n))
+        return pd.DataFrame({'peptide':_center_nmer(x, n),
+                             'start':x.start,'end':x.end},index=[0])
     else:
         o=size%n
         #print (x.peptide, size, o)
         seqs=[]
+        S=[];E=[]
         l = int(math.ceil(float(size)/n))
         if x.start==0: s=1
         else: s=0
         for i in range(s, size, n):
             if i+n>size:
                 seqs.append(x[key][o:o+n])
+                S.append(x.start+o)
+                E.append(x.start+o+n)
             else:
                 seqs.append(x[key][i:i+n])
+                S.append(x.start+i)
+                E.append(x.start+i+n)
         seqs = pd.Series(seqs)
-        return seqs
+        d = pd.DataFrame({'peptide':seqs,'start':S,'end':E})
+        return d
 
 def get_nmer(df, genome, length=20, seqkey='peptide', how='center', margin=3):
     """
@@ -116,19 +125,23 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center', margin=3):
 
     cols = ['locus_tag','gene','translation','length']
     cols = list(set(cols) & set(genome.columns))
-    temp = df.merge(genome[cols],
-                    left_on='name',right_on='locus_tag',how='left')
-
+    #merge with genome dataframe but must keep index for re-merging!
+    temp = df.merge(genome[cols],left_on='name',right_on='locus_tag',
+                    how='left').set_index(df.index)
     if not 'end' in list(temp.columns):
         temp = base.get_coords(temp)
+
     temp = base.get_coords(temp)
     if how == 'center':
         res = temp.apply( lambda r: _center_nmer(r, length), 1)
     elif how == 'split':
-        res = temp.apply( lambda r: _split_nmer(r, length, seqkey, margin), 1)
-        res.index = temp.index
-        res = res.stack().drop_duplicates()
-        res.index = res.index.droplevel(1)
+        res=[]
+        for n,r in temp.iterrows():
+            d = _split_nmer(r, 20, seqkey)
+            res.append(d)
+            d['index']=n
+            d.set_index('index',inplace=True)
+        res = pd.concat(res)
     return res
 
 def create_nmers(df, genome, key='nmer', length=20):
@@ -138,10 +151,13 @@ def create_nmers(df, genome, key='nmer', length=20):
     """
 
     x = get_nmer(df, genome, how='split', length=length, margin=4)
-    x = pd.DataFrame(x, columns=['peptide'])
     x = x.rename(columns={'peptide':key})
+    df = df.drop(['start','end'],1)
     x = df.merge(x,left_index=True,right_index=True).reset_index(drop=True)
-    x = base.get_coords_from_sequence(x, genome, key=key)
+
+    #x = pd.DataFrame(x, columns=['peptide'])
+    #x = x.rename(columns={'peptide':key})
+    #x = df.merge(x,left_index=True,right_index=True).reset_index(drop=True)
     return x
 
 def get_overlaps(df1, df2, label='overlap', how='inside'):

@@ -144,7 +144,7 @@ def get_length(data):
         return len(data.head(1).peptide.max())
     return
 
-def get_coords_from_sequence(df, genome, key='peptide'):
+'''def get_coords_from_sequence(df, genome, key='peptide'):
     """Get peptide coords from parent protein sequences"""
 
     def func(x):
@@ -152,13 +152,16 @@ def get_coords_from_sequence(df, genome, key='peptide'):
         st = seq.find(x[key])
         end = st+len(x[key])
         #print (x['name'],x[key], st, end)
-        return pd.Series({'start':st,'end':end}) #'name':x['name'],'peptide':x[key]})
+        return pd.Series({'start':st,'end':end})# 'name':x['name'],'peptide':x[key]})
+
     temp = df.merge(genome[['locus_tag','translation']],
-                    left_on='name',right_on='locus_tag')
+                    left_on='name',right_on='locus_tag')#.set_index(df.index)
+
+    #print (temp[:10])
     temp = temp.apply( lambda r: func(r),1)
     #print (temp[:10])
     df = df.drop(['start','end'],1)
-    return df.join(temp,how='inner')
+    return df.join(temp)'''
 
 def get_coords(df):
     """Get start end coords from position and length of peptides"""
