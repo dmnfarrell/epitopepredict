@@ -25,7 +25,7 @@ from . import utilities, peptutils, sequtils, tepitope
 home = os.path.expanduser("~")
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'mhcdata')
-predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','bcell']
+predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','iedbbcell']
 iedbmethods = ['arbpython','comblib','consensus3','IEDB_recommended',
                'NetMHCIIpan','nn_align','smm_align','tepitope']
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
@@ -127,8 +127,8 @@ def get_predictor(name='tepitope', **kwargs):
         return IEDBMHCIPredictor(**kwargs)
     elif name == 'iedbmhc2':
         return IEDBMHCIIPredictor(**kwargs)
-    elif name == 'bcell':
-        return BCellPredictor(**kwargs)
+    elif name == 'iedbbcell':
+        return IEDBBCellPredictor(**kwargs)
     elif name == 'tepitope':
         return TEpitopePredictor(**kwargs)
     elif name == 'mhcflurry':
@@ -1053,7 +1053,7 @@ class TEpitopePredictor(Predictor):
     def getAlleles(self):
         return tepitope.getAlleles()
 
-class BCellPredictor(Predictor):
+class IEDBBCellPredictor(Predictor):
     """Using IEDB tools methods, requires iedb bcell tools.
        see http://tools.immuneepitope.org/bcell """
 
@@ -1124,17 +1124,19 @@ class BCellPredictor(Predictor):
         if names != None:
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())
+        res=[]
         for i,row in proteins:
             seq = row['translation']
             name = row['locus_tag']
             #print (name)
-            res = self.predict(sequence=seq,name=name)
+            df = self.predict(sequence=seq,name=name)
+            res.append(df)
             if save == True:
                 #fname = os.path.join(path, name+'.mpk')
                 #pd.to_msgpack(fname, res)
                 fname = os.path.join(path, name+'.csv')
-                res.to_csv(fname)
-
+                df.to_csv(fname)
+        self.data = res = pd.concat(res)
         return
 
 class MHCFlurryPredictor(Predictor):

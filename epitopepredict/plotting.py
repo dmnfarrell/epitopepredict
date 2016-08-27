@@ -259,7 +259,7 @@ def plot_regions(coords, ax, color='red', label='', alpha=0.6):
             facecolor=color, lw=.8, alpha=alpha, zorder=0))
     return
 
-def mpl_draw_labels(labels, coords, ax):
+def draw_labels(labels, coords, ax):
     """Add labels on axis"""
 
     bbox_args = dict(boxstyle='square',fc='whitesmoke')
@@ -330,7 +330,19 @@ def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
     plt.tight_layout()
     return axs
 
-def mpl_plot_seqdepot(annotation, ax):
+def plot_bcell(plot,pred,height,ax=ax):
+    """Line plot of iedb bcell results"""
+
+    x = pred.data.Position
+    y = pred.data.Score
+    h = height
+    y = y+abs(min(y))
+    y = y*(h/max(y))+3
+    #plot.line(x, y, line_color="red", line_width=2, alpha=0.6,legend='bcell')
+    ax.plot(x,y,color='blue')
+    return
+
+def plot_seqdepot(annotation, ax):
     """Plot sedepot annotations - replace with generic plot coords track"""
 
     from matplotlib.patches import Rectangle
@@ -386,13 +398,13 @@ def plot_multiple(preds, names, kind='tracks', regions=None, genome=None, **kwar
             coords = zip(*coords)
             plot_regions(coords, ax, color='gray')
         #labels = list(r.peptide)
-        #plotting.mpl_draw_labels(labels, coords, ax)
+        #plotting.draw_labels(labels, coords, ax)
         if genome is not None:
             p = genome[genome['locus_tag']==prot]
             seq = p.translation.iloc[0]
             from . import analysis
             sd = analysis.get_seqdepot(seq)['t']
-            mpl_plot_seqdepot(sd, ax)
+            plot_seqdepot(sd, ax)
         plt.tight_layout()
         plt.show()
     return

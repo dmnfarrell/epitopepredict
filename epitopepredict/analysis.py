@@ -53,7 +53,8 @@ def peptide_properties(df, colname='peptide'):
 
 def _center_nmer(x, n):
     """Get n-mer sequence for a peptide centered in the middle.
-    This should be applied to a dataframe per row."""
+    This should be applied to a dataframe per row.
+    Returns: a single sequence centred on the peptide"""
 
     seq = x['translation']
     size = x.end-x.start
@@ -83,25 +84,30 @@ def _split_nmer(x, n, key, margin=3):
 
     size = x.end-x.start
     m = margin
+
     if size <= n+m:
-        #return pd.Series(_center_nmer(x, n))
-        return pd.DataFrame({'peptide':_center_nmer(x, n),
+        seq = _center_nmer(x, n)
+        return pd.DataFrame({'peptide': seq,
                              'start':x.start,'end':x.end},index=[0])
     else:
+        seq = x[key]
         o=size%n
         #print (x.peptide, size, o)
+        if o<=margin:
+            size=size-o
+            seq = _center_nmer(x, size)
+            print (size)
         seqs=[]
         S=[];E=[]
-        l = int(math.ceil(float(size)/n))
         if x.start==0: s=1
         else: s=0
         for i in range(s, size, n):
             if i+n>size:
-                seqs.append(x[key][o:o+n])
+                seqs.append(seq[o:o+n])
                 S.append(x.start+o)
                 E.append(x.start+o+n)
             else:
-                seqs.append(x[key][i:i+n])
+                seqs.append(seq[i:i+n])
                 S.append(x.start+i)
                 E.append(x.start+i+n)
         seqs = pd.Series(seqs)
@@ -119,6 +125,7 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center', margin=3):
         seqkey: column name of sequence to be processed
         how: method to create the n-mer, 'split' will try to split up
             the sequence into overlapping n-mes of length is larger than size
+        margin: allow
     Returns:
         pandas Series with nmer values
     """
@@ -137,7 +144,7 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center', margin=3):
     elif how == 'split':
         res=[]
         for n,r in temp.iterrows():
-            d = _split_nmer(r, 20, seqkey)
+            d = _split_nmer(r, 20, seqkey, margin)
             res.append(d)
             d['index']=n
             d.set_index('index',inplace=True)
@@ -150,14 +157,10 @@ def create_nmers(df, genome, key='nmer', length=20):
     and updating the start/end coords of each row in the dataframe
     """
 
-    x = get_nmer(df, genome, how='split', length=length, margin=4)
+    x = get_nmer(df, genome, how='split', length=length, margin=1)
     x = x.rename(columns={'peptide':key})
     df = df.drop(['start','end'],1)
     x = df.merge(x,left_index=True,right_index=True).reset_index(drop=True)
-
-    #x = pd.DataFrame(x, columns=['peptide'])
-    #x = x.rename(columns={'peptide':key})
-    #x = df.merge(x,left_index=True,right_index=True).reset_index(drop=True)
     return x
 
 def get_overlaps(df1, df2, label='overlap', how='inside'):
