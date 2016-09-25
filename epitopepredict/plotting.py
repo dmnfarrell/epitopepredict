@@ -330,7 +330,7 @@ def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
     plt.tight_layout()
     return axs
 
-def plot_bcell(plot,pred,height,ax=ax):
+def plot_bcell(plot,pred,height,ax=None):
     """Line plot of iedb bcell results"""
 
     x = pred.data.Position

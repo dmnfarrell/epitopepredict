@@ -901,7 +901,9 @@ class IEDBMHCIPredictor(Predictor):
         self.name = 'iedbmhc1'
         self.scorekey = 'score'
         self.methods = {'ANN':'ann_ic50','IEDB_recommended':'smm_ic50',
-                         'Consensus (ANN,SMM)':'ann_ic50','NetMHCpan':'netmhcpan_ic50'}
+                         'Consensus (ANN,SMM)':'ann_ic50',
+                         'Consensus (ANN,SMM,CombLib_Sidney2008)':'ann_ic50',
+                         'NetMHCpan':'netmhcpan_ic50'}
         self.cutoff = .426
         self.operator = '>'
         self.rankascending = 0
@@ -953,7 +955,7 @@ class IEDBMHCIPredictor(Predictor):
         return
 
     def getScoreKey(self, data):
-        """Get iedbmhc1 score key from data"""
+        """Get iedbmhc1 score key for a result, since they vary"""
 
         m = data['method'].head(1).squeeze()
         key = self.methods[m]
