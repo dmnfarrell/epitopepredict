@@ -224,14 +224,17 @@ def summarize(data):
                                         len(proteins),len(allelegrps)))
     return
 
-def get_cutoffs(pred, cutoff=5):
+def get_cutoffs(pred=None, data=None, cutoff=5):
     """
-    Get cutoffs
+    Get score cutoffs per allele for supplied predictions at this
+    percentile level. Can be used to set global cutoffs for scoring
+    arbitary sequences and then check if they are binders.
     """
 
     q = (1-cutoff/100.) #score quantile value
     cuts={}
-    data = pred.data
+    if data is None:
+        data = pred.data
     for a,g in data.groupby('allele'):
         cuts[a] = g[pred.scorekey].quantile(q=q)
     cuts = pd.Series(cuts)
@@ -439,11 +442,15 @@ class Predictor(object):
         if value == 'score':
             value = self.scorekey
             q = (1-cutoff/100.) #score quantile value
-            cuts={}
-            for a,g in data.groupby('allele'):
-                cuts[a] = g[value].quantile(q=q)
+            if hasattr(self, 'cutoffs'):
+                cuts = self.cutoffs
+            else:
+                cuts={}
+                #derive score cutoffs for each allele
+                for a,g in data.groupby('allele'):
+                    cuts[a] = g[value].quantile(q=q)
             cuts = pd.Series(cuts)
-            #cuts = get_cutoffs(self, cutoff)
+
             res=[]
             for a,g in data.groupby('allele'):
                 #print cuts[a]
@@ -465,7 +472,7 @@ class Predictor(object):
             value: to pass to getBinders
             cutoff: percentile cutoff for getBinders
             n: min number of alleles
-            unique_cores: removes peptides with duplicate cores and picks the most
+            unique_core: removes peptides with duplicate cores and picks the most
             promiscuous and highest ranked, used for mhc-II predictions
         Returns:
             a pandas dataframe
@@ -473,7 +480,9 @@ class Predictor(object):
 
         if binders is None:
             binders = self.getBinders(name=name, cutoff=cutoff, value=value)
-
+        if binders is None:
+            print('no binders found, check that prediction data is present')
+            return
         if 'core' not in binders.columns :
             binders['core'] = binders.peptide
         grps = binders.groupby(['peptide','pos','name'])
@@ -536,25 +545,27 @@ class Predictor(object):
 
     def predictSequences(self, sequences, alleles=[]):
         """
-        Predict a set of arbitary sequences in a dictionary or dataframe. These are treated
-        as single peptides and not split into n-mers.
+        Predict a set of arbitary sequences in a list, dict or dataframe.
+        These are treated as individual peptides and not split into n-mers.
         """
 
-        if type(peptides) is dict:
-            seqs = pd.DataFrame(sequences, orient='index')
         results=[]
-        for i,seq in seqs:
-            print (i)
-            if len(seq)<length: continue
+        print (sequences)
+        if type(sequences) is list:
+            sequences = pd.DataFrame(sequences, columns=['peptide'])
+            sequences['name'] = sequences.peptide
+        for i,row in sequences.iterrows():
+            seq = row.peptide
+            name = row.name
             res=[]
             for a in alleles:
-               df = self.predict(sequence=seq, length=length,
-                                    allele=a, name=seq)
+               df = self.predict(sequence=seq, length=len(seq),
+                                    allele=a, name=name)
                res.append(df)
             res = pd.concat(res)
             results.append(res)
-        self.data = pd.concat(results)
-        return results
+        data = self.data = pd.concat(results)
+        return data
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
                         length=11, overlap=1, names=None, alleles=[],
@@ -922,6 +933,7 @@ class IEDBMHCIPredictor(Predictor):
             return
         cmd = os.path.join(path,'src/predict_binding.py')
         cmd = cmd+' %s %s %s %s' %(self.iedbmethod,allele,length,seqfile)
+        #print (cmd)
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash',
                 stderr=subprocess.STDOUT)
