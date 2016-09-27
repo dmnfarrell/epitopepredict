@@ -403,7 +403,7 @@ class Predictor(object):
         s=self.scorekey
         df['rank'] = df[s].rank(method='min',ascending=self.rankascending)
         df.sort_values(by=['rank','name','allele'], ascending=True, inplace=True)
-        return
+        return df
 
     def evaluate(self, df, key, value, operator='<'):
         """
@@ -550,13 +550,13 @@ class Predictor(object):
         """
 
         results=[]
-        print (sequences)
+        #print (sequences)
         if type(sequences) is list:
             sequences = pd.DataFrame(sequences, columns=['peptide'])
             sequences['name'] = sequences.peptide
         for i,row in sequences.iterrows():
             seq = row.peptide
-            name = row.name
+            name = row['name']
             res=[]
             for a in alleles:
                df = self.predict(sequence=seq, length=len(seq),
@@ -565,6 +565,9 @@ class Predictor(object):
             res = pd.concat(res)
             results.append(res)
         data = self.data = pd.concat(results)
+        data.reset_index(drop=True,inplace=True)
+        #rank is now just global over all sequences (not per protein)
+        #self.getRanking(df)
         return data
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
