@@ -564,10 +564,11 @@ class Predictor(object):
                res.append(df)
             res = pd.concat(res)
             results.append(res)
-        data = self.data = pd.concat(results)
+        data = pd.concat(results)
         data.reset_index(drop=True,inplace=True)
-        #rank is now just global over all sequences (not per protein)
-        #self.getRanking(df)
+        #rank is now just global over all sequences per allele
+        data = data.groupby('allele').apply(self.getRanking).reset_index(drop=True)
+        self.data = data
         return data
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
