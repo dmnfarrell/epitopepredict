@@ -144,20 +144,20 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center', margin=3):
     elif how == 'split':
         res=[]
         for n,r in temp.iterrows():
-            d = _split_nmer(r, 20, seqkey, margin)
+            d = _split_nmer(r, length, seqkey, margin)
             res.append(d)
             d['index']=n
             d.set_index('index',inplace=True)
         res = pd.concat(res)
     return res
 
-def create_nmers(df, genome, key='nmer', length=20):
+def create_nmers(df, genome, key='nmer', length=20, margin=1):
     """
     Add n-mers to a dataframe of sequences by splitting them up
     and updating the start/end coords of each row in the dataframe
     """
 
-    x = get_nmer(df, genome, how='split', length=length, margin=1)
+    x = get_nmer(df, genome, how='split', length=length, margin=margin)
     x = x.rename(columns={'peptide':key})
     df = df.drop(['start','end'],1)
     x = df.merge(x,left_index=True,right_index=True).reset_index(drop=True)

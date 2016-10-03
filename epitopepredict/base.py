@@ -508,22 +508,26 @@ class Predictor(object):
         s = s[s.alleles>=n]
         return s
 
-    def rankedBinders(self, name=None, how='median', cutoff=None):
+    def rankedBinders(self, names=None, how='median', cutoff=None):
         """
         Get the median/mean rank of each binder over all alleles.
         Args:
-            name: specify protein name, otherwise all current data used
+            names: list of protein names, otherwise all current data used
             how: method to use for rank selection, 'median' (default),
             'best' or 'mean',
             cutoff: apply a rank cutoff if we want to filter (optional)
         """
 
         df = self.data
-        if name != None:
-            df=df[df.name==name]
+        if names != None:
+            if names is str:
+                names = [names]
+            df=df[df.name.isin(names)]
         funcs = { 'median':np.median, 'mean':np.mean, 'best':min }
         func = funcs[how]
-        b = df.groupby(['peptide']).agg({'rank': func,'pos':first, 'name':first})
+        b = df.groupby(['peptide']).agg({'rank': func,'pos':first, 'name':first,
+                                         self.scorekey: np.median})
+        #b.columns = b.columns.get_level_values(0)
         b = b.reset_index().sort_values('rank')
         if cutoff != None:
             b = b[b['rank'] < cutoff]

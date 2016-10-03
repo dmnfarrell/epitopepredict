@@ -474,13 +474,16 @@ def binders_to_coords(df):
     """Convert binder results to dict of coords for plotting"""
 
     coords = {}
+    if not 'start' in df.columns:
+        df=base.get_coords(df)
     if 'start' in df.columns:
         for i,g in df.groupby('name'):
             l = g.end-g.start
             coords[i] = zip(g.start,l)
     return coords
 
-def plot_overview(genome, coords=None, cols=2, colormap='Paired', legend=True):
+def plot_overview(genome, coords=None, cols=2, colormap='Paired',
+                  legend=True, figsize=None):
     """
     Plot regions of interest in a group of protein sequences. Useful for
     seeing how your binders/epitopes are distributed in a small genome or subset of genes.
@@ -503,9 +506,11 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired', legend=True):
     names = [coords[c].keys() for c in coords][0]
 
     df = genome[genome.locus_tag.isin(names)]
-    h = round(len(names)*.2+10./cols)
     rows = int(np.ceil(len(names)/float(cols)))
-    f,axs=plt.subplots(rows,cols,figsize=(14,h))
+    if figsize == None:
+        h = round(len(names)*.2+10./cols)
+        figsize = (14,h)
+    f,axs=plt.subplots(rows,cols,figsize=figsize)
     grid=axs.flat
     rects = {}
     i=0
@@ -550,7 +555,7 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired', legend=True):
     if i|2!=0 and cols>1:
         f.delaxes(grid[i])
     if legend == True:
-        f.legend(rects.values(), rects.keys(), loc=8)
+        f.legend(rects.values(), rects.keys(), loc=4)
     plt.tight_layout()
     return
 
