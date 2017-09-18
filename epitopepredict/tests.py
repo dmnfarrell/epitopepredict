@@ -29,7 +29,7 @@ class PredictorTests(unittest.TestCase):
         """Tepitope test"""
 
         df = self.df
-        P = base.getPredictor('tepitope')
+        P = base.get_predictor('tepitope')
         alleles = ["HLA-DRB1*0101", "HLA-DRB1*0305"]
         print (P)
         P.predictProteins(df, length=11, alleles=alleles,
@@ -42,7 +42,7 @@ class PredictorTests(unittest.TestCase):
 
         #requires netmHCIIpan is installed
         df = self.df
-        P = base.getPredictor('netmhciipan')
+        P = base.get_predictor('netmhciipan')
         alleles = ["HLA-DRB1*0101"]
         names = ['ZEBOVgp1']
         print (P)
@@ -69,7 +69,7 @@ class PredictorTests(unittest.TestCase):
 
         df = self.df
         names = ['VP24']
-        P = base.getPredictor('bcell')
+        P = base.get_predictor('iedbbcell')
         P.iedbmethod='Chou-Fasman'
         P.predictProteins(df, names=names, path=self.testdir)
         return
@@ -80,7 +80,7 @@ class PredictorTests(unittest.TestCase):
         fastafile = 'testing/zaire-ebolavirus.faa'
         df = sequtils.fasta_to_dataframe(fastafile)
         alleles = ["HLA-DRB1*0101"]
-        P = base.getPredictor('tepitope')
+        P = base.get_predictor('tepitope')
         P.predictProteins(df, length=11, alleles=alleles, path=self.testdir)
         return
 
@@ -88,7 +88,7 @@ class PredictorTests(unittest.TestCase):
         """Test re-loading predictions"""
 
         infile = os.path.join(self.testdir, 'ZEBOVgp1.csv')
-        P = base.getPredictor('iedbmhc1')
+        P = base.get_predictor('iedbmhc1')
         P.load(infile)
         return
 

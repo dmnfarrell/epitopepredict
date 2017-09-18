@@ -4,7 +4,7 @@ import sys,os
 setup(
     name = 'epitopepredict',
     version = '0.2.0',
-    description = 'Library ',
+    description = 'Python package for MHC binding prediction',
     url='https://github.com/dmnfarrell/epitopepredict',
     license='GPL v3',
     author = 'Damien Farrell',
@@ -14,8 +14,12 @@ setup(
 				     'tepitope/pssm/*']},
     install_requires=['numpy>=1.5',
                       'pandas>=0.17',
-                      'biopython>=1.5'],
-    entry_points = {},
+                      'biopython>=1.5',
+                      'future'],
+    entry_points = {
+        'console_scripts': [
+            'epitopepredict=epitopepredict.app:main']
+            },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',
             'Operating System :: MacOS :: MacOS X',

@@ -1,0 +1,27 @@
+name: epitopepredict
+version: 'latest'
+summary: python package for MHC binding prediction
+description: |
+  epitopepredict is a python package and command line interface that provides a standardized
+  programmatic interface for executing several MHC binding prediction methods.
+  The results from each method can then be processed and visualized in a consistent manner.
+
+grade: stable
+confinement: strict
+icon: ../img/logo.png
+
+apps:
+  epitopepredict:
+    command: bin/epitopepredict
+parts:
+  epitopepredict:
+    plugin: python
+    python-version: python2
+    source: ../
+    python-packages:
+      [matplotlib]
+    stage-packages:
+      [python-tk,tcsh,ncbi-blast+]
+  #netmhciipan:
+  #  plugin: autotools
+  #  source:

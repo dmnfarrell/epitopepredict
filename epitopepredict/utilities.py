@@ -10,7 +10,10 @@ from __future__ import absolute_import, print_function
 import os, math, csv, string
 import shutil
 #import Image, ImageFont, ImageDraw
-from configparser import ConfigParser
+try:
+    import configparser
+except:
+    import ConfigParser as configparser
 import numpy as np
 import pandas as pd
 import matplotlib

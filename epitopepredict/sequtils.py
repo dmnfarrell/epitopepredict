@@ -266,6 +266,7 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
         allfeat.append(d)
 
     df = pd.DataFrame(allfeat,columns=featurekeys)
+    print (df)
     df['length'] = df.translation.str.len()
     df = check_tags(df)
     if quiet == False:

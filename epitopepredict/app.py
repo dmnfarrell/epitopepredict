@@ -9,10 +9,12 @@
 from __future__ import absolute_import, print_function
 import sys, os
 import pandas as pd
-from configparser import ConfigParser
+try:
+    import configparser
+except:
+    import ConfigParser as configparser
 from collections import OrderedDict
-import epitopepredict as ep
-from epitopepredict import base, analysis, sequtils, plotting, tests
+from . import base, analysis, sequtils, plotting, tests
 
 defaultpath = os.getcwd()
 #default configuration values
@@ -34,7 +36,7 @@ defaultopts = OrderedDict(optvalues)
 def createConfigParserfromOptions(opts, section):
     """Helper method to create a ConfigParser from a dict of options"""
 
-    cp = ConfigParser()
+    cp = configparser.ConfigParser()
     s='prediction'
     cp.add_section(s)
     print('writing a new config file')
@@ -50,7 +52,7 @@ def createConfig(opts=None, conffile='default.conf'):
 
     if opts == None:
         opts = defaultopts
-    c = ConfigParser()
+    c = configparser.ConfigParser()
     wdir = os.path.join(defaultpath, 'workingdir')
     cp = createConfigParserfromOptions(opts, 'default')
     cp.write(open(conffile,'w'))
@@ -62,7 +64,7 @@ def parseConfig(conffile=None):
     """Parse the config file"""
 
     f = open(conffile,'r')
-    cp = ConfigParser()
+    cp = configparser.ConfigParser()
     try:
         cp.read(conffile)
     except:
@@ -97,7 +99,7 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
          names = ''):
     """Run the prediction workflow using config settings"""
 
-    genome = sequtils.genbank2Dataframe(genome, cds=True)
+    genome = sequtils.genbank_to_dataframe(genome, cds=True)
     #process these in config2Dict
     predictors = predictors.split(',')
     mhc2alleles = mhc2alleles.split(',')
@@ -107,7 +109,7 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
     preds = []
     for p in predictors:
         print (p)
-        P = ep.getPredictor(p)
+        P = base.get_predictor(p)
         preds.append(P)
         savepath = os.path.join(path,prefix+p)
         if p == 'iedbmhc1':
@@ -117,11 +119,11 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         P.predictProteins(genome, length=11, alleles=a, #names=names,
                           path=savepath, overwrite=overwrite)
         P.load(path=savepath)
-        pb = P.getPromiscuousBinders(n=int(n), perc=float(cutoff), cutoff_method=cutoff_method)
+        pb = P.promiscuousBinders(n=int(n), cutoff=float(cutoff))
         pb.to_csv(os.path.join(path,'binders_%s.csv' %p))
         if genome_analysis == True:
-            b = P.getBinders(perc=cutoff,cutoff_method=cutoff_method)
-            cl = analysis.findClusters(pb, genome=genome)
+            b = P.getBinders(cutoff=cutoff, value=cutoff_method)
+            cl = analysis.find_clusters(pb, genome=genome)
 
     #various choices here - we could generate a notebook with the plots
     #embedded ? better than saving all to disk
@@ -130,8 +132,7 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         import pylab as plt
         height = 2*len(preds)
         for prot in prots:
-            ax = plotting.mpl_plot_tracks(preds,name=prot,n=2,perc=cutoff,
-                                          cutoff_method='global',
+            ax = plotting.plot_tracks(preds,name=prot,n=2,cutoff=cutoff,
                                           figsize=(14,height),legend=True)
             #plotting.mpl_plot_regions(coords, ax, color='gray')
             plt.tight_layout()
@@ -142,19 +143,18 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
 
 def main():
     "Run the application"
+
     import sys, os
     from optparse import OptionParser
     parser = OptionParser()
     parser.add_option("-c", "--config", dest="config",
                         help="Configuration file", metavar="FILE")
     parser.add_option("-r", "--run", dest="run",  action="store_true",
-                        default=False, help="Run")
-    #parser.add_option("-t", "--test", dest="test",  action="store_true",
-    #                    default=False, help="tests")
+                        default=False, help="Run the predictions")
+    parser.add_option("-t", "--test", dest="test",  action="store_true",
+                        default=False, help="Do quick test")
     opts, remainder = parser.parse_args()
     if opts.config != None:
-        #from epitopepredict.tests import *
-        #unittest.main()
         cp = parseConfig(opts.config)
         #print (cp)
     else:
@@ -162,7 +162,6 @@ def main():
     if opts.run == True:
         kwargs = config2Dict(cp)['prediction']
         run(**kwargs)
-
 
 if __name__ == '__main__':
     main()
