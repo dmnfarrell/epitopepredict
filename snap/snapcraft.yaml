@@ -13,6 +13,7 @@ icon: ../img/logo.png
 apps:
   epitopepredict:
     command: bin/epitopepredict
+    plugs: [home]
 parts:
   epitopepredict:
     plugin: python
@@ -21,7 +22,7 @@ parts:
     python-packages:
       [matplotlib]
     stage-packages:
-      [python-tk,tcsh,ncbi-blast+]
+      [python-tk,tcsh,gawk,ncbi-blast+]
   #netmhciipan:
   #  plugin: autotools
   #  source:

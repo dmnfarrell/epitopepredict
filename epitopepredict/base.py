@@ -48,6 +48,9 @@ iedbmhc1path = '/local/iedbmhc1/'
 iedbmhc2path = '/local/iedbmhc2/'
 iedbbcellpath = '/local/iedbbcell/'
 
+mhc1_presets = ['mhc1_supertypes','us_caucasion_mhc1']
+mhc2_presets = ['mhc2_supertypes','human_common_mhc2','bovine_like_mhc2']
+
 #six class I super-type alleles
 mhc1_supertypes = ['HLA-A*01:01', 'HLA-A*02:01', 'HLA-A*03:01', 'HLA-A*24:02',
                   'HLA-B*07:02','HLA-B*44:03']
@@ -62,12 +65,74 @@ mhc1_broad_coverage = [
 'HLA-B*57:01', 'HLA-B*58:01', 'HLA-B*15:01', 'HLA-B*07:02', 'HLA-B*35:01', 'HLA-B*51:01',
 'HLA-B*53:01', 'HLA-B*08:01']
 
+human_common_mhc2 = [
+    'HLA-DRB1*0101',
+    'HLA-DRB1*1501',
+    'HLA-DRB1*0301',
+    'HLA-DRB1*0401',
+    'HLA-DRB1*0402',
+    'HLA-DRB1*0701',
+    'HLA-DRB1*0702',
+    'HLA-DRB1*0801',
+    'HLA-DRB1*09011',
+    'HLA-DRB1*09012',
+    'HLA-DRB1*1101',
+    'HLA-DRB1*1201',
+    'HLA-DRB1*1202',
+    'HLA-DRB1*1301']
+
+us_caucasion_mhc1 = [
+    'HLA-A*02:01',
+    'HLA-C*07:01',
+    'HLA-A*01:01',
+    'HLA-A*03:01',
+    'HLA-C*07:02',
+    'HLA-C*04:01',
+    'HLA-B*44:02',
+    'HLA-B*07:02',
+    'HLA-B*08:01',
+    'HLA-C*05:01',
+    'HLA-C*03:04',
+    'HLA-C*06:02',
+    'HLA-A*11:01',
+    'HLA-B*40:01',
+    'HLA-A*24:02',
+    'HLA-B*35:01',
+    'HLA-C*03:03',
+    'HLA-B*51:01',
+    'HLA-C*12:03',
+    'HLA-B*15:01',
+    'HLA-A*29:02',
+    'HLA-A*26:01',
+    'HLA-A*32:01',
+    'HLA-C*08:02',
+    'HLA-A*25:01',
+    'HLA-B*57:01',
+    'HLA-B*14:02',
+    'HLA-C*02:02',
+    'HLA-B*18:01',
+    'HLA-B*44:03'
+    ]
+
+bovine_like_mhc2 = [
+    'HLA-DRB1*0801',
+    'HLA-DRB3*0201',
+    'HLA-DRB1*1101',
+    'HLA-DRB1*1401',
+    'HLA-DRB1*0301',
+    'HLA-DRB1*0401',
+    'HLA-DRB3*0101',
+    'HLA-DRB1*1301'
+    ]
 #sequence for testing
 testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHASHTPGSVS'
                'SAFILEAMVNVISGPKVLMKQIPIWLPLGVADQKTYSFDSTTAAIMLASYTITHFGKATNPLVRVNRLGP'
                'GIPDHPLRLLRIGNQAFLQEFVLPPVQLPQYFTFDLTALKLITQPLPAATWTDDTPTGSNGALRPGISFH'
                'PKLRPILLPNKSGKKGNSADLTSPEKIQAIMTSLQDFKIVPIDPTKNIMGIEVPETLVHKLTGKKVTSKN'
                'GQPIIPVLLPKYIGLDPVAPGDLTMVITQDCDTCHSPASLPAVIEK')
+
+def get_preset_alleles(name):
+    return globals()[name]
 
 def first(x):
     return x.iloc[0]
