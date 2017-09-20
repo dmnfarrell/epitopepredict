@@ -29,8 +29,7 @@ optvalues = (('predictors', 'tepitope'),
                ('cutoff_method', 'default'),
                ('cutoff',4), #percentile cutoff
                ('sequence_file', ''), #genbank/fasta file
-               ('path', os.getcwd()),
-               ('prefix', 'results'), #prefix for subfolders
+               ('path', 'results'),
                ('overwrite', 'no'),
                ('verbose','no'),
                ('names', ''), #subset of protein names from genome file
@@ -48,7 +47,7 @@ def createConfigParserfromOptions(opts, section):
     print('writing a new config file')
     for name in opts:
         val = opts[name]
-        print(name,val)
+        #print(name,val)
         cp.set(s, name, str(val))
     #cp.write(open(filename,'w'))
     return cp
@@ -62,7 +61,6 @@ def createConfig(opts=None, conffile='default.conf'):
     wdir = os.path.join(defaultpath, 'workingdir')
     cp = createConfigParserfromOptions(opts, 'default')
     cp.write(open(conffile,'w'))
-
     #self.parseConfig(conffile)
     return cp
 
@@ -110,7 +108,7 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
          mhc2_alleles='', mhc1_alleles='', preset_alleles='',
          mhc1_length=11, mhc2_length=15,
          n=2,  sequence_file='',
-         path='', prefix='results',
+         path='', #prefix='results',
          overwrite=False,
          plots=False,
          genome_analysis=False,
@@ -130,13 +128,15 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         mhc2_alleles = mhc2_alleles.split(',')
     cutoff = float(cutoff)
 
+    if not os.path.exists(path):
+        os.mkdir(path)
     preds = []
     for p in predictors:
         print ('predictor:', p)
         P = base.get_predictor(p)
         preds.append(P)
-        savepath = os.path.join(path, prefix+'_'+p)
-        if overwrite == True:
+        savepath = os.path.join(path, p)
+        if overwrite == True and os.path.exists(savepath):
             shutil.rmtree(savepath)
         if p in ['iedbmhc1','mhcflurry']:
             a = mhc1_alleles
@@ -175,6 +175,11 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
 
     return
 
+def show_preset_alleles():
+    print ('preset allele list ids:')
+    for i in base.mhc1_presets+base.mhc2_presets:
+        print (i, len( base.get_preset_alleles(i)))
+
 def main():
     "Run the application"
 
@@ -185,6 +190,8 @@ def main():
                         help="Configuration file", metavar="FILE")
     parser.add_option("-r", "--run", dest="run",  action="store_true",
                         default=False, help="Run the predictions")
+    parser.add_option("-p", "--presets", dest="presets",  action="store_true",
+                        default=False, help="Show preset allele lists")
     parser.add_option("-t", "--test", dest="test",  action="store_true",
                         default=False, help="Do quick test")
     opts, remainder = parser.parse_args()
@@ -192,8 +199,11 @@ def main():
         cp = parseConfig(opts.config)
         #print (cp)
     else:
-        createConfig()
-    if opts.run == True:
+        if not os.path.exists('default.conf'):
+            createConfig()
+    if opts.presets == True:
+        show_preset_alleles()
+    elif opts.run == True:
         kwargs = config2Dict(cp)['base']
         run(**kwargs)
 
