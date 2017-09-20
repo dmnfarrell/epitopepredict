@@ -8,6 +8,7 @@
 
 from __future__ import absolute_import, print_function
 import sys, os
+import shutil
 import pandas as pd
 try:
     import configparser
@@ -22,13 +23,16 @@ optvalues = (('predictors', 'tepitope'),
                ('mhc2_alleles','HLA-DRB1*01:01,HLA-DRB1*04:01'),
                ('mhc1_alleles','HLA-A*01:01'),
                ('preset_alleles',''),
+               ('mhc1_length', 11),
+               ('mhc2_length', 15),
                ('n', 2), #number of alleles
                ('cutoff_method', 'default'),
-               ('cutoff',0.98), #percentile cutoff
-               ('genome', 'name.gb'), #genbank file
+               ('cutoff',4), #percentile cutoff
+               ('sequence_file', ''), #genbank/fasta file
                ('path', os.getcwd()),
-               ('prefix', '_'), #prefix for subfolders
+               ('prefix', 'results'), #prefix for subfolders
                ('overwrite', 'no'),
+               ('verbose','no'),
                ('names', ''), #subset of protein names from genome file
                ('overwrite', 'no'),
                ('plots','no'), #whether to save plots
@@ -90,9 +94,22 @@ def config2Dict(config):
     #print (data)
     return data
 
+def get_sequences(filename):
+    """Determine file type and get sequences"""
+
+    ext = os.path.splitext(filename)[1]
+    if ext in ['.fa','.faa','.fasta']:
+        seqs = sequtils.fasta_to_dataframe(filename)
+        print ('found fasta file')
+    elif ext in ['.gb','.gbk','.genbank']:
+        seqs = sequtils.genbank_to_dataframe(filename, cds=True)
+        print ('found genbank file')
+    return seqs
+
 def run(predictors=[], cutoff=0.98, cutoff_method='default',
          mhc2_alleles='', mhc1_alleles='', preset_alleles='',
-         n=2,  genome='',
+         mhc1_length=11, mhc2_length=15,
+         n=2,  sequence_file='',
          path='', prefix='results',
          overwrite=False,
          plots=False,
@@ -100,7 +117,8 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
          names = ''):
     """Run the prediction workflow using config settings"""
 
-    genome = sequtils.genbank_to_dataframe(genome, cds=True)
+    sequences = get_sequences(sequence_file)
+    #print (sequences)
     #process these in config2Dict
     predictors = predictors.split(',')
     if preset_alleles in base.mhc1_presets:
@@ -111,31 +129,39 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         mhc1_alleles = mhc1_alleles.split(',')
         mhc2_alleles = mhc2_alleles.split(',')
     cutoff = float(cutoff)
-    print (mhc1_alleles)
-    print (mhc2_alleles)
+
     preds = []
     for p in predictors:
-        print ('predictor', p)
+        print ('predictor:', p)
         P = base.get_predictor(p)
         preds.append(P)
         savepath = os.path.join(path, prefix+'_'+p)
-        if p == 'iedbmhc1':
+        if overwrite == True:
+            shutil.rmtree(savepath)
+        if p in ['iedbmhc1','mhcflurry']:
             a = mhc1_alleles
+            length = mhc1_length
         else:
             a = mhc2_alleles
-        P.predictProteins(genome, length=11, alleles=a, #names=names,
+            length = mhc2_length
+        P.predictProteins(sequences, length=length, alleles=a, #names=names,
                           path=savepath, overwrite=overwrite)
+        #load into predictor
         P.load(path=savepath)
-        pb = P.promiscuousBinders(n=int(n), cutoff=float(cutoff))
-        pb.to_csv(os.path.join(path,'binders_%s.csv' %p))
+        b = P.getBinders(cutoff=cutoff)#, value=cutoff_method)
+        b.to_csv(os.path.join(path,'binders_%s_%s.csv' %(p,n)))
+
+        pb = P.promiscuousBinders(n=int(n), cutoff=cutoff)
+        print ('found %s promiscuous binders at cutoff %s' %(len(pb),cutoff))
+        pb.to_csv(os.path.join(path,'prom_binders_%s_%s.csv' %(p,n)))
         if genome_analysis == True:
-            b = P.getBinders(cutoff=cutoff, value=cutoff_method)
-            cl = analysis.find_clusters(pb, genome=genome)
+            cl = analysis.find_clusters(pb, genome=sequences)
+            cl.to_csv(os.path.join(path,'clusters_%s.csv' %p))
         print ('-----------------------------')
 
     #various choices here - we could generate a notebook with the plots
     #embedded ? better than saving all to disk
-    prots = genome.locus_tag
+    prots = sequences.locus_tag
     if plots == True:
         import pylab as plt
         height = 2*len(preds)

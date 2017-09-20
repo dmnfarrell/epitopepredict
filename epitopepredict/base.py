@@ -1229,7 +1229,7 @@ class IEDBBCellPredictor(Predictor):
 class MHCFlurryPredictor(Predictor):
     """
     Predictor using MHCFlurry for MHC-I predictions. Requires you to
-    install the python package and dependencies.
+    install the python package mhcflurry with dependencies.
     see https://github.com/hammerlab/mhcflurry
     """
 
@@ -1240,10 +1240,6 @@ class MHCFlurryPredictor(Predictor):
         self.operator = '>'
         self.scorekey = 'score'
         self.rankascending = 0
-        try:
-            from mhcflurry import predict
-        except:
-            print ('mhcflurry not installed!')
         return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
@@ -1251,14 +1247,14 @@ class MHCFlurryPredictor(Predictor):
         """Uses mhcflurry python classes for prediction"""
 
         self.sequence = sequence
-        from mhcflurry import predict
+        from mhcflurry import Class1AffinityPredictor
+        predictor = Class1AffinityPredictor.load()
         if peptides == None:
             peptides, s = peptutils.create_fragments(seq=sequence,
                                                     length=length, overlap=overlap)
-        scores=[]
-        pos=0
-        result = predict(alleles=[allele], peptides=peptides)
-        df = self.prepareData(result, name, allele)
+        df = predictor.predict_to_dataframe(peptides=peptides, allele=allele)
+        #print (df[:5])
+        df = self.prepareData(df, name, allele)
         self.data = df
         return df
 
@@ -1268,7 +1264,7 @@ class MHCFlurryPredictor(Predictor):
         df = df.rename(columns={'Allele':'allele','Peptide':'peptide'})
         df['name'] = name
         df['pos'] = df.index
-        df['score'] = df['Prediction'].apply( lambda x: 1-math.log(x, 50000) )
+        df['score'] = df['prediction'].apply( lambda x: 1-math.log(x, 50000) )
         df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         self.getRanking(df)
         return df
