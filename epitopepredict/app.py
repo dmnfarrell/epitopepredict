@@ -10,87 +10,10 @@ from __future__ import absolute_import, print_function
 import sys, os
 import shutil
 import pandas as pd
-try:
-    import configparser
-except:
-    import ConfigParser as configparser
 from collections import OrderedDict
-from . import base, analysis, sequtils, plotting, tests
+from . import base, config, analysis, sequtils, plotting, tests
 
 defaultpath = os.getcwd()
-#default configuration values
-optvalues = (('predictors', 'tepitope'),
-               ('mhc2_alleles','HLA-DRB1*01:01,HLA-DRB1*04:01'),
-               ('mhc1_alleles','HLA-A*01:01'),
-               ('preset_alleles',''),
-               ('mhc1_length', 11),
-               ('mhc2_length', 15),
-               ('n', 2), #number of alleles
-               ('cutoff_method', 'default'),
-               ('cutoff',4), #percentile cutoff
-               ('sequence_file', ''), #genbank/fasta file
-               ('path', 'results'),
-               ('overwrite', 'no'),
-               ('verbose','no'),
-               ('names', ''), #subset of protein names from genome file
-               ('overwrite', 'no'),
-               ('plots','no'), #whether to save plots
-               ('genome_analysis', 'no'))
-defaultopts = OrderedDict(optvalues)
-
-def createConfigParserfromOptions(opts, section):
-    """Helper method to create a ConfigParser from a dict of options"""
-
-    cp = configparser.ConfigParser()
-    s = 'base'
-    cp.add_section(s)
-    print('writing a new config file')
-    for name in opts:
-        val = opts[name]
-        #print(name,val)
-        cp.set(s, name, str(val))
-    #cp.write(open(filename,'w'))
-    return cp
-
-def createConfig(opts=None, conffile='default.conf'):
-    """Create a basic config file with default options and/or custom values"""
-
-    if opts == None:
-        opts = defaultopts
-    c = configparser.ConfigParser()
-    wdir = os.path.join(defaultpath, 'workingdir')
-    cp = createConfigParserfromOptions(opts, 'default')
-    cp.write(open(conffile,'w'))
-    #self.parseConfig(conffile)
-    return cp
-
-def parseConfig(conffile=None):
-    """Parse the config file"""
-
-    f = open(conffile,'r')
-    cp = configparser.ConfigParser()
-    try:
-        cp.read(conffile)
-    except:
-        pass
-    return cp
-
-def config2Dict(config):
-    """Convert confiparser sections to dict"""
-
-    data={}
-    for s in config.sections():
-        #print (s)
-        d = config.items(s)
-        data[s]={}
-        for i,name in config.items(s):
-            #print(i)
-            try:
-                data[s][i] = (config.getboolean(s,i))
-            except:
-                data[s][i] = config.get(s,i)
-    #print (data)
-    return data
 
 def get_sequences(filename):
     """Determine file type and get sequences"""
@@ -112,12 +35,11 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
          overwrite=False,
          plots=False,
          genome_analysis=False,
-         names = ''):
+         names = '', **kwargs):
     """Run the prediction workflow using config settings"""
 
     sequences = get_sequences(sequence_file)
     #print (sequences)
-    #process these in config2Dict
     predictors = predictors.split(',')
     if preset_alleles in base.mhc1_presets:
         mhc1_alleles = base.get_preset_alleles(preset_alleles)
@@ -196,16 +118,19 @@ def main():
                         default=False, help="Do quick test")
     opts, remainder = parser.parse_args()
     if opts.config != None:
-        cp = parseConfig(opts.config)
-        #print (cp)
+        cp = config.parse_config(opts.config)
+        options = config.get_options(cp)
+        options = config.check_options(options)
     else:
-        if not os.path.exists('default.conf'):
-            createConfig()
+        conffile = 'default.conf'
+        if not os.path.exists(conffile):
+            config.write_default_config(conffile, defaults=config.baseoptions)
     if opts.presets == True:
         show_preset_alleles()
     elif opts.run == True:
-        kwargs = config2Dict(cp)['base']
-        run(**kwargs)
+        base.iedbmhc1path = options['iedbmhc1_path']
+        base.iedbmhc2path = options['iedbmhc2_path']
+        run(**options)
 
 if __name__ == '__main__':
     main()

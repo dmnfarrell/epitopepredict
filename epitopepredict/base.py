@@ -44,9 +44,9 @@ iedbkeys = {'consensus3': ['Allele','Start','End','Sequence','consensus_percenti
         'NetMHCIIpan': ['Allele','Start','End','Core','Sequence','IC50']}
 
 #these paths should be set by user before calling predictors
-iedbmhc1path = '/local/iedbmhc1/'
-iedbmhc2path = '/local/iedbmhc2/'
-iedbbcellpath = '/local/iedbbcell/'
+iedbmhc1path = ''
+iedbmhc2path = ''
+iedbbcellpath = ''
 
 mhc1_presets = ['mhc1_supertypes','us_caucasion_mhc1']
 mhc2_presets = ['mhc2_supertypes','human_common_mhc2','bovine_like_mhc2']

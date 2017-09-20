@@ -9,11 +9,6 @@
 from __future__ import absolute_import, print_function
 import os, math, csv, string
 import shutil
-#import Image, ImageFont, ImageDraw
-try:
-    import configparser
-except:
-    import ConfigParser as configparser
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -100,72 +95,6 @@ def symmetrize(m, lower=True):
 def getSymmetricDataFrame(m):
     x = symmetrize(m)
     return pd.DataFrame(x, columns=m.columns,index=m.index)
-
-'''def getcsvdata(f, delimiter=','):
-    cr = csv.reader(open(f,'r'),delimiter=delimiter)
-    a = [i for i in cr]
-    return a'''
-
-def parseConfig(conffile=None):
-    """Parse the config file"""
-
-    f = open(conffile,'r')
-    cp = ConfigParser.ConfigParser()
-    try:
-        cp.read(conffile)
-    except Exception as e:
-        print ('failed to read config file! check format')
-        print ('Error returned:', e)
-        return
-    obj = setAttributesfromConfigParser(cp)
-    return obj
-
-def writeDefaultConfig(conffile='default.conf', defaults={}):
-    """Write a default conf file"""
-    if not os.path.exists(conffile):
-        cp = createConfigParserfromDict(defaults, ['base'])
-        cp.write(open(conffile,'w'))
-    return conffile
-
-def createConfigParserfromDict(data, sections, **kwargs):
-    """Helper method to create a ConfigParser from a dict and/or keywords"""
-    cp = ConfigParser.ConfigParser()
-    for s in sections:
-        cp.add_section(s)
-        if not data.has_key(s):
-            continue
-        for i in data[s]:
-            name,val = i
-            cp.set(s, name, val)
-    #use kwargs to create specific settings in the appropriate section
-    for s in cp.sections():
-        opts = cp.options(s)
-        for k in kwargs:
-            if k in opts:
-                cp.set(s, k, kwargs[k])
-    return cp
-
-def setAttributesfromConfigParser(cp, obj=None):
-    """A helper method that makes the options in a ConfigParser object
-       attributes of an arbitrary object, obj """
-
-    if obj == None:
-        class Object(object):
-            pass
-        obj = Object()
-    for s in cp.sections():
-        obj.__dict__[s] = cp.items(s)
-        for f in cp.items(s):
-            try: val=int(f[1])
-            except: val=f[1]
-            obj.__dict__[f[0]] = val
-    return obj
-
-def getListfromConfig(string, types='int'):
-    """Extract a list from a comma separated config entry"""
-    if types == 'int':
-        vals = [int(i) for i in string.split(',')]
-    return vals
 
 def findFilefromString(files, string):
     for f in files:
