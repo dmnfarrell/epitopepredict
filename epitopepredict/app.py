@@ -31,8 +31,9 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
          mhc2_alleles='', mhc1_alleles='', preset_alleles='',
          mhc1_length=11, mhc2_length=15,
          n=2,  sequence_file='',
-         path='', #prefix='results',
+         path='',
          overwrite=False,
+         verbose=False,
          plots=False,
          genome_analysis=False,
          names = '', **kwargs):
@@ -49,8 +50,10 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         mhc1_alleles = mhc1_alleles.split(',')
         mhc2_alleles = mhc2_alleles.split(',')
     cutoff = float(cutoff)
+    names = names.split(',')
+    if names == ['']: names=None
 
-    if not os.path.exists(path):
+    if not os.path.exists(path) and path != '':
         os.mkdir(path)
     preds = []
     for p in predictors:
@@ -66,10 +69,13 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         else:
             a = mhc2_alleles
             length = mhc2_length
-        P.predictProteins(sequences, length=length, alleles=a, #names=names,
-                          path=savepath, overwrite=overwrite)
+        P.predictProteins(sequences, length=length, alleles=a, names=names,
+                          path=savepath, overwrite=overwrite, verbose=verbose)
         #load into predictor
         P.load(path=savepath)
+        if P.data is None:
+            print ('no results were found, did predictor run?')
+            return
         b = P.getBinders(cutoff=cutoff)#, value=cutoff_method)
         b.to_csv(os.path.join(path,'binders_%s_%s.csv' %(p,n)))
 
@@ -102,6 +108,9 @@ def show_preset_alleles():
     for i in base.mhc1_presets+base.mhc2_presets:
         print (i, len( base.get_preset_alleles(i)))
 
+def print_help():
+    print ("""use -h to get options""")
+
 def main():
     "Run the application"
 
@@ -114,6 +123,8 @@ def main():
                         default=False, help="Run the predictions")
     parser.add_option("-p", "--presets", dest="presets",  action="store_true",
                         default=False, help="Show preset allele lists")
+    parser.add_option("-l", "--list-alleles", dest="list-alleles",  action="store_true",
+                        default=False, help="List available alleles")
     parser.add_option("-t", "--test", dest="test",  action="store_true",
                         default=False, help="Do quick test")
     opts, remainder = parser.parse_args()
@@ -131,6 +142,8 @@ def main():
         base.iedbmhc1path = options['iedbmhc1_path']
         base.iedbmhc2path = options['iedbmhc2_path']
         run(**options)
+    else:
+        print_help()
 
 if __name__ == '__main__':
     main()

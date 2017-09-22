@@ -38,6 +38,7 @@ baseoptions = {'base': [('predictors', 'tepitope'),
                 ('preset_alleles',''),
                 ('mhc1_length', 11),
                 ('mhc2_length', 15),
+                ('iedb_prediction_method','IEDB_recommended'),
                 ('n', 2), #number of alleles
                 ('cutoff_method', 'default'),
                 ('cutoff',4), #percentile cutoff
@@ -56,7 +57,7 @@ def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
     if not os.path.exists(conffile):
-        cp = create_config_parser_from_dict(defaults, ['base','novel','aligner','de'])
+        cp = create_config_parser_from_dict(defaults, ['base','paths'])
         cp.write(open(conffile,'w'))
         print ('wrote config file %s' %conffile)
     return conffile

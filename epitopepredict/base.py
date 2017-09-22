@@ -642,7 +642,7 @@ class Predictor(object):
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
                         length=11, overlap=1, names=None, alleles=[],
-                        path=None, overwrite=True):
+                        path=None, overwrite=True, verbose=False):
         """
         Get predictions for a set of proteins and/or over multiple alleles
           Args:
@@ -668,7 +668,8 @@ class Predictor(object):
         self.length = length
 
         if names != None:
-            recs = recs[recs[seqkey].isin(names)]
+            recs = recs[recs[key].isin(names)]
+
         proteins = list(recs.iterrows())
         results = []
         if path is not None and path != '':
@@ -676,8 +677,7 @@ class Predictor(object):
                 os.mkdir(path)
 
         results = self._predict_multiple(proteins, path, overwrite, alleles, length,
-                                         overlap=overlap, key=key, seqkey=seqkey)
-
+                                         overlap=overlap, key=key, seqkey=seqkey, verbose=verbose)
         print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
         if path is None:
             #if no path we keep assign results to the data object
@@ -688,7 +688,7 @@ class Predictor(object):
         return
 
     def _predict_multiple(self, proteins, path, overwrite, alleles, length, overlap=1,
-                          key='locus_tag', seqkey='sequence', queue=None):
+                          key='locus_tag', seqkey='sequence', queue=None, verbose=False):
         """Predictions for multiple proteins in a dataframe
             Args: as for predictProteins
             Returns: a dataframe of the results if no path is given
@@ -710,7 +710,13 @@ class Predictor(object):
                                     allele=a,name=name)
                 if df is not None:
                     res.append(df)
-                #print (name, a, df.pos.max())
+                else:
+                    #print ('no prediction for %s' %a)
+                    continue
+                if verbose == True:
+                    print (name, a, df.pos.max())
+            if len(res) == 0:
+                continue
             res = pd.concat(res)
             #print (res.pos.max())
             if path is not None and len(res)>0:
@@ -756,11 +762,11 @@ class Predictor(object):
                 return
             files = glob.glob(os.path.join(path, '*.csv'))
             if names is not None:
-                #if type(names) is pd.Series:
-                #    names = list(names)
                 names = [n+'.csv' for n in names]
                 files = [n for n in files if os.path.basename(n) in names]
-                #print (len(files))
+            if len(files) == 0:
+                #print ('no files to load')
+                return
             if file_limit != None:
                 files = files[:file_limit]
             res = []
@@ -995,22 +1001,25 @@ class IEDBMHCIPredictor(Predictor):
         #self.path = iedbmhc1path
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
-                   allele='HLA-A*01:01', name=''):
+                   allele='HLA-A*01:01', name='', method='IEDB_recommended'):
         """Use iedb MHCII python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
 
         seqfile = write_fasta(sequence)
         path = iedbmhc1path
         if not os.path.exists(path):
-            print ('iedb mhcI tools not found')
+            print ('IEDB mhcI tools not found')
             return
         cmd = os.path.join(path,'src/predict_binding.py')
-        cmd = cmd+' %s %s %s %s' %(self.iedbmethod,allele,length,seqfile)
+        cmd = cmd+' %s %s %s %s' %(method,allele,length,seqfile)
         #print (cmd)
+        from subprocess import Popen, PIPE
         try:
-            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash',
-                stderr=subprocess.STDOUT)
-        except CalledProcessError as e:
+            #temp = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
+            p = Popen(cmd, stdout=PIPE, shell=True)
+            temp,error = p.communicate()
+            #print (temp)
+        except OSError as e:
             print (e)
             return
         self.prepareData(temp, name)
@@ -1021,6 +1030,7 @@ class IEDBMHCIPredictor(Predictor):
 
         df = pd.read_csv(io.BytesIO(rows),sep="\t")
         if len(df)==0:
+            print (rows) #should print error string from output
             return
         df = df.replace('-',np.nan)
         df = df.dropna(axis=1,how='all')
