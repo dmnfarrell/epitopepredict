@@ -49,7 +49,8 @@ baseoptions = {'base': [('predictors', 'tepitope'),
                 ('plots','no'), #whether to save plots
                 ('genome_analysis', 'no')],
              'iedbtools': [('iedbmhc1_path',''), ('iedbmhc2_path',''),
-                            ('iedb_prediction_method','IEDB_recommended')]
+                            ('iedb_mhc1_method','IEDB_recommended'),
+                            ('iedb_mhc2_method','IEDB_recommended')]
                 }
 
 def write_default_config(conffile='default.conf', defaults={}):

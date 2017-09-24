@@ -994,8 +994,7 @@ class IEDBMHCIPredictor(Predictor):
         df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
         self.getRanking(df)
         self.data = df
-        #print (df.columns)
-        print (df[:10])
+        #print (df[:10])
         return df
 
     def getScoreKey(self, data):
@@ -1021,7 +1020,7 @@ class IEDBMHCIIPredictor(Predictor):
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc2'
-        self.scorekey = 'consensus_percentile_rank'
+        self.scorekey = 'percentile_rank'
         self.cutoff = 3
         self.operator = '<'
         self.rankascending = 1
@@ -1036,15 +1035,18 @@ class IEDBMHCIIPredictor(Predictor):
         if len(rows) == 0:
             return
         df = pd.read_csv(io.BytesIO(rows),sep=r"\t",engine='python',index_col=False)
-        #print (df[:1].T)
+        #print (df.iloc[0])
         extracols = ['Start','End','comblib_percentile','smm_percentile','nn_percentile',
-                'Sturniolo core',' Sturniolo score',' Sturniolo percentile']
+                     'Sturniolo core',' Sturniolo score',' Sturniolo percentile']
         #df = df.drop(extracols,1)
         df.reset_index(inplace=True)
         df.rename(columns={'index':'pos','Sequence': 'peptide','Allele':'allele'},
                            inplace=True)
         df['core'] = df.nn_align_core
         df['name'] = name
+        #if self.iedbmethod == 'IEDB_recommended':
+            #df['ic50'] = df[['ann_ic50','smm_ic50']].mean(1)
+        #df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
         self.getRanking(df)
         self.data = df
         return df

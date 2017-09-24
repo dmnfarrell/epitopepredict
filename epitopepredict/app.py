@@ -30,7 +30,8 @@ def get_sequences(filename):
 def run(predictors=[], cutoff=0.98, cutoff_method='default',
          mhc2_alleles='', mhc1_alleles='',
          mhc1_length=11, mhc2_length=15,
-         iedb_prediction_method='IEDB_recommended',
+         iedb_mhc1_method='IEDB_recommended',
+         iedb_mhc2_method='IEDB_recommended',
          n=2,  sequence_file='',
          path='',
          overwrite=False,
@@ -68,16 +69,18 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
             a = mhc1_alleles
             length = mhc1_length
             check_mhc1_length(length)
+            method = iedb_mhc1_method
         else:
             a = mhc2_alleles
             length = mhc2_length
+            method = iedb_mhc2_method
         print ('alleles:',a)
         if p == 'iedbmhc1' and check_iedbmhc1_path() == False:
             continue
-      
+
         P.predictProteins(sequences, length=length, alleles=a, names=names,
                           path=savepath, overwrite=overwrite, verbose=verbose,
-                          method=iedb_prediction_method)
+                          method=method)
         #load into predictor
         P.load(path=savepath)
         if P.data is None:
