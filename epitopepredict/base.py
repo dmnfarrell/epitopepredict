@@ -48,82 +48,9 @@ iedbmhc1path = ''
 iedbmhc2path = ''
 iedbbcellpath = ''
 
-mhc1_presets = ['mhc1_supertypes','us_caucasion_mhc1']
+mhc1_presets = ['mhc1_supertypes','us_caucasion_mhc1','us_african_mhc1','broad_coverage_mhc1']
 mhc2_presets = ['mhc2_supertypes','human_common_mhc2','bovine_like_mhc2']
 
-#six class I super-type alleles
-mhc1_supertypes = ['HLA-A*01:01', 'HLA-A*02:01', 'HLA-A*03:01', 'HLA-A*24:02',
-                  'HLA-B*07:02','HLA-B*44:03']
-#eight class II super-types
-mhc2_supertypes = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0701'
-                  'HLA-DRB1*0801','HLA-DRB1*1101','HLA-DRB1*1301','HLA-DRB1*1501']
-#26 class I alleles providing global broad coverage
-mhc1_broad_coverage = [
-'HLA-A*01:01', 'HLA-A*26:01', 'HLA-A*32:01', 'HLA-A*02:01', 'HLA-A*02:03', 'HLA-A*02:06',
-'HLA-A*68:02', 'HLA-A*2301', 'HLA-A*24:02', 'HLA-A*03:01', 'HLA-A*11:01', 'HLA-A*30:01',
-'HLA-A*31:01', 'HLA-A*33:01', 'HLA-A*68:01', 'HLA-B*40:01', 'HLA-B*44:02', 'HLA-B*44:03',
-'HLA-B*57:01', 'HLA-B*58:01', 'HLA-B*15:01', 'HLA-B*07:02', 'HLA-B*35:01', 'HLA-B*51:01',
-'HLA-B*53:01', 'HLA-B*08:01']
-
-human_common_mhc2 = [
-    'HLA-DRB1*0101',
-    'HLA-DRB1*1501',
-    'HLA-DRB1*0301',
-    'HLA-DRB1*0401',
-    'HLA-DRB1*0402',
-    'HLA-DRB1*0701',
-    'HLA-DRB1*0702',
-    'HLA-DRB1*0801',
-    'HLA-DRB1*09011',
-    'HLA-DRB1*09012',
-    'HLA-DRB1*1101',
-    'HLA-DRB1*1201',
-    'HLA-DRB1*1202',
-    'HLA-DRB1*1301']
-
-us_caucasion_mhc1 = [
-    'HLA-A*02:01',
-    'HLA-C*07:01',
-    'HLA-A*01:01',
-    'HLA-A*03:01',
-    'HLA-C*07:02',
-    'HLA-C*04:01',
-    'HLA-B*44:02',
-    'HLA-B*07:02',
-    'HLA-B*08:01',
-    'HLA-C*05:01',
-    'HLA-C*03:04',
-    'HLA-C*06:02',
-    'HLA-A*11:01',
-    'HLA-B*40:01',
-    'HLA-A*24:02',
-    'HLA-B*35:01',
-    'HLA-C*03:03',
-    'HLA-B*51:01',
-    'HLA-C*12:03',
-    'HLA-B*15:01',
-    'HLA-A*29:02',
-    'HLA-A*26:01',
-    'HLA-A*32:01',
-    'HLA-C*08:02',
-    'HLA-A*25:01',
-    'HLA-B*57:01',
-    'HLA-B*14:02',
-    'HLA-C*02:02',
-    'HLA-B*18:01',
-    'HLA-B*44:03'
-    ]
-
-bovine_like_mhc2 = [
-    'HLA-DRB1*0801',
-    'HLA-DRB3*0201',
-    'HLA-DRB1*1101',
-    'HLA-DRB1*1401',
-    'HLA-DRB1*0301',
-    'HLA-DRB1*0401',
-    'HLA-DRB3*0101',
-    'HLA-DRB1*1301'
-    ]
 #sequence for testing
 testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHASHTPGSVS'
                'SAFILEAMVNVISGPKVLMKQIPIWLPLGVADQKTYSFDSTTAAIMLASYTITHFGKATNPLVRVNRLGP'
@@ -131,8 +58,11 @@ testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHAS
                'PKLRPILLPNKSGKKGNSADLTSPEKIQAIMTSLQDFKIVPIDPTKNIMGIEVPETLVHKLTGKKVTSKN'
                'GQPIIPVLLPKYIGLDPVAPGDLTMVITQDCDTCHSPASLPAVIEK')
 
+presets_dir = os.path.join(path, 'presets')
+
 def get_preset_alleles(name):
-    return globals()[name]
+    df = pd.read_csv(os.path.join(presets_dir, name+'.csv'),comment='#')
+    return list(df.allele)
 
 def first(x):
     return x.iloc[0]
@@ -148,7 +78,7 @@ def getIEDBRequest(seq, alleles='HLA-DRB1*01:01', method='consensus3'):
     #df=df.drop(['nn_align_core','nn_align_ic50','nn_align_rank'])
     return df
 
-def getOverlapping(index, s, length=9, cutoff=25):
+def get_overlapping(index, s, length=9, cutoff=25):
     """Get all mutually overlapping kmers within a cutoff area"""
 
     g=[s]
@@ -642,7 +572,8 @@ class Predictor(object):
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
                         length=11, overlap=1, names=None, alleles=[],
-                        path=None, overwrite=True, verbose=False):
+                        path=None, overwrite=True, verbose=False, method=None,
+                        **kwargs):
         """
         Get predictions for a set of proteins and/or over multiple alleles
           Args:
@@ -653,6 +584,7 @@ class Predictor(object):
             path: if results are to be saved to disk provide a path, otherwise results
             for all proteins are stored in the data attribute of the predictor
             overwrite: over write existing protein files in path if present
+            verbose: provide output per protein/sequence
           Returns:
             a dataframe of predictions over multiple proteins
         """
@@ -677,7 +609,9 @@ class Predictor(object):
                 os.mkdir(path)
 
         results = self._predict_multiple(proteins, path, overwrite, alleles, length,
-                                         overlap=overlap, key=key, seqkey=seqkey, verbose=verbose)
+                                         method=method,
+                                         overlap=overlap, key=key, seqkey=seqkey,
+                                         verbose=verbose)
         print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
         if path is None:
             #if no path we keep assign results to the data object
@@ -688,13 +622,18 @@ class Predictor(object):
         return
 
     def _predict_multiple(self, proteins, path, overwrite, alleles, length, overlap=1,
-                          key='locus_tag', seqkey='sequence', queue=None, verbose=False):
+                          key='locus_tag', seqkey='sequence', queue=None, verbose=False,
+                          method=None):
         """Predictions for multiple proteins in a dataframe
             Args: as for predictProteins
             Returns: a dataframe of the results if no path is given
         """
 
         results = []
+        if verbose == True:
+            s = ("{:<30} {:<16} {:<18} {:<}"
+                               .format('name','allele','top peptide','score'))
+            print (s)
         for i,row in proteins:
             seq = row[seqkey]
             seq = clean_sequence(seq) #clean the sequence of non-aa characters
@@ -706,15 +645,17 @@ class Predictor(object):
                     continue
             res = []
             for a in alleles:
-                df = self.predict(sequence=seq,length=length,overlap=overlap,
-                                    allele=a,name=name)
+                #print (a)
+                df = self.predict(sequence=seq, length=length, overlap=overlap,
+                                    allele=a, name=name, method=method)
                 if df is not None:
                     res.append(df)
                 else:
-                    #print ('no prediction for %s' %a)
                     continue
-                if verbose == True:
-                    print (name, a, df.pos.max())
+                if verbose == True and len(df)>0:
+                    x = df.iloc[0]
+                    s = self.format_row(x)
+                    print (s)
             if len(res) == 0:
                 continue
             res = pd.concat(res)
@@ -726,6 +667,11 @@ class Predictor(object):
         if len(results)>0:
             results = pd.concat(results)
         return results
+
+    def format_row(self, x):
+        s = ("{:<30} {:<16} {:<18} {:} "
+                           .format(x['name'], x.allele, x.peptide, x[self.scorekey] ))
+        return s
 
     '''def _multicpu_predict(self, **kwargs):
 
@@ -903,7 +849,7 @@ class NetMHCIIPanPredictor(Predictor):
 
         data=[]
         res = res.split('\n')[19:]
-        ignore=['Protein','pos','']
+        ignore=['Protein','pos','Number','']
         for r in res:
             if r.startswith('-'): continue
             row = re.split('\s*',r.strip())[:9]
@@ -915,8 +861,8 @@ class NetMHCIIPanPredictor(Predictor):
     def prepareData(self, df, name):
         """Prepare netmhciipan results as a dataframe"""
 
-        df = df.convert_objects(convert_numeric=True)
-        #df = df.apply(pd.to_numeric)#, errors='ignore')
+        #df = df.convert_objects(convert_numeric=True)
+        df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
         df['name'] = name
         df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
         df = df.drop(['Pos','Identity','Rank'],1)
@@ -939,7 +885,7 @@ class NetMHCIIPanPredictor(Predictor):
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
                     allele='HLA-DRB1*0101', name='',
-                    pseudosequence=None):
+                    pseudosequence=None, **kwargs):
         """Call netMHCIIpan command line"""
 
         #assume allele names are in standard format HLA-DRB1*0101
@@ -989,20 +935,18 @@ class IEDBMHCIPredictor(Predictor):
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc1'
-        self.scorekey = 'score'
-        self.methods = {'ANN':'ann_ic50','IEDB_recommended':'smm_ic50',
-                         'Consensus (ANN,SMM)':'ann_ic50',
-                         'Consensus (ANN,SMM,CombLib_Sidney2008)':'ann_ic50',
-                         'NetMHCpan':'netmhcpan_ic50'}
+        self.scorekey = 'ic50'
+        self.methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008',
+                        'consensus', 'smm', 'netmhcpan', 'smmpmbec']
         self.cutoff = .426
         self.operator = '>'
         self.rankascending = 0
         self.iedbmethod = 'IEDB_recommended'
-        #self.path = iedbmhc1path
+        return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
                    allele='HLA-A*01:01', name='', method='IEDB_recommended'):
-        """Use iedb MHCII python module to get predictions.
+        """Use IEDB MHCI python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
 
         seqfile = write_fasta(sequence)
@@ -1010,20 +954,20 @@ class IEDBMHCIPredictor(Predictor):
         if not os.path.exists(path):
             print ('IEDB mhcI tools not found')
             return
+        self.iedbmethod = method
         cmd = os.path.join(path,'src/predict_binding.py')
         cmd = cmd+' %s %s %s %s' %(method,allele,length,seqfile)
         #print (cmd)
         from subprocess import Popen, PIPE
         try:
-            #temp = subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT)
             p = Popen(cmd, stdout=PIPE, shell=True)
             temp,error = p.communicate()
             #print (temp)
         except OSError as e:
             print (e)
             return
-        self.prepareData(temp, name)
-        return self.data
+        df = self.prepareData(temp, name)
+        return df
 
     def prepareData(self, rows, name):
         """Prepare data from results"""
@@ -1041,19 +985,24 @@ class IEDBMHCIPredictor(Predictor):
                            inplace=True)
         df['core'] = df.peptide
         df['name'] = name
-        key = self.getScoreKey(df)
-        df['ic50'] = df[key]
+        if 'method' not in df.columns:
+            df['method'] = self.iedbmethod
+
+        if self.iedbmethod == 'IEDB_recommended':
+            #df['ic50'] = df[['ann_ic50','smm_ic50']].mean(1)
+            df['ic50'] = df.ann_ic50
         df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
-        self.data = df
         self.getRanking(df)
         self.data = df
-        return
+        #print (df.columns)
+        print (df[:10])
+        return df
 
     def getScoreKey(self, data):
-        """Get iedbmhc1 score key for a result, since they vary"""
+        """Get score key for a result, since they vary"""
 
-        m = data['method'].head(1).squeeze()
-        key = self.methods[m]
+        #m = data['method'].head(1).squeeze()
+        key = self.methodkeys[m]
         return key
 
     def getMHCIList(self):
@@ -1067,37 +1016,44 @@ class IEDBMHCIPredictor(Predictor):
         return alleles
 
 class IEDBMHCIIPredictor(Predictor):
-    """Using IEDB mhcii method, requires iedb-mhc2 tools"""
+    """Using IEDB MHC-II method, requires tools to be installed locally"""
 
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc2'
-        self.scorekey = 'consensus_percentile'
+        self.scorekey = 'consensus_percentile_rank'
         self.cutoff = 3
         self.operator = '<'
         self.rankascending = 1
         self.methods = ['arbpython','comblib','consensus3','IEDB_recommended',
-                    'NetMHCIIpan','nn_align','smm_align','tepitope']
-        #self.path = '/local/iedbmhc2/'
+                        'NetMHCIIpan','nn_align','smm_align','tepitope']
+        self.iedbmethod = 'consensus3'
+        return
 
     def prepareData(self, rows, name):
-        df = pd.read_csv(io.StringIO(rows),delimiter=r"\t")
+        """Read data from raw output"""
+
+        if len(rows) == 0:
+            return
+        df = pd.read_csv(io.BytesIO(rows),sep=r"\t",engine='python',index_col=False)
+        #print (df[:1].T)
         extracols = ['Start','End','comblib_percentile','smm_percentile','nn_percentile',
                 'Sturniolo core',' Sturniolo score',' Sturniolo percentile']
-        df = df.drop(extracols,1)
+        #df = df.drop(extracols,1)
         df.reset_index(inplace=True)
         df.rename(columns={'index':'pos','Sequence': 'peptide','Allele':'allele'},
                            inplace=True)
-        df['core'] = df.nn_core
+        df['core'] = df.nn_align_core
         df['name'] = name
         self.getRanking(df)
         self.data = df
-        return
+        return df
 
-    def predict(self, sequence=None, peptides=None, length=15,
+    def predict(self, sequence=None, peptides=None, length=15, overlap=None,
                    allele='HLA-DRB1*01:01', method='consensus3', name=''):
         """Use iedb MHCII python module to get predictions.
-           Requires that the iedb MHC tools are installed locally"""
+           Requires that the IEDB MHC-II tools are installed locally
+        """
 
         seqfile = write_fasta(sequence)
         path = iedbmhc2path
@@ -1106,17 +1062,18 @@ class IEDBMHCIIPredictor(Predictor):
             return
         cmd = os.path.join(path,'mhc_II_binding.py')
         cmd = cmd+' %s %s %s' %(method,allele,seqfile)
+        #print (cmd)
+        #print (allele)
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         except:
             print ('allele %s not available?' %allele)
             return
-        self.prepareData(temp, name)
-        #print self.data
-        return self.data
+        data = self.prepareData(temp, name)
+        return data
 
 class TEpitopePredictor(Predictor):
-    """Predictor using tepitope QM method"""
+    """Predictor using TepitopePan QM method"""
 
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
@@ -1128,7 +1085,7 @@ class TEpitopePredictor(Predictor):
 
     def predict(self, sequence=None, peptides=None, length=9, overlap=1,
                     allele='HLA-DRB1*0101', name='',
-                    pseudosequence=None):
+                    pseudosequence=None, **kwargs):
 
         self.sequence = sequence
         allele = allele.replace(':','')
@@ -1136,7 +1093,7 @@ class TEpitopePredictor(Predictor):
             #print 'computing virtual matrix for %s' %allele
             m = tepitope.createVirtualPSSM(allele)
             if m is None:
-                #print ('no such allele')
+                print ('no such allele', allele)
                 return pd.DataFrame()
         else:
             m = self.pssms[allele]
@@ -1144,7 +1101,7 @@ class TEpitopePredictor(Predictor):
         result = tepitope.getScores(m, sequence, peptides, length, overlap=overlap)
         df = self.prepareData(result, name, allele)
         self.data = df
-        #print df[:12]
+        #print(df[:5])
         return df
 
     def getAlleles(self):
@@ -1253,7 +1210,7 @@ class MHCFlurryPredictor(Predictor):
         return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
-                      allele='HLA-A0101', name=''):
+                      allele='HLA-A0101', name='', **kwargs):
         """Uses mhcflurry python classes for prediction"""
 
         self.sequence = sequence

@@ -28,8 +28,9 @@ def get_sequences(filename):
     return seqs
 
 def run(predictors=[], cutoff=0.98, cutoff_method='default',
-         mhc2_alleles='', mhc1_alleles='', preset_alleles='',
+         mhc2_alleles='', mhc1_alleles='',
          mhc1_length=11, mhc2_length=15,
+         iedb_prediction_method='IEDB_recommended',
          n=2,  sequence_file='',
          path='',
          overwrite=False,
@@ -41,14 +42,14 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
 
     sequences = get_sequences(sequence_file)
     #print (sequences)
+    mhc1_alleles = mhc1_alleles.split(',')
+    mhc2_alleles = mhc2_alleles.split(',')
     predictors = predictors.split(',')
-    if preset_alleles in base.mhc1_presets:
-        mhc1_alleles = base.get_preset_alleles(preset_alleles)
-    elif preset_alleles in base.mhc2_presets:
-        mhc2_alleles = base.get_preset_alleles(preset_alleles)
-    else:
-        mhc1_alleles = mhc1_alleles.split(',')
-        mhc2_alleles = mhc2_alleles.split(',')
+    if mhc1_alleles[0] in base.mhc1_presets:
+        mhc1_alleles = base.get_preset_alleles(mhc1_alleles[0])
+    elif mhc2_alleles[0] in base.mhc2_presets:
+        mhc2_alleles = base.get_preset_alleles(mhc2_alleles[0])
+
     cutoff = float(cutoff)
     names = names.split(',')
     if names == ['']: names=None
@@ -66,11 +67,17 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         if p in ['iedbmhc1','mhcflurry']:
             a = mhc1_alleles
             length = mhc1_length
+            check_mhc1_length(length)
         else:
             a = mhc2_alleles
             length = mhc2_length
+        print ('alleles:',a)
+        if p == 'iedbmhc1' and check_iedbmhc1_path() == False:
+            continue
+      
         P.predictProteins(sequences, length=length, alleles=a, names=names,
-                          path=savepath, overwrite=overwrite, verbose=verbose)
+                          path=savepath, overwrite=overwrite, verbose=verbose,
+                          method=iedb_prediction_method)
         #load into predictor
         P.load(path=savepath)
         if P.data is None:
@@ -82,6 +89,9 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         pb = P.promiscuousBinders(n=int(n), cutoff=cutoff)
         print ('found %s promiscuous binders at cutoff %s' %(len(pb),cutoff))
         pb.to_csv(os.path.join(path,'prom_binders_%s_%s.csv' %(p,n)))
+        if verbose == True:
+            print ('top promiscuous binders:')
+            print (pb[:10])
         if genome_analysis == True:
             cl = analysis.find_clusters(pb, genome=sequences)
             cl.to_csv(os.path.join(path,'clusters_%s.csv' %p))
@@ -102,6 +112,16 @@ def run(predictors=[], cutoff=0.98, cutoff_method='default',
         print ('saved plots')
 
     return
+
+def check_mhc1_length(l):
+    if l<9 or l>13:
+        print ('use MHCI n-mer lengths from 9-13')
+        return False
+
+def check_iedbmhc1_path():
+    if not os.path.exists(base.iedbmhc1path):
+        print ('IEDB MHC tools not found, check path')
+        return False
 
 def show_preset_alleles():
     print ('preset allele list ids:')

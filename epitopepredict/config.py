@@ -35,10 +35,8 @@ datadir = os.path.join(path, 'data')
 baseoptions = {'base': [('predictors', 'tepitope'),
                 ('mhc2_alleles','HLA-DRB1*01:01,HLA-DRB1*04:01'),
                 ('mhc1_alleles','HLA-A*01:01'),
-                ('preset_alleles',''),
                 ('mhc1_length', 11),
                 ('mhc2_length', 15),
-                ('iedb_prediction_method','IEDB_recommended'),
                 ('n', 2), #number of alleles
                 ('cutoff_method', 'default'),
                 ('cutoff',4), #percentile cutoff
@@ -50,14 +48,15 @@ baseoptions = {'base': [('predictors', 'tepitope'),
                 ('overwrite', 'no'),
                 ('plots','no'), #whether to save plots
                 ('genome_analysis', 'no')],
-              'paths': [('iedbmhc1_path',''), ('iedbmhc2_path','')]
+             'iedbtools': [('iedbmhc1_path',''), ('iedbmhc2_path',''),
+                            ('iedb_prediction_method','IEDB_recommended')]
                 }
 
 def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
     if not os.path.exists(conffile):
-        cp = create_config_parser_from_dict(defaults, ['base','paths'])
+        cp = create_config_parser_from_dict(defaults, ['base','iedbtools'])
         cp.write(open(conffile,'w'))
         print ('wrote config file %s' %conffile)
     return conffile
