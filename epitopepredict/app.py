@@ -15,6 +15,106 @@ from . import base, config, analysis, sequtils, plotting, tests
 
 defaultpath = os.getcwd()
 
+class WorkFlow(object):
+    """Class for implementing a rna/mirna workflow from a set of options"""
+    def __init__(self, opts):
+        for i in opts:
+            self.__dict__[i] = opts[i]
+        return
+
+    def setup(self):
+        """Setup main parameters"""
+
+        base.iedbmhc1path = self.iedbmhc1_path
+        base.iedbmhc2path = self.iedbmhc2_path
+        self.sequences = get_sequences(self.sequence_file)
+        self.mhc1_alleles = self.mhc1_alleles.split(',')
+        self.mhc2_alleles = self.mhc2_alleles.split(',')
+        self.predictors = self.predictors.split(',')
+        for p in self.predictors:
+            if p not in base.predictors:
+                print ('unknown predictor in config file. Use:')
+                show_predictors()
+                return False
+        if self.mhc1_alleles[0] in base.mhc1_presets:
+            self.mhc1_alleles = base.get_preset_alleles(self.mhc1_alleles[0])
+        elif self.mhc2_alleles[0] in base.mhc2_presets:
+            self.mhc2_alleles = base.get_preset_alleles(self.mhc2_alleles[0])
+
+        self.cutoff = float(self.cutoff)
+        self.names = self.names.split(',')
+        if self.names == ['']: self.names=None
+        if not os.path.exists(self.path) and self.path != '':
+            os.mkdir(self.path)
+        return True
+
+    def run(self):
+        """Run workflow"""
+
+        preds = []
+        for p in self.predictors:
+            P = base.get_predictor(p)
+            preds.append(P)
+            savepath = os.path.join(self.path, p)
+            if self.overwrite == True and os.path.exists(savepath):
+                shutil.rmtree(savepath)
+            if p in ['iedbmhc1','mhcflurry']:
+                a = self.mhc1_alleles
+                length = self.mhc1_length
+                check_mhc1_length(length)
+                method = self.iedb_mhc1_method
+            else:
+                a = self.mhc2_alleles
+                length = self.mhc2_length
+                method = self.iedb_mhc2_method
+            if method == '': method = None
+            print ('predictor:', p, method)
+            print ('alleles:',a)
+            if p == 'iedbmhc1' and check_iedbmhc1_path() == False:
+                continue
+
+            P.predictProteins(self.sequences, length=length, alleles=a, names=self.names,
+                              path=savepath, overwrite=self.overwrite, verbose=self.verbose,
+                              method=method)
+            #load results into predictor
+            P.load(path=savepath)
+            if P.data is None:
+                print ('no results were found, did predictor run?')
+                return
+            cutoff = self.cutoff
+            n = self.n
+            b = P.getBinders(cutoff=cutoff)#, value=cutoff_method)
+            b.to_csv(os.path.join(self.path,'binders_%s_%s.csv' %(p,n)))
+
+            pb = P.promiscuousBinders(n=int(n), cutoff=cutoff)
+            print ('found %s promiscuous binders at cutoff %s' %(len(pb),cutoff))
+            pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)))
+            if self.verbose == True:
+                print ('top promiscuous binders:')
+                print (pb[:10])
+            if self.genome_analysis == True:
+                cl = analysis.find_clusters(pb, genome=self.sequences)
+                cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
+            print ('-----------------------------')
+
+        return
+
+    def plots(self):
+        """Plot results of predictions"""
+
+        prots = sequences.locus_tag
+        if plots == True:
+            import pylab as plt
+            height = 2*len(preds)
+            for prot in prots:
+                ax = plotting.plot_tracks(preds,name=prot,n=2,cutoff=cutoff,
+                                              figsize=(14,height),legend=True)
+                #plotting.mpl_plot_regions(coords, ax, color='gray')
+                plt.tight_layout()
+                plt.savefig('plots/%s.png'%prot, dpi=150)
+            print ('saved plots')
+        return
+
 def get_sequences(filename):
     """Determine file type and get sequences"""
 
@@ -26,95 +126,6 @@ def get_sequences(filename):
         seqs = sequtils.genbank_to_dataframe(filename, cds=True)
         print ('found genbank file')
     return seqs
-
-def run(predictors=[], cutoff=0.98, cutoff_method='default',
-         mhc2_alleles='', mhc1_alleles='',
-         mhc1_length=11, mhc2_length=15,
-         iedb_mhc1_method='IEDB_recommended',
-         iedb_mhc2_method='IEDB_recommended',
-         n=2,  sequence_file='',
-         path='',
-         overwrite=False,
-         verbose=False,
-         plots=False,
-         genome_analysis=False,
-         names = '', **kwargs):
-    """Run the prediction workflow using config settings"""
-
-    sequences = get_sequences(sequence_file)
-    #print (sequences)
-    mhc1_alleles = mhc1_alleles.split(',')
-    mhc2_alleles = mhc2_alleles.split(',')
-    predictors = predictors.split(',')
-    if mhc1_alleles[0] in base.mhc1_presets:
-        mhc1_alleles = base.get_preset_alleles(mhc1_alleles[0])
-    elif mhc2_alleles[0] in base.mhc2_presets:
-        mhc2_alleles = base.get_preset_alleles(mhc2_alleles[0])
-
-    cutoff = float(cutoff)
-    names = names.split(',')
-    if names == ['']: names=None
-
-    if not os.path.exists(path) and path != '':
-        os.mkdir(path)
-    preds = []
-    for p in predictors:
-        print ('predictor:', p)
-        P = base.get_predictor(p)
-        preds.append(P)
-        savepath = os.path.join(path, p)
-        if overwrite == True and os.path.exists(savepath):
-            shutil.rmtree(savepath)
-        if p in ['iedbmhc1','mhcflurry']:
-            a = mhc1_alleles
-            length = mhc1_length
-            check_mhc1_length(length)
-            method = iedb_mhc1_method
-        else:
-            a = mhc2_alleles
-            length = mhc2_length
-            method = iedb_mhc2_method
-        print ('alleles:',a)
-        if p == 'iedbmhc1' and check_iedbmhc1_path() == False:
-            continue
-
-        P.predictProteins(sequences, length=length, alleles=a, names=names,
-                          path=savepath, overwrite=overwrite, verbose=verbose,
-                          method=method)
-        #load into predictor
-        P.load(path=savepath)
-        if P.data is None:
-            print ('no results were found, did predictor run?')
-            return
-        b = P.getBinders(cutoff=cutoff)#, value=cutoff_method)
-        b.to_csv(os.path.join(path,'binders_%s_%s.csv' %(p,n)))
-
-        pb = P.promiscuousBinders(n=int(n), cutoff=cutoff)
-        print ('found %s promiscuous binders at cutoff %s' %(len(pb),cutoff))
-        pb.to_csv(os.path.join(path,'prom_binders_%s_%s.csv' %(p,n)))
-        if verbose == True:
-            print ('top promiscuous binders:')
-            print (pb[:10])
-        if genome_analysis == True:
-            cl = analysis.find_clusters(pb, genome=sequences)
-            cl.to_csv(os.path.join(path,'clusters_%s.csv' %p))
-        print ('-----------------------------')
-
-    #various choices here - we could generate a notebook with the plots
-    #embedded ? better than saving all to disk
-    prots = sequences.locus_tag
-    if plots == True:
-        import pylab as plt
-        height = 2*len(preds)
-        for prot in prots:
-            ax = plotting.plot_tracks(preds,name=prot,n=2,cutoff=cutoff,
-                                          figsize=(14,height),legend=True)
-            #plotting.mpl_plot_regions(coords, ax, color='gray')
-            plt.tight_layout()
-            plt.savefig('plots/%s.png'%prot, dpi=150)
-        print ('saved plots')
-
-    return
 
 def check_mhc1_length(l):
     if l<9 or l>13:
@@ -130,6 +141,10 @@ def show_preset_alleles():
     print ('preset allele list ids:')
     for i in base.mhc1_presets+base.mhc2_presets:
         print (i, len( base.get_preset_alleles(i)))
+
+def show_predictors():
+    for p in base.predictors:
+        print(p)
 
 def print_help():
     print ("""use -h to get options""")
@@ -162,9 +177,10 @@ def main():
     if opts.presets == True:
         show_preset_alleles()
     elif opts.run == True:
-        base.iedbmhc1path = options['iedbmhc1_path']
-        base.iedbmhc2path = options['iedbmhc2_path']
-        run(**options)
+        W = WorkFlow(options)
+        st = W.setup()
+        if st == True:
+            W.run()
     else:
         print_help()
 

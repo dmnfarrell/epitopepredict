@@ -945,7 +945,7 @@ class IEDBMHCIPredictor(Predictor):
         return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
-                   allele='HLA-A*01:01', name='', method='IEDB_recommended'):
+                   allele='HLA-A*01:01', name='', method=None):
         """Use IEDB MHCI python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
 
@@ -954,6 +954,7 @@ class IEDBMHCIPredictor(Predictor):
         if not os.path.exists(path):
             print ('IEDB mhcI tools not found')
             return
+        if method == None: method = 'IEDB_recommended'
         self.iedbmethod = method
         cmd = os.path.join(path,'src/predict_binding.py')
         cmd = cmd+' %s %s %s %s' %(method,allele,length,seqfile)
@@ -987,8 +988,7 @@ class IEDBMHCIPredictor(Predictor):
         df['name'] = name
         if 'method' not in df.columns:
             df['method'] = self.iedbmethod
-
-        if self.iedbmethod == 'IEDB_recommended':
+        if self.iedbmethod in ['IEDB_recommended','consensus']:
             #df['ic50'] = df[['ann_ic50','smm_ic50']].mean(1)
             df['ic50'] = df.ann_ic50
         df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
@@ -996,13 +996,6 @@ class IEDBMHCIPredictor(Predictor):
         self.data = df
         #print (df[:10])
         return df
-
-    def getScoreKey(self, data):
-        """Get score key for a result, since they vary"""
-
-        #m = data['method'].head(1).squeeze()
-        key = self.methodkeys[m]
-        return key
 
     def getMHCIList(self):
         """Get available alleles from model_list file and
@@ -1014,19 +1007,25 @@ class IEDBMHCIPredictor(Predictor):
         alleles = sorted(list(set([get_standard_mhc1(i) for i in alleles])))
         return alleles
 
+    def getAvailableAlleles(self, method):
+        cmd = '/local/iedbmhc1/src/predict_binding.py %s mhc' %method
+        temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        print (temp)
+        return
+
 class IEDBMHCIIPredictor(Predictor):
     """Using IEDB MHC-II method, requires tools to be installed locally"""
 
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc2'
-        self.scorekey = 'percentile_rank'
+        self.scorekey = 'score'
         self.cutoff = 3
         self.operator = '<'
         self.rankascending = 1
         self.methods = ['arbpython','comblib','consensus3','IEDB_recommended',
                         'NetMHCIIpan','nn_align','smm_align','tepitope']
-        self.iedbmethod = 'consensus3'
+        self.iedbmethod = 'IEDB_recommended'
         return
 
     def prepareData(self, rows, name):
@@ -1042,23 +1041,27 @@ class IEDBMHCIIPredictor(Predictor):
         df.reset_index(inplace=True)
         df.rename(columns={'index':'pos','Sequence': 'peptide','Allele':'allele'},
                            inplace=True)
-        df['core'] = df.nn_align_core
+        df['core'] = df.filter(regex="core").columns[0]
         df['name'] = name
         #if self.iedbmethod == 'IEDB_recommended':
-            #df['ic50'] = df[['ann_ic50','smm_ic50']].mean(1)
-        #df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
+        if not 'ic50' in df.columns:
+            df['ic50'] = df.filter(regex="ic50").mean(1)            
+        if not 'score' in df.columns:
+            df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
+        #print (df.filter(regex="ic50").mean(1))
         self.getRanking(df)
         self.data = df
         return df
 
     def predict(self, sequence=None, peptides=None, length=15, overlap=None,
-                   allele='HLA-DRB1*01:01', method='consensus3', name=''):
+                   allele='HLA-DRB1*01:01', method='IEDB_recommended', name=''):
         """Use iedb MHCII python module to get predictions.
            Requires that the IEDB MHC-II tools are installed locally
         """
 
         seqfile = write_fasta(sequence)
         path = iedbmhc2path
+        if method == None: method = 'IEDB_recommended'
         if not os.path.exists(path):
             print ('iedb mhcII tools not found')
             return
