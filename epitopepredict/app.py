@@ -17,7 +17,7 @@ defaultpath = os.getcwd()
 
 class WorkFlow(object):
     """Class for implementing a rna/mirna workflow from a set of options"""
-    def __init__(self, opts):
+    def __init__(self, opts={}):
         for i in opts:
             self.__dict__[i] = opts[i]
         return
@@ -30,6 +30,8 @@ class WorkFlow(object):
         self.sequences = get_sequences(self.sequence_file)
         self.mhc1_alleles = self.mhc1_alleles.split(',')
         self.mhc2_alleles = self.mhc2_alleles.split(',')
+        if len(self.mhc1_alleles)==0 and len(self.mhc2_alleles)==0:
+            return False
         self.predictors = self.predictors.split(',')
         for p in self.predictors:
             if p not in base.predictors:
@@ -82,11 +84,12 @@ class WorkFlow(object):
                 print ('no results were found, did predictor run?')
                 return
             cutoff = self.cutoff
+            cutoff_method = self.cutoff_method
             n = self.n
-            b = P.getBinders(cutoff=cutoff)#, value=cutoff_method)
+            b = P.getBinders(cutoff=cutoff, value=cutoff_method)
             b.to_csv(os.path.join(self.path,'binders_%s_%s.csv' %(p,n)))
 
-            pb = P.promiscuousBinders(n=int(n), cutoff=cutoff)
+            pb = P.promiscuousBinders(n=int(n), cutoff=cutoff, value=cutoff_method)
             print ('found %s promiscuous binders at cutoff %s' %(len(pb),cutoff))
             pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)))
             if self.verbose == True:
@@ -97,22 +100,35 @@ class WorkFlow(object):
                 cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
             print ('-----------------------------')
 
+        self.preds = preds
+        if self.plots == True:
+            self.plot_results()
         return
 
-    def plots(self):
+    def plot_results(self):
         """Plot results of predictions"""
 
-        prots = sequences.locus_tag
-        if plots == True:
-            import pylab as plt
-            height = 2*len(preds)
-            for prot in prots:
-                ax = plotting.plot_tracks(preds,name=prot,n=2,cutoff=cutoff,
-                                              figsize=(14,height),legend=True)
-                #plotting.mpl_plot_regions(coords, ax, color='gray')
-                plt.tight_layout()
-                plt.savefig('plots/%s.png'%prot, dpi=150)
-            print ('saved plots')
+        preds = self.preds
+        prots = self.sequences.locus_tag
+        import pylab as plt
+        height = 2*len(preds)
+        for prot in prots:
+            ax = plotting.plot_tracks(preds,name=prot,n=2,cutoff=self.cutoff,
+                                          figsize=(14,height),legend=True)
+            #plotting.mpl_plot_regions(coords, ax, color='gray')
+            #ax = plotting.plot_bars(preds[0], prot, cutoff=20, chunks=1)
+            plt.tight_layout()
+            plt.savefig('plots/%s.png'%prot, dpi=150)
+        print ('saved plots')
+        return
+
+    def analysis(self, path):
+
+        prots = self.sequences.locus_tag
+        for p in base.predictors:
+            P = base.get_predictor(p)
+            P.load(os.path.join(path, p))
+            print (P)
         return
 
 def get_sequences(filename):
@@ -149,6 +165,17 @@ def show_predictors():
 def print_help():
     print ("""use -h to get options""")
 
+def list_alleles():
+    for p in base.predictors:
+        print (p)
+        print ('-----------------------------')
+        P = base.get_predictor(p)
+        x = P.getAlleles()
+        if type(x) is list:
+            for i in x: print (i)
+        print ()
+    return
+
 def main():
     "Run the application"
 
@@ -161,11 +188,14 @@ def main():
                         default=False, help="Run the predictions")
     parser.add_option("-p", "--presets", dest="presets",  action="store_true",
                         default=False, help="Show preset allele lists")
-    parser.add_option("-l", "--list-alleles", dest="list-alleles",  action="store_true",
+    parser.add_option("-l", "--list-alleles", dest="list_alleles",  action="store_true",
                         default=False, help="List available alleles")
     parser.add_option("-t", "--test", dest="test",  action="store_true",
                         default=False, help="Do quick test")
+    parser.add_option("-a", "--analysis", dest="analysis",
+                        help="Analysis path", metavar="FILE")
     opts, remainder = parser.parse_args()
+
     if opts.config != None:
         cp = config.parse_config(opts.config)
         options = config.get_options(cp)
@@ -176,11 +206,16 @@ def main():
             config.write_default_config(conffile, defaults=config.baseoptions)
     if opts.presets == True:
         show_preset_alleles()
+    elif opts.list_alleles == True:
+        list_alleles()
     elif opts.run == True:
         W = WorkFlow(options)
         st = W.setup()
         if st == True:
             W.run()
+    elif opts.analysis is not None:
+        W = WorkFlow()
+        W.analysis(opts.analysis)
     else:
         print_help()
 

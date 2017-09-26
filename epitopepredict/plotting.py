@@ -291,6 +291,7 @@ def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
     w = 10
     l= base.get_length(df)
     seqlen = df.pos.max()+l
+
     f,axs = plt.subplots(chunks,1,figsize=(15,2+2.5*chunks))
     if chunks == 1:
         axs = [axs]
@@ -298,13 +299,10 @@ def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
         axs = list(axs.flat)
 
     funcs = {'median': np.median, 'mean': np.mean, 'sum': np.sum}
-    #cb = P.consensusRankedBinders()
-    #cb = cb[cb['rank']<20]
 
     grps = df.groupby('pos')
     key = P.scorekey
     X = grps.agg({key: np.median, 'peptide': base.first})
-
     q = (1-cutoff/100.) #score quantile value
     cutoff = X[key].quantile(q)
     X[key][X[key]<cutoff] = np.nan
@@ -312,6 +310,7 @@ def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
     seqchunks = np.array_split(X.index, chunks)
 
     for c in range(chunks):
+        print (c)
         ax = axs[c]
         st = seqchunks[c][0]
         end = seqchunks[c][-1]

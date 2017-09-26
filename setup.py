@@ -1,17 +1,21 @@
 from setuptools import setup
 import sys,os
 
+with open('epitopepredict/description.txt') as f:
+    long_description = f.read()
+
 setup(
     name = 'epitopepredict',
     version = '0.2.0',
-    description = 'Python package for MHC binding prediction',
+    description = 'Python package for epitope prediction',
+    long_description = long_description,
     url='https://github.com/dmnfarrell/epitopepredict',
     license='GPL v3',
     author = 'Damien Farrell',
     author_email = 'farrell.damien[at]gmail.com',
     packages = ['epitopepredict'],
     package_data={'epitopepredict': ['mhcdata/*.csv', 'presets/*.csv',
-                  'tepitope/*.txt','tepitope/pssm/*']
+                  'tepitope/*.txt','tepitope/pssm/*','description.txt']
                  },
     install_requires=['numpy>=1.10',
                       'pandas>=0.20',

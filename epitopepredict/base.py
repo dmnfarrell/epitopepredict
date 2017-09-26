@@ -421,6 +421,8 @@ class Predictor(object):
             name: name of protein in predictions, optional
             cutoff: percentile cutoff for score or rank cutoff if value='rank'
             value: 'score' or 'rank'
+        Returns:
+            binders above cutoff in all alleles, pandas dataframe
         """
 
         if data is None:
@@ -917,7 +919,7 @@ class NetMHCIIPanPredictor(Predictor):
         except:
             print('netmhciipan not installed?')
             return []
-        alleles=temp.split('\n')[34:]
+        alleles = temp.split('\n')[34:]
         #print sorted(list(set([getStandardmhc1Name(i) for i in alleles])))
         return alleles
 
@@ -935,7 +937,7 @@ class IEDBMHCIPredictor(Predictor):
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc1'
-        self.scorekey = 'ic50'
+        self.scorekey = 'score'
         self.methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008',
                         'consensus', 'smm', 'netmhcpan', 'smmpmbec']
         self.cutoff = .426
@@ -989,8 +991,8 @@ class IEDBMHCIPredictor(Predictor):
         if 'method' not in df.columns:
             df['method'] = self.iedbmethod
         if self.iedbmethod in ['IEDB_recommended','consensus']:
-            #df['ic50'] = df[['ann_ic50','smm_ic50']].mean(1)
-            df['ic50'] = df.ann_ic50
+            df['ic50'] = df.filter(regex="ic50").mean(1)
+
         df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
         self.getRanking(df)
         self.data = df
@@ -1007,10 +1009,14 @@ class IEDBMHCIPredictor(Predictor):
         alleles = sorted(list(set([get_standard_mhc1(i) for i in alleles])))
         return alleles
 
-    def getAvailableAlleles(self, method):
-        cmd = '/local/iedbmhc1/src/predict_binding.py %s mhc' %method
-        temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-        print (temp)
+    def getAlleles(self):
+        if not os.path.exists(iedbmhc1path):
+            return
+        c = os.path.join(iedbmhc1path,'src/predict_binding.py')
+        for m in self.methods:
+            cmd = c + ' %s mhc' %m
+            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+            print (temp)
         return
 
 class IEDBMHCIIPredictor(Predictor):
@@ -1020,10 +1026,10 @@ class IEDBMHCIIPredictor(Predictor):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc2'
         self.scorekey = 'score'
-        self.cutoff = 3
+        self.cutoff = 4
         self.operator = '<'
-        self.rankascending = 1
-        self.methods = ['arbpython','comblib','consensus3','IEDB_recommended',
+        self.rankascending = 0
+        self.methods = ['comblib','consensus3','IEDB_recommended',
                         'NetMHCIIpan','nn_align','smm_align','tepitope']
         self.iedbmethod = 'IEDB_recommended'
         return
@@ -1033,7 +1039,9 @@ class IEDBMHCIIPredictor(Predictor):
 
         if len(rows) == 0:
             return
-        df = pd.read_csv(io.BytesIO(rows),sep=r"\t",engine='python',index_col=False)
+
+        #print (rows)
+        df = pd.read_csv(io.BytesIO(rows),sep=r'\t',engine='python',index_col=False)
         #print (df.iloc[0])
         extracols = ['Start','End','comblib_percentile','smm_percentile','nn_percentile',
                      'Sturniolo core',' Sturniolo score',' Sturniolo percentile']
@@ -1041,14 +1049,19 @@ class IEDBMHCIIPredictor(Predictor):
         df.reset_index(inplace=True)
         df.rename(columns={'index':'pos','Sequence': 'peptide','Allele':'allele'},
                            inplace=True)
-        df['core'] = df.filter(regex="core").columns[0]
+        df['core'] = df[df.filter(regex="core").columns[0]]
         df['name'] = name
-        #if self.iedbmethod == 'IEDB_recommended':
-        if not 'ic50' in df.columns:
-            df['ic50'] = df.filter(regex="ic50").mean(1)            
-        if not 'score' in df.columns:
-            df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
-        #print (df.filter(regex="ic50").mean(1))
+
+        if self.iedbmethod == 'IEDB_recommended':
+            df['score'] = df.percentile_rank
+            self.operator = '<'
+            self.rankascending = 0
+        else:
+            if not 'ic50' in df.columns:
+                df['ic50'] = df.filter(regex="ic50").mean(1)
+            if not 'score' in df.columns:
+                df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
+
         self.getRanking(df)
         self.data = df
         return df
@@ -1059,6 +1072,7 @@ class IEDBMHCIIPredictor(Predictor):
            Requires that the IEDB MHC-II tools are installed locally
         """
 
+        self.iedbmethod = method
         seqfile = write_fasta(sequence)
         path = iedbmhc2path
         if method == None: method = 'IEDB_recommended'
@@ -1076,6 +1090,16 @@ class IEDBMHCIIPredictor(Predictor):
             return
         data = self.prepareData(temp, name)
         return data
+
+    def getAlleles(self):
+        if not os.path.exists(iedbmhc2path):
+            return
+        c = os.path.join(iedbmhc2path,'mhc_II_binding.py')
+        for m in self.methods:
+            cmd = c + ' %s mhc' %m
+            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+            print (temp)
+        return
 
 class TEpitopePredictor(Predictor):
     """Predictor using TepitopePan QM method"""
@@ -1237,7 +1261,7 @@ class MHCFlurryPredictor(Predictor):
         df['name'] = name
         df['pos'] = df.index
         df['score'] = df['prediction'].apply( lambda x: 1-math.log(x, 50000) )
-        df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
+        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         self.getRanking(df)
         return df
 
@@ -1246,4 +1270,4 @@ class MHCFlurryPredictor(Predictor):
 
     def getAlleles(self):
         import mhcflurry
-        return mhcflurry.Class1BindingPredictor.supported_alleles()
+        return mhcflurry.Class1AffinityPredictor.supported_alleles

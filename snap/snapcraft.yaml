@@ -20,7 +20,7 @@ parts:
     python-version: python2
     source: ../
     python-packages:
-      [matplotlib,sklearn,mhcflurry]
+      [matplotlib,sklearn]
     stage-packages:
       [python-tk,tcsh,gawk,ncbi-blast+]
   #netmhciipan:

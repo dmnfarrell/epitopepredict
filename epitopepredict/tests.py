@@ -51,20 +51,39 @@ class PredictorTests(unittest.TestCase):
         P.getBinders(data=P.data)
         return
 
-    def testIEDB(self):
+    def test_iedbmhc1(self):
         """IEDB MHCI test"""
 
         df = self.df
         P = base.get_predictor('iedbmhc1')
+        base.iedbmhc1path = '/local/iedbmhc1'
         print (P)
         if not os.path.exists(base.iedbmhc1path):
             print ('IEDB MHC-I not found')
             return
-        alleles = ["HLA-A*02:02", "HLA-A*11:01",
-                   "HLA-B*15:17", "HLA-B*51:01",
-                   "HLA-C*04:01", "HLA-E*01:03"]
-        P.predictProteins(df, length=11, alleles=alleles,
-                           path=self.testdir)
+        alleles = ["HLA-A*02:02", "HLA-A*01:01"]
+        for m in P.methods:
+            print (m)
+            P.predictProteins(df, length=8, alleles=alleles,
+                                    method=m)
+        return
+
+    def test_iedbmhc2(self):
+        """IEDB MHCII test"""
+
+        df = self.df
+        P = base.get_predictor('iedbmhc2')
+        base.iedbmhc2path = '/local/iedbmhc2'
+        print (P)
+        if not os.path.exists(base.iedbmhc1path):
+            print ('IEDB MHC-II not found')
+            return
+        alleles = ["HLA-DRB1*01:01"]
+        for m in P.methods:
+            print (m)
+            P.predictProteins(df, length=8, alleles=alleles,
+                                    method=m)
+            #print (P.data.iloc[0])
         return
 
     '''def test_bcell(self):
