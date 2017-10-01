@@ -54,9 +54,10 @@ class WorkFlow(object):
         """Run workflow"""
 
         preds = []
+        if self.names == None:
+            self.names = self.sequences.locus_tag
         for p in self.predictors:
             P = base.get_predictor(p)
-            preds.append(P)
             savepath = os.path.join(self.path, p)
             if self.overwrite == True and os.path.exists(savepath):
                 shutil.rmtree(savepath)
@@ -72,6 +73,7 @@ class WorkFlow(object):
             if method == '': method = None
             print ('predictor:', p)
             print ('alleles:',a)
+            print ('length:',length)
             print ('cpus:', self.cpus)
             if p == 'iedbmhc1' and check_iedbmhc1_path() == False:
                 continue
@@ -84,16 +86,19 @@ class WorkFlow(object):
             if P.data is None:
                 print ('no results were found, did predictor run?')
                 return
+            preds.append(P)
+            #print (preds)
             cutoff = self.cutoff
             cutoff_method = self.cutoff_method
             n = self.n
             b = P.getBinders(cutoff=cutoff, value=cutoff_method)
+            print ('%s binders' %len(b))
             b.to_csv(os.path.join(self.path,'binders_%s_%s.csv' %(p,n)))
 
-            pb = P.promiscuousBinders(n=int(n), cutoff=cutoff, value=cutoff_method)
-            print ('found %s promiscuous binders at cutoff %s' %(len(pb),cutoff))
+            pb = P.promiscuousBinders(binders=b, n=int(n), cutoff=cutoff, value=cutoff_method)
+            print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
             pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)))
-            if self.verbose == True:
+            if self.verbose == True and len(pb)>0:
                 print ('top promiscuous binders:')
                 print (pb[:10])
             if self.genome_analysis == True:
@@ -110,16 +115,21 @@ class WorkFlow(object):
         """Plot results of predictions"""
 
         preds = self.preds
-        prots = self.sequences.locus_tag
+        prots = self.names
         import pylab as plt
         height = 2*len(preds)
+        path = os.path.join(self.path, 'plots')
+        if not os.path.exists(path):
+            os.mkdir(path)
+        #print (self.preds)
         for prot in prots:
-            ax = plotting.plot_tracks(preds,name=prot,n=2,cutoff=self.cutoff,
+            ax = plotting.plot_tracks(preds,name=prot,n=1,cutoff=self.cutoff,
                                           figsize=(14,height),legend=True)
             #plotting.mpl_plot_regions(coords, ax, color='gray')
             #ax = plotting.plot_bars(preds[0], prot, cutoff=20, chunks=1)
             plt.tight_layout()
-            plt.savefig('plots/%s.png'%prot, dpi=150)
+            plt.savefig(os.path.join(path,prot), dpi=150)
+            plt.close()
         print ('saved plots')
         return
 

@@ -198,6 +198,7 @@ def plot_tracks(preds, name, n=2, cutoff=5, value='score',
         sckey = pred.scorekey
 
         binders = pred.getBinders(name, cutoff=cutoff, value=value)
+        #print (binders)
         #pass binders so it's not recalculated
         pb = pred.promiscuousBinders(binders=binders, n=n, value=value)
 
@@ -224,7 +225,7 @@ def plot_tracks(preds, name, n=2, cutoff=5, value='score',
             #clrs = [scmap.to_rgba(i) for i in b[sckey]]
             #for x,c in zip(pos,clrs):
             for x in pos:
-                rect = ax.add_patch(Rectangle((x,y), l, 1, facecolor=c,
+                rect = ax.add_patch(Rectangle((x,y), l, 1, facecolor=c, edgecolor='black',
                                     lw=1.5, alpha=0.6))
             y+=1
         handles.append(rect)

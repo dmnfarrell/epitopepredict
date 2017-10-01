@@ -443,6 +443,7 @@ class Predictor(object):
         if value == 'score':
             value = self.scorekey
             q = (1-cutoff/100.) #score quantile value
+            #print (q)
             if hasattr(self, 'cutoffs'):
                 cuts = self.cutoffs
             else:
@@ -451,7 +452,7 @@ class Predictor(object):
                 for a,g in data.groupby('allele'):
                     cuts[a] = g[value].quantile(q=q)
             cuts = pd.Series(cuts)
-
+            #print (cuts)
             res=[]
             for a,g in data.groupby('allele'):
                 #print cuts[a]
@@ -716,7 +717,9 @@ class Predictor(object):
             df = f.get(timeout=None)
             if df is not None and len(df)>0:
                 result.append(df)
-        print (result)
+        pool.close()
+        pool.join()
+        #print (result)
         if len(result)>0:
             result = pd.concat(result)
             #print result.info()
