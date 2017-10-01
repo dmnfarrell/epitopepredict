@@ -60,6 +60,10 @@ testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHAS
 
 presets_dir = os.path.join(path, 'presets')
 
+def worker(P, recs, kwargs):
+    df = P.predict_multiple(recs, **kwargs)
+    return df
+
 def get_preset_alleles(name):
     df = pd.read_csv(os.path.join(presets_dir, name+'.csv'),comment='#')
     return list(df.allele)
@@ -573,20 +577,19 @@ class Predictor(object):
         return data
 
     def predictProteins(self, recs, key='locus_tag', seqkey='translation',
-                        length=11, overlap=1, names=None, alleles=[],
-                        path=None, overwrite=True, verbose=False, method=None,
-                        **kwargs):
+                        names=None, alleles=[], path=None, verbose=False,
+                        cpus=1, **kwargs):
         """
-        Get predictions for a set of proteins and/or over multiple alleles
+        Get predictions for a set of proteins and/or over multiple alleles.
+        This is mostly a wrapper for predict_multiple. Sequences should be put into
+        a dataframe and supplied to this method as the first argument.
           Args:
             recs: protein sequences in a pandas DataFrame
-            length: length of peptides to predict
+            key: seq/protein name key
+            seqkey: key for sequence column
             names: names of proteins to use from sequences
-            alleles: allele list
-            path: if results are to be saved to disk provide a path, otherwise results
-            for all proteins are stored in the data attribute of the predictor
-            overwrite: over write existing protein files in path if present
-            verbose: provide output per protein/sequence
+            cpus: number of threads to run, use 0 for all cpus
+            see predict_multiple for other kwargs
           Returns:
             a dataframe of predictions over multiple proteins
         """
@@ -599,47 +602,57 @@ class Predictor(object):
         if len(alleles) == 0:
             print ('no alleles provided')
             return
-        self.length = length
 
         if names != None:
             recs = recs[recs[key].isin(names)]
-
-        proteins = list(recs.iterrows())
         results = []
         if path is not None and path != '':
             if not os.path.exists(path):
                 os.mkdir(path)
 
-        results = self._predict_multiple(proteins, path, overwrite, alleles, length,
-                                         method=method,
-                                         overlap=overlap, key=key, seqkey=seqkey,
-                                         verbose=verbose)
-        print ('predictions done for %s proteins in %s alleles' %(len(proteins),len(alleles)))
+        if verbose == True:
+            self.print_heading()
+        if cpus == 1:
+            results = self.predict_multiple(recs, path, alleles=alleles, seqkey=seqkey,
+                                            key=key, verbose=verbose, **kwargs)
+        else:
+            results = self._multiprocess_predict(recs, path=path, alleles=alleles, seqkey=seqkey,
+                                            key=key, verbose=verbose, cpus=cpus, **kwargs )
+
+        print ('predictions done for %s sequences in %s alleles' %(len(recs),len(alleles)))
         if path is None:
             #if no path we keep assign results to the data object
             #assumes we have enough memory..
             self.data = results
         else:
             print ('results saved to %s' %os.path.abspath(path))
-        return
+            results = None
+        return results
 
-    def _predict_multiple(self, proteins, path, overwrite, alleles, length, overlap=1,
-                          key='locus_tag', seqkey='sequence', queue=None, verbose=False,
+    def predict_multiple(self, recs, path=None, overwrite=True, alleles=[], length=11, overlap=1,
+                          key='locus_tag', seqkey='sequence', verbose=False,
                           method=None):
         """Predictions for multiple proteins in a dataframe
-            Args: as for predictProteins
+            Args:
+                recs: protein sequences in a pandas DataFrame
+                path: if results are to be saved to disk provide a path, otherwise results
+                overwrite: over write existing protein files in path if present
+                alleles: allele list
+                length: length of peptides to predict
+                overlap: overlap of n-mers
+                key: seq/protein name key
+                seqkey: key for sequence column
+                verbose: provide output per protein/sequence
+                method: IEDB method if using those predictors
             Returns: a dataframe of the results if no path is given
         """
 
         results = []
-        if verbose == True:
-            s = ("{:<30} {:<16} {:<18} {:<}"
-                               .format('name','allele','top peptide','score'))
-            print (s)
-        for i,row in proteins:
+        self.length = length
+        for i,row in recs.iterrows():
             seq = row[seqkey]
             seq = clean_sequence(seq) #clean the sequence of non-aa characters
-            #print (seq)
+            #print (row)
             name = row[key]
             if path is not None:
                 fname = os.path.join(path, name+'.csv')
@@ -661,37 +674,55 @@ class Predictor(object):
             if len(res) == 0:
                 continue
             res = pd.concat(res)
-            #print (res.pos.max())
+
             if path is not None and len(res)>0:
                 res.to_csv(fname)
             else:
                 results.append(res)
+        #print (len(recs))
         if len(results)>0:
             results = pd.concat(results)
         return results
+
+    def print_heading(self):
+        s = ("{:<30} {:<16} {:<18} {:<}"
+                           .format('name','allele','top peptide','score'))
+        print (s)
+        return
 
     def format_row(self, x):
         s = ("{:<30} {:<16} {:<18} {:} "
                            .format(x['name'], x.allele, x.peptide, x[self.scorekey] ))
         return s
 
-    '''def _multicpu_predict(self, **kwargs):
+    def _multiprocess_predict(self, recs, names=[], cpus=2, **kwargs):
+        """Call predictproteins with multiprocessing pools
+           for running predictions in parallel."""
 
-        #use more than one cpu
-        from multiprocessing import Process,Queue
-        grps = np.array_split(proteins, cpu)
-        procs = []
-        queue = Queue()
-        for df in grps:
-            p = Process(target=self._predict_multiple,
-                        kwargs=kwargs)
-            procs.append(p)
-            p.start()
-        #print ( [queue.get() for p in procs])
-        for p in procs:
-            p.join()
-        #print (len(results))
-        return'''
+        import multiprocessing as mp
+        maxcpu = mp.cpu_count()
+        if cpus == 0 or cpus > maxcpu:
+            cpus = maxcpu
+        pool = mp.Pool(cpus)
+        funclist = []
+        st = time.time()
+        chunks = np.array_split(recs,cpus)
+        for recs in chunks:
+            f = pool.apply_async(worker, [self,recs,kwargs])
+            #print (f)
+            funclist.append(f)
+        result = []
+        for f in funclist:
+            df = f.get(timeout=None)
+            if df is not None and len(df)>0:
+                result.append(df)
+        print (result)
+        if len(result)>0:
+            result = pd.concat(result)
+            #print result.info()
+        t=time.time()-st
+        print ('took %s' %str(t))
+        return result
 
     def load(self, path=None, names=None,
                compression='infer', file_limit=None):

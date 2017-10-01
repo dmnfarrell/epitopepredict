@@ -70,14 +70,15 @@ class WorkFlow(object):
                 length = self.mhc2_length
                 method = self.iedb_mhc2_method
             if method == '': method = None
-            print ('predictor:', p, method)
+            print ('predictor:', p)
             print ('alleles:',a)
+            print ('cpus:', self.cpus)
             if p == 'iedbmhc1' and check_iedbmhc1_path() == False:
                 continue
 
             P.predictProteins(self.sequences, length=length, alleles=a, names=self.names,
                               path=savepath, overwrite=self.overwrite, verbose=self.verbose,
-                              method=method)
+                              method=method, cpus=self.cpus)
             #load results into predictor
             P.load(path=savepath)
             if P.data is None:

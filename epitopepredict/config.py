@@ -47,7 +47,8 @@ baseoptions = {'base': [('predictors', 'tepitope'),
                 ('names', ''), #subset of protein names from genome file
                 ('overwrite', 'no'),
                 ('plots','no'), #whether to save plots
-                ('genome_analysis', 'no')],
+                ('genome_analysis', 'no'),
+                ('cpus',1)],
              'iedbtools': [('iedbmhc1_path',''), ('iedbmhc2_path',''),
                             ('iedb_mhc1_method','IEDB_recommended'),
                             ('iedb_mhc2_method','IEDB_recommended')]
