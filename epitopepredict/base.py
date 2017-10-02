@@ -171,18 +171,20 @@ def get_coords(df):
     df['end'] = ( df.pos + df.peptide.str.len() ).astype(int)
     return df
 
-def write_fasta(sequences, seqfile='tempseq.fa'):
+def write_fasta(sequences, id=None, filename='tempseq.fa'):
 
     if isinstance(sequences, basestring):
         sequences = [sequences]
-    out = open(seqfile, 'w')
+    out = open(filename, 'w')
     i=1
     for seq in sequences:
-        SeqIO.write(SeqRecord(Seq(seq),id='temp%s'%i,
+        if id == None:
+            id='temp%s'%i
+        SeqIO.write(SeqRecord(Seq(seq),id,
                     description='temp'), out, 'fasta')
         i+=1
     out.close()
-    return seqfile
+    return filename
 
 def get_sequence(seqfile):
     """Get sequence from fasta file"""
@@ -588,7 +590,7 @@ class Predictor(object):
             recs: protein sequences in a pandas DataFrame
             key: seq/protein name key
             seqkey: key for sequence column
-            names: names of proteins to use from sequences
+            names: names of proteins to use from sequences, list or pandas series
             cpus: number of threads to run, use 0 for all cpus
             see predict_multiple for other kwargs
           Returns:
@@ -604,7 +606,7 @@ class Predictor(object):
             print ('no alleles provided')
             return
 
-        if names != None:
+        if names is None:
             recs = recs[recs[key].isin(names)]
         results = []
         if path is not None and path != '':
@@ -908,13 +910,14 @@ class NetMHCIIPanPredictor(Predictor):
         self.data = df
         return
 
-    def runSequence(self, seq, length, allele, overlap=1):
+    def runSequence(self, seq, length, allele, name='temp', overlap=1):
         """Run netmhciipan for a single sequence"""
 
-        seqfile = write_fasta(seq)
+        seqfile = write_fasta(seq, id=name, filename=name+'.fa')
         cmd = 'netMHCIIpan -s -length %s -a %s -f %s' %(length, allele, seqfile)
         #print cmd
         temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        #print (temp)
         rows = self.readResult(temp)
         df = pd.DataFrame(rows)
         return df
@@ -937,11 +940,11 @@ class NetMHCIIPanPredictor(Predictor):
                 temp = self.runSequence(p, len(p), allele)
                 res = res.append(temp,ignore_index=True)
         else:
-            res = self.runSequence(sequence, length, allele, overlap)
+            res = self.runSequence(sequence, length, allele, name, overlap)
         if len(res)==0:
             return res
         self.prepareData(res, name)
-        #print self.data[self.data.columns[:7]][:5]
+        #print (self.data[self.data.columns[:7]][:5])
         return self.data
 
     def getAlleles(self):
@@ -985,7 +988,7 @@ class IEDBMHCIPredictor(Predictor):
         """Use IEDB MHCI python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
 
-        seqfile = write_fasta(sequence)
+        seqfile = write_fasta(sequence, id=name, filename=name+'.fa')
         path = iedbmhc1path
         if not os.path.exists(path):
             print ('IEDB mhcI tools not found')

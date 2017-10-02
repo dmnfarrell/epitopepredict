@@ -6,4 +6,12 @@ CHANGES
 0.2.0
 ------
 
-Substantial changes to API
+rewrote much of previous API
+now works with python >=2.7 and >=3.4
+changed module level methods to use underscore style
+new command line interface
+added snapcraft script
+added mhcflurry predictor
+added ability to run parallel predictions
+IEDB prediction tools now work correctly
+preset alleles added

@@ -75,8 +75,9 @@ class WorkFlow(object):
             print ('alleles:',a)
             print ('length:',length)
             print ('cpus:', self.cpus)
-            if p == 'iedbmhc1' and check_iedbmhc1_path() == False:
-                continue
+            if 'iedb' in p:
+                if iedb_checks(method) == False:
+                    continue
 
             P.predictProteins(self.sequences, length=length, alleles=a, names=self.names,
                               path=savepath, overwrite=self.overwrite, verbose=self.verbose,
@@ -123,10 +124,10 @@ class WorkFlow(object):
             os.mkdir(path)
         #print (self.preds)
         for prot in prots:
-            ax = plotting.plot_tracks(preds,name=prot,n=1,cutoff=self.cutoff,
-                                          figsize=(14,height),legend=True)
+            #ax = plotting.plot_tracks(preds,name=prot,n=1,cutoff=self.cutoff,
+            #                              figsize=(14,height),legend=True)
             #plotting.mpl_plot_regions(coords, ax, color='gray')
-            #ax = plotting.plot_bars(preds[0], prot, cutoff=20, chunks=1)
+            ax = plotting.plot_bars(preds[0], prot, cutoff=20, chunks=2)
             plt.tight_layout()
             plt.savefig(os.path.join(path,prot), dpi=150)
             plt.close()
@@ -135,7 +136,8 @@ class WorkFlow(object):
 
     def analysis(self, path):
 
-        prots = self.sequences.locus_tag
+        preds = self.preds
+        prots = self.names
         for p in base.predictors:
             P = base.get_predictor(p)
             P.load(os.path.join(path, p))
@@ -154,6 +156,13 @@ def get_sequences(filename):
         print ('found genbank file')
     return seqs
 
+def iedb_checks(method):
+    if check_iedbmhc1_path() == False:
+        return False
+    if check_iedb_method(method) == False:
+        return False
+    return True
+
 def check_mhc1_length(l):
     if l<9 or l>13:
         print ('use MHCI n-mer lengths from 9-13')
@@ -161,8 +170,23 @@ def check_mhc1_length(l):
 
 def check_iedbmhc1_path():
     if not os.path.exists(base.iedbmhc1path):
-        print ('IEDB MHC tools not found, check path')
+        print ('IEDB MHC-I tools not found, check path')
         return False
+
+def check_iedbmhc2_path():
+    if not os.path.exists(base.iedbmhc2path):
+        print ('IEDB MHC-II tools not found, check path')
+        return False
+
+def check_iedb_method(method):
+    P1 = base.IEDBMHCIPredictor()
+    P2 = base.IEDBMHCIIPredictor()
+    m = P1.methods+P2.methods
+    if method not in m:
+        print ('%s not found. following available:' %method)
+        print (m)
+        return False
+    return True
 
 def show_preset_alleles():
     print ('preset allele list ids:')

@@ -156,7 +156,7 @@ def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
     plot.xaxis.major_label_orientation = np.pi/4
     return plot
 
-def plot_tracks(preds, name, n=2, cutoff=5, value='score',
+def plot_tracks(preds, name, n=1, cutoff=5, value='score',
                 legend=False, colormap='Paired', figsize=None, ax=None):
     """
     Plot binders as bars per allele using matplotlib.
@@ -170,14 +170,15 @@ def plot_tracks(preds, name, n=2, cutoff=5, value='score',
 
     import matplotlib as mpl
     from matplotlib.patches import Rectangle
-    if ax==None:
+    if ax == None:
         if figsize==None:
             h = sum([len(p.data.groupby('allele')) for p in preds])
-            w=10
+            w = 10
             h = round(h*.1+2)
             figsize = (w,h)
-        fig=plt.figure(figsize=figsize)
-        ax=fig.add_subplot(111)
+        plt.clf()
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
 
     p = len(preds)
     cmap = mpl.cm.get_cmap(colormap)
@@ -199,14 +200,13 @@ def plot_tracks(preds, name, n=2, cutoff=5, value='score',
 
         binders = pred.getBinders(name, cutoff=cutoff, value=value)
         #print (binders)
-        #pass binders so it's not recalculated
         pb = pred.promiscuousBinders(binders=binders, n=n, value=value)
 
         if len(pb) == 0:
             continue
         l = base.get_length(pb)
         seqlen = df.pos.max()+l
-        #print (m,df.pos.max())
+        print (name,m,df.pos.max(),l,seqlen)
         grps = df.groupby('allele')
         if m in colors:
             c=colors[m]
@@ -293,25 +293,25 @@ def plot_bars(P, name, chunks=1, how='median', cutoff=20, color='black'):
     l= base.get_length(df)
     seqlen = df.pos.max()+l
 
-    f,axs = plt.subplots(chunks,1,figsize=(15,2+2.5*chunks))
-    if chunks == 1:
-        axs = [axs]
-    else:
-        axs = list(axs.flat)
-
     funcs = {'median': np.median, 'mean': np.mean, 'sum': np.sum}
-
     grps = df.groupby('pos')
     key = P.scorekey
     X = grps.agg({key: np.median, 'peptide': base.first})
     q = (1-cutoff/100.) #score quantile value
     cutoff = X[key].quantile(q)
     X[key][X[key]<cutoff] = np.nan
+    if len(X)<20:
+        chunks = 1
     seqlist = X.peptide.apply( lambda x : x[0])
     seqchunks = np.array_split(X.index, chunks)
 
+    f,axs = plt.subplots(chunks,1,figsize=(15,2+2.5*chunks))
+    if chunks == 1:
+        axs = [axs]
+    else:
+        axs = list(axs.flat)
     for c in range(chunks):
-        print (c)
+        #print (c)
         ax = axs[c]
         st = seqchunks[c][0]
         end = seqchunks[c][-1]
