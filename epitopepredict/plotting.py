@@ -40,9 +40,28 @@ def plot_heatmap(df, ax=None, figsize=(6,6), **kwargs):
     plt.tight_layout()
     return ax
 
-def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
-                width=820, height=None, tools=True,
-                seqdepot=None, bcell=None, exp=None):
+def get_seq_from_binders(P, name=None):
+    if P.data is None or len(P.data)==0:
+        return
+    l = len(P.data.iloc[0].peptide)
+    seqlen = P.data.pos.max()+l
+    return seqlen
+
+def get_bokeh_colors(palette='YlBuGn'):
+
+    from bokeh.palettes import brewer
+    pal = brewer[palette][6]
+    i=0
+    clrs={}
+    for m in base.predictors:
+        clrs[m] = pal[i]
+        i+=1
+    return clrs
+
+def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5,
+                width=1000, height=None, x_range=None, tools=True,
+                palette='YlBuGn',
+                seqdepot=None, exp=None):
     """
     Plot binding predictions as parallel tracks of blocks for each allele.
     This uses Bokeh.
@@ -55,47 +74,52 @@ def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
     """
 
     from collections import OrderedDict
-    from bokeh.models import Range1d,HoverTool,FactorRange,Grid,GridPlot,ColumnDataSource
-    from bokeh.plotting import Figure
-    import matplotlib as mpl
+    from bokeh.models import Range1d,HoverTool,FactorRange,ColumnDataSource
+    from bokeh.plotting import figure
 
     if tools == True:
-        tools="xpan, xwheel_zoom, resize, hover, reset, save"
+        tools="xpan, xwheel_zoom, hover, reset, save"
     else:
         tools=''
 
     alls=1
-    for p in preds:
-        if p.data is None:
+    seqlen=0
+    for P in preds:
+        if P.data is None or len(P.data)==0:
             continue
-        alls += len(p.data.groupby('allele'))
+        seqlen = get_seq_from_binders(P)
+        alls += len(P.data.groupby('allele'))
+    if seqlen == 0:
+        return
     if height==None:
-        height = 130+10*alls
+        height = 140+10*alls
+    if x_range == None:
+        x_range = Range1d(0,seqlen)
     yrange = Range1d(start=0, end=alls+3)
-    plot = Figure(title=title,title_text_font_size="11pt",plot_width=width,
-                  plot_height=height, y_range=yrange,
-                y_axis_label='allele',
-                tools=tools,
-                background_fill="#FAFAFA",
-                toolbar_location="below")
+
+    plot = figure(title=title,plot_width=width,
+                    plot_height=height, y_range=yrange, x_range=x_range,
+                    y_axis_label='allele',
+                    tools=tools,
+                    #background_fill="#FAFAFA",
+                    toolbar_location="right")
     h=3
-    if bcell != None:
-        plotBCell(plot, bcell, alls)
+    #if bcell != None:
+    #    plotBCell(plot, bcell, alls)
     if seqdepot != None:
         plotAnnotations(plot,seqdepot)
     if exp is not None:
         plotExp(plot, exp)
 
-    #plotRegions(plot)
+    colors = get_bokeh_colors(palette)
 
-    #we plot all rects at once
     x=[];y=[];allele=[];widths=[];clrs=[];peptide=[]
     predictor=[];position=[];score=[];leg=[]
     l=80
+    i=0
     for pred in preds:
-        #pred = preds[m]
         m = pred.name
-        cmap = mpl.cm.get_cmap(colormaps[m])
+        #cmap = mpl.cm.get_cmap(colormaps[m])
         df = pred.data
         if df is None or len(df) == 0:
             print('no data to plot for %s' %m)
@@ -103,7 +127,10 @@ def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
         if name != None:
             df = df[df.name==name]
         sckey = pred.scorekey
-        pb = pred.getPromiscuousBinders(data=df,n=n, cutoff_method=cutoff_method)
+
+        #binders = pred.getBinders(name, cutoff=cutoff, value=value)
+        print cutoff, n
+        pb = pred.promiscuousBinders(n=n, cutoff=cutoff)
         if len(pb) == 0:
             continue
         l = base.get_length(pb)
@@ -111,12 +138,13 @@ def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
         alleles = grps.groups.keys()
         if len(pb)==0:
             continue
-        c=colors[m]
+        c = colors[m]
+
         leg.append(m)
         seqlen = df.pos.max()+l
 
         for a,g in grps:
-            b = pred.getBinders(data=g)
+            b = pred.getBinders(data=g, cutoff=cutoff)
             b = b[b.pos.isin(pb.pos)] #only promiscuous
             b.sort_values('pos',inplace=True)
             scores = b[sckey].values
@@ -132,11 +160,12 @@ def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
             peptide.extend(list(b.peptide.values))
             predictor.extend([m for i in scores])
             h+=1
+        i+=1
 
     source = ColumnDataSource(data=dict(x=x,y=y,allele=allele,peptide=peptide,
                                     predictor=predictor,position=position,score=score))
-    plot.rect(x,y, width=widths, height=0.8,
-         #x_range=Range1d(start=1, end=seqlen+l),
+    plot.rect('x','y', width=widths, height=0.8,
+         legend='predictor',
          color=clrs,line_color='gray',alpha=0.7,source=source)
 
     hover = plot.select(dict(type=HoverTool))
@@ -148,12 +177,16 @@ def bokeh_plot_tracks(preds, title='', n=2, cutoff_method='default', name=None,
         ("predictor", "@predictor"),
     ])
 
-    plot.set(x_range=Range1d(start=0, end=seqlen+1))
-    plot.xaxis.major_label_text_font_size = "8pt"
+    plot.xaxis.major_label_text_font_size = "9pt"
     plot.xaxis.major_label_text_font_style = "bold"
     plot.ygrid.grid_line_color = None
     plot.yaxis.major_label_text_font_size = '0pt'
-    plot.xaxis.major_label_orientation = np.pi/4
+    #plot.xaxis.major_label_orientation = np.pi/4
+    plot.min_border = 10
+    plot.background_fill_color = "beige"
+    plot.background_fill_alpha = 0.5
+    plot.legend.orientation = "horizontal"
+    plot.legend.location = "bottom_right"
     return plot
 
 def plot_tracks(preds, name, n=1, cutoff=5, value='score',

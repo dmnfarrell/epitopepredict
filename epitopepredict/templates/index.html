@@ -1,0 +1,41 @@
+<html>
+	<head>
+		<link
+		    href="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.css"
+			 rel="stylesheet" type="text/css">
+		<link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.css"
+			 rel="stylesheet" type="text/css">
+		<link href="static/custom.css" rel="stylesheet" type="text/css">
+		<script src="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.js"></script>
+		<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.js"></script>
+	<title> epitopepredict results </title>
+	<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+	</head>
+	<body>
+		<h3>epitopepredict results</h3>
+
+        <form action="/" >
+			{{ form.path.label }}
+            {{ form.path }}
+			{{ form.name.label }}
+            {{ form.name }}
+			{{ form.cutoff.label }}
+			{{ form.cutoff }}
+			{{ form.n.label }}
+			{{ form.n }}
+
+			<input type="submit">
+        </form>
+
+		{{ script|safe }}
+		{{ div|safe }}
+
+	</body>
+	<footer>
+		<div>
+			<h5>links:</h5>
+			<a href="https://github.com/dmnfarrell/epitopepredict/wiki">wiki page</a>
+		</div>
+	</footer>
+</html>

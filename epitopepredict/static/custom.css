@@ -1,0 +1,306 @@
+body {
+    font-family: arial;
+  }
+a {text-decoration:none; white-space:nowrap}
+a:hover {text-decoration:underline}
+a.button {text-decoration:none}
+h1,h2,h3,h4,h5,h6 {margin:0.2em 0 0.25em 0; display:block;
+	  font-family: Arial}
+h1 {font-size:4.00em}
+h2 {font-size:3.00em}
+h3 {font-size:2.00em}
+h4 {font-size:1.60em}
+h5 {font-size:1.25em}
+h6 {font-size:1.12em}
+th,label {font-weight:bold; white-space:nowrap;}
+td,th {text-align:left; padding:2px 5px 2px 5px}
+th {vertical-align:middle; border-right:1px solid white}
+td {vertical-align:top}
+form table tr td label {text-align:left}
+p,table,ol,ul {padding:0; margin: 0.75em 0}
+p {text-align:justify}
+ol, ul {list-style-position:outside; margin-left:2em}
+li {margin-bottom:0.5em}
+span,input,select,textarea,button,label,a {display:inline}
+img {border:0}
+div {font: arial}
+
+.mytable {
+	margin:0px;padding:0px;
+	width:100%;
+	border:1px solid #b2a7a7;
+
+}.mytable table{
+    border-collapse: collapse;
+    border-spacing: 0;
+	width:100%;
+	height:100%;
+	margin:0px;padding:0px;
+
+}.mytable tr{ }.mytable th{
+	font-size:13px;
+    background-color:#D0E1E6;
+}
+
+.mytable tr:nth-child(odd){ background-color:#F7F7F7; }
+.mytable tr:nth-child(even)    { background-color:#FAFAFA; }.mytable td{
+	border:1px solid #b2a7a7;
+	border-width:0px 1px 1px 0px;
+	text-align:left;
+	padding:2px;
+	font-size:14px;
+	font-family:Arial;
+	font-weight:normal;
+
+}.mytable tr:last-child td{
+	border-width:0px 1px 0px 0px;
+}.mytable tr td:last-child{
+	border-width:0px 0px 1px 0px;
+}.mytable tr:last-child td:last-child{
+	border-width:0px 0px 0px 0px;
+}
+
+.mytable tr:hover td{
+	background:-o-linear-gradient(bottom, #cccccc 5%, #cccccc 100%);
+	background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #F5F6CE), color-stop(1, #F5F6CE) );
+	background:-moz-linear-gradient( center top, #cccccc 5%, #cccccc 100% );
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr="#cccccc", endColorstr="#cccccc");	background: -o-linear-gradient(top,#cccccc,cccccc);
+	background-color:#cccccc;
+}
+.mytable tr:first-child td:first-child{
+	border-width:0px 0px 1px 0px;
+}
+.mytable tr:first-child td:last-child{
+	border-width:0px 0px 1px 1px;
+}
+
+.mytable tbody {
+ width: 200px;
+ height: 400px;
+ overflow: auto;
+}
+
+td.monospace {
+	font-size:15px;
+    font-family:Courier;
+    font-style:bold;
+}
+
+div.scrollableContainer {
+    position: relative;
+    width: 1124px;
+    padding-top: 1.7em;
+    margin: 10px;
+    border: 1px solid #999;
+    background: #D8F6CE;
+}
+div.scrollingArea {
+    border:1px solid #b2a7a7;
+    height: 450px;
+    overflow: auto;
+    margin: 10px;
+}
+.scrollingArea h5 {
+    font-size:14px;
+    font-family:monospace;
+    background-color: #A9E2F3;
+    padding: 2px;
+}
+
+.highlight {
+    background-color: #D0D0B9;
+}
+
+div.floatleft {
+    float:left;
+    margin: 4px;
+    padding: 2px;
+}
+.floatleft h5 {
+    font-size:14px;
+    font-family:monospace;
+    background-color: #A9E2F3;
+    padding: 2px;
+}
+
+div.floatright {
+    float:right;
+    margin: 2px;
+    padding: 2px;
+}
+.floatright h5 {
+    font-size:14px;
+    background-color: #A9E2F3;
+    padding: 2px;
+}
+
+div.monospace {
+    margin:3px;
+    padding:3px;
+	font-size:14px;
+    font-family:monospace;
+    font-style:bold;
+    background: #E6F2FF;
+}
+
+.tinytable {
+    font-family:monospace;
+	font-size:12px;
+}
+.tinytable table{
+	margin:1px;padding:2;
+
+}.tinytable td{
+    border-spacing: 0;
+    border:0px solid #b2a7a7;
+    border-width:0px 0px 0px 0px;
+}
+.tinytable th{
+    background-color: #F1F1F1;
+    border-width:0px 0px 0px 0px;
+}
+
+.tinytable tr:nth-child(even){ background-color:#F7F7F7; }
+
+.smalltable {
+	margin:4px;
+	padding:4px;
+	border-width: 5px;
+	background-color: #F1F1F1;
+	border-radius: 4px;
+	border:10px solid #F1F1F1;
+}
+.smalltable td{
+    padding:2px;
+    margin:2px;
+}
+
+.seqtable {
+	margin:0px;padding:2px;
+	border:1px solid #b2a7a7;
+	font-family: monospace;
+	font-style: bold;
+	font-size:12px;
+	white-space: nowrap;
+}.seqtable table{
+	margin:2px;
+}.seqtable td{
+    width:100%;
+    border:0px solid #b2a7a7;
+	border-width:0px 0px 0px 0px;
+	margin:0px;
+	padding:1px 4px 0px 4px;
+}
+.seqtable th{
+    padding:1px 4px 0px 4px;
+    /*background-color:  #E0ECF8;*/
+}
+.seqtable tr:nth-child(even){ background-color:#F7F7F7; }
+
+.test {} body{
+    background-color: white;
+}
+
+/* Sortable tables */
+.sortable {
+	margin:0px;padding:0px;
+	width:100%;
+	border:1px solid #b2a7a7;
+	font-family: monospace;
+	font-size:11px;
+}.sortable table{
+    border-collapse: collapse;
+    border-spacing: 0;
+	height:100%;
+	margin:0px;padding:2px;
+}
+.sortable td{
+	font-size:11px;
+	border-width:0px 0px 0px 0px;
+	margin:1px;padding:2px;
+}
+.sortable th{
+    background-color:  #E0ECF8;
+    border-width:0px 0px 0px 0px;
+}
+.sortable tr:nth-child(even){ background-color:#F7F7F7; }
+
+.genometable {
+    font-family:monospace;
+	font-size:13px;
+}.genometable td{
+    border-spacing: 0;
+    border-width:0px 0px 0px 0px;
+    border:0px;
+    max-width: 500px;
+    word-wrap: break-word;
+}
+.genometable th{
+    background-color: #F1F1F1;
+    border-width:0px 0px 0px 0px;
+    width: 150px;
+}
+
+.genometable tr:nth-child(even){ background-color:#F7F7F7; }
+
+.formelement label {
+    display: inline-block;
+    width: 150px;
+}
+
+.myform{
+    background-color: white;
+    display: inline-block;
+    border-width:0px;
+    padding: 4px;
+}
+.myform input {
+    width: 150px;
+}
+.myform select {
+    width: 100px;
+}
+.myform label {
+    float: left;
+    text-align: right;
+    padding: 6px;
+}
+
+.divheader {
+	font-style: bold;
+	font-size: 16px;
+	background-color: #F1F1F1;
+	padding: 4px;
+}
+
+.divheader h5 {
+    font-size:14px;
+	background-color: #F1F1F1;
+    padding: 4px;
+}
+
+div.heading {
+    word-wrap:  break-word;
+    font-size: 14px;
+    width: 18em;
+    margin:2px;
+}
+
+div.ajax-loader {
+  height: 200px;
+  width: 100px;
+  position: relative;
+  left: 50%;
+  top: 50%;
+
+}
+
+div.help-page{
+  font-family: "Droid Sans", Arial, sans-serif;
+  font-size: 1.2em;
+  line-height: 1.48em;
+}
+
+footer {
+    background-color: #F1F1F1;
+}

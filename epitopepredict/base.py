@@ -606,7 +606,7 @@ class Predictor(object):
             print ('no alleles provided')
             return
 
-        if names is None:
+        if names is not None:
             recs = recs[recs[key].isin(names)]
         results = []
         if path is not None and path != '':
