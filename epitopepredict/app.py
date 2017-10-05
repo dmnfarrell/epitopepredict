@@ -11,7 +11,7 @@ import sys, os
 import shutil
 import pandas as pd
 from collections import OrderedDict
-from . import base, config, analysis, sequtils, plotting, tests
+from epitopepredict import base, config, analysis, sequtils, plotting, tests
 
 defaultpath = os.getcwd()
 
@@ -229,6 +229,8 @@ def main():
                         default=False, help="Do quick test")
     parser.add_option("-a", "--analysis", dest="analysis",
                         help="Analysis path", metavar="FILE")
+    parser.add_option("-s", "--server", dest="server",  action="store_true",
+                        default=False, help="Run web app")
     opts, remainder = parser.parse_args()
 
     if opts.config != None:
@@ -251,6 +253,9 @@ def main():
     elif opts.analysis is not None:
         W = WorkFlow()
         W.analysis(opts.analysis)
+    elif opts.server == True:
+        from epitopepredict.server import webapp
+        webapp.run(port=5000, debug=True)
     else:
         print_help()
 

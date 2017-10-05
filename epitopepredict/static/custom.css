@@ -141,6 +141,9 @@ div.monospace {
     font-family:monospace;
     font-style:bold;
     background: #E6F2FF;
+    width:100%;
+    word-wrap: break-word;
+    margin-bottom:10px;
 }
 
 .tinytable {
@@ -270,7 +273,8 @@ div.monospace {
 	font-style: bold;
 	font-size: 16px;
 	background-color: #F1F1F1;
-	padding: 4px;
+	padding: 2px;
+    margin-bottom: 5px;
 }
 
 .divheader h5 {
@@ -303,4 +307,5 @@ div.help-page{
 
 footer {
     background-color: #F1F1F1;
+    padding: 4px;
 }

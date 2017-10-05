@@ -6,30 +6,40 @@
 		<link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.css"
 			 rel="stylesheet" type="text/css">
 		<link href="static/custom.css" rel="stylesheet" type="text/css">
+
 		<script src="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.js"></script>
 		<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.js"></script>
+		<script	src="http://cdn.pydata.org/bokeh/release/bokeh-compiler-0.12.9.min.js"></script>
+
 	<title> epitopepredict results </title>
 	<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
-
 	</head>
+
 	<body>
-		<h3>epitopepredict results</h3>
+		<div class="divheader"><h4>epitopepredict results</h4></div>
+		<div>
+			<form action="/" >
+				{{ form.path.label }}
+				{{ form.path }}
+				{{ form.name.label }}
+				{{ form.name }}
+				{{ form.cutoff.label }}
+				{{ form.cutoff }}
+				{{ form.n.label }}
+				{{ form.n }}
 
-        <form action="/" >
-			{{ form.path.label }}
-            {{ form.path }}
-			{{ form.name.label }}
-            {{ form.name }}
-			{{ form.cutoff.label }}
-			{{ form.cutoff }}
-			{{ form.n.label }}
-			{{ form.n }}
+				<input type="submit">
+			</form>
 
-			<input type="submit">
-        </form>
+			{{ div.plots|safe }}
+			{{ div.table }}
 
-		{{ script|safe }}
-		{{ div|safe }}
+			{{ script|safe }}
+
+			<div class="monospace">
+				<a>{{ info }}</a>
+			</div>
+		</div>
 
 	</body>
 	<footer>

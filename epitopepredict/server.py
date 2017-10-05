@@ -6,21 +6,26 @@
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import os,sys,glob
 from flask import Flask, render_template, request
 from wtforms import Form, TextField, validators, StringField, SelectField, FloatField
 from wtforms import FileField, SubmitField
 import pandas as pd
 import numpy as np
-#from bokeh.Charts import Histogram, Bar, Scatter
+
 from bokeh.embed import components
 from bokeh.plotting import figure
-from bokeh.layouts import row, column, gridplot
+from bokeh.layouts import row, column, gridplot, widgetbox
 from bokeh.models.widgets import Button, RadioButtonGroup, Select, Slider
+from bokeh.models.widgets import DataTable, DateFormatter, TableColumn
+from bokeh.models import ColumnDataSource
 
 from epitopepredict import base, plotting
 
-app = Flask(__name__)
+#apppath = os.path.dirname(os.path.abspath(__file__))
+webapp = Flask(__name__)
+#from epitopepredict import webapp
 path = 'results'
 predictors = base.predictors
 
@@ -50,22 +55,34 @@ def get_results(path, predictor, name):
     #print P.data
     return P
 
-def get_seq_info(P, name):
-    l = base.get_length(P.data)
-    return {'n-mer length':l}
+def get_seq_info(P):
+    df = P.data
+    l = base.get_length(df)
+    seq = sequence_from_peptides(df)
+    return {'n-mer':l, 'sequence':seq}
+
+def sequence_from_peptides(df):
+    x = df.peptide.str[0]
+    x = ''.join(x)
+    return x
 
 # Create the main plot
 
-def create_figure(name=None, kind='tracks', cutoff=5, n=2):
-    """Get plot of binders for single protein/sequence"""
+def get_predictors(name=None):
+    """Get a set of predictors with available results"""
 
     if name==None:
         return []
-    figures = []
     preds = []
     for pred in predictors:
         P = get_results(path, pred, name)
         preds.append(P)
+    return preds
+
+def create_figure(preds, name='', kind='tracks', cutoff=5, n=2):
+    """Get plot of binders for single protein/sequence"""
+
+    figures = []
     plot = plotting.bokeh_plot_tracks(preds, title=name,
                         width=800, palette='Set1', cutoff=float(cutoff), n=int(n))
 
@@ -93,9 +110,31 @@ def create_figures(name=None, kind='tracks'):
             figures.append(plot)
     return figures
 
-@app.route('/')
+def create_pred_table(path, name):
+    """Create table of prediction data"""
+
+    P = get_results(path, 'tepitope', name)
+    df = P.data[:10]
+    data = dict(
+        peptide=df.peptide.values,
+        pos=df.pos.values,
+        score=df.score.values,
+        allele=df.allele.values
+    )
+    #print (df)
+    source = ColumnDataSource(data)
+    columns = [
+            TableColumn(field="peptide", title="peptide"),
+            TableColumn(field="pos", title="pos"),
+            TableColumn(field="score", title="score"),
+            TableColumn(field="allele", title="allele"),
+        ]
+    table = DataTable(source=source, columns=columns, width=400, height=280)
+    return table
+
+@webapp.route('/')
 def index():
-    """index page"""
+    """main index page"""
 
     path = request.args.get("path")
     if path == None: path= 'results'
@@ -106,7 +145,7 @@ def index():
     if cutoff is None: cutoff=5
     n = request.args.get("n")
     if n is None: n=2
-    print cutoff
+    print (cutoff)
 
     form = ControlsForm()
     form.path.data = path
@@ -115,16 +154,24 @@ def index():
     form.cutoff.data = cutoff
     form.n.data = n
 
-    #get_seq_info(P, name)
-    plots = create_figure(current_name, cutoff=cutoff, n=n)
+    script=''; div=''
+    preds = get_predictors(current_name)
+    plots = create_figure(preds, current_name, cutoff=cutoff, n=n)
+    info = get_seq_info(preds[0])['sequence']
+
     if len(plots) > 0:
         grid = gridplot(plots, ncols=1, merge_tools=True, #sizing_mode='stretch_both',
                         toolbar_options=dict(logo='grey'))
-        script, div = components(grid)
-    else:
-        script=''; div=''
+        #script, div = components(grid)
+
+    #table = widgetbox(create_pred_table(path, current_name))
+    script, div = components({"plots": grid})#, "table": table})
+
     return render_template("index.html", form=form, script=script, div=div,
             path=path, names=names, current_name=current_name)
 
+def main():
+    webapp.run(port=5000, debug=True)
+
 if __name__ == '__main__':
-	app.run(port=5000, debug=True)
+	main()

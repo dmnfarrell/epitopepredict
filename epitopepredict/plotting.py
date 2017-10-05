@@ -6,6 +6,7 @@
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import sys, os, math
 from collections import OrderedDict
 import pylab as plt
@@ -129,7 +130,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5,
         sckey = pred.scorekey
 
         #binders = pred.getBinders(name, cutoff=cutoff, value=value)
-        print cutoff, n
+        print (cutoff, n)
         pb = pred.promiscuousBinders(n=n, cutoff=cutoff)
         if len(pb) == 0:
             continue

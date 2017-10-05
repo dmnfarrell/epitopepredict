@@ -13,14 +13,14 @@ icon: ../img/logo.png
 apps:
   epitopepredict:
     command: bin/epitopepredict
-    plugs: [home]
+    plugs: [home] 
 parts:
   epitopepredict:
     plugin: python
     python-version: python2
     source: ../
     python-packages:
-      [matplotlib,sklearn,flask,bokeh]
+      [matplotlib,sklearn]
     stage-packages:
       [python-tk,tcsh,gawk,ncbi-blast+]
   #netmhciipan:
