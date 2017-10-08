@@ -101,9 +101,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5,
     plot = figure(title=title,plot_width=width,
                     plot_height=height, y_range=yrange, x_range=x_range,
                     y_axis_label='allele',
-                    tools=tools,
-                    #background_fill="#FAFAFA",
-                    toolbar_location="right")
+                    tools=tools)
     h=3
     #if bcell != None:
     #    plotBCell(plot, bcell, alls)
@@ -120,7 +118,6 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5,
     i=0
     for pred in preds:
         m = pred.name
-        #cmap = mpl.cm.get_cmap(colormaps[m])
         df = pred.data
         if df is None or len(df) == 0:
             print('no data to plot for %s' %m)
@@ -188,6 +185,52 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5,
     plot.background_fill_alpha = 0.5
     plot.legend.orientation = "horizontal"
     plot.legend.location = "bottom_right"
+    plot.toolbar.logo = None
+    plot.toolbar_location = "right"
+    return plot
+
+def bokeh_plot_bar(preds, title='', width=1000, height=100,
+                    palette='Set1', tools=True):
+    """Plot bars combining one or more prediction results for a set of
+    peptides in a protein/sequence"""
+
+    from bokeh.models import Range1d,HoverTool,ColumnDataSource
+    from bokeh.plotting import figure
+
+    height = 200
+    seqlen=0
+    for P in preds:
+        if P.data is None or len(P.data)==0:
+            continue
+        seqlen = get_seq_from_binders(P)
+
+    x_range = Range1d(0,seqlen)
+    y_range = Range1d(start=0, end=100)
+    if tools == True:
+        tools="xpan, xwheel_zoom, reset"
+    else:
+        tools=None
+    plot = figure(title=title,plot_width=width,
+                    plot_height=height, y_range=y_range, x_range=x_range,
+                    y_axis_label='rank',
+                    tools=tools)
+    colors = get_bokeh_colors(palette)
+    for pred in preds[2:4]:
+        m = pred.name
+        c = colors[m]
+        df = pred.data
+        if df is None or len(df) == 0:
+            continue
+        X = 100-df['rank']
+        print (pred)
+        print (X)
+        plot.vbar(x=X.index, top=X.values, width=0.5,
+                   color=c)
+
+    plot.min_border = 10
+    plot.background_fill_color = "beige"
+    plot.toolbar.logo = None
+    plot.toolbar_location = "right"
     return plot
 
 def plot_tracks(preds, name, n=1, cutoff=5, value='score',

@@ -23,7 +23,7 @@ ol, ul {list-style-position:outside; margin-left:2em}
 li {margin-bottom:0.5em}
 span,input,select,textarea,button,label,a {display:inline}
 img {border:0}
-div {font: arial}
+div {font: arial; vertical-align:top;}
 
 .mytable {
 	margin:0px;padding:0px;
@@ -135,15 +135,17 @@ div.floatright {
 }
 
 div.monospace {
-    margin:3px;
-    padding:3px;
-	font-size:14px;
-    font-family:monospace;
-    font-style:bold;
-    background: #E6F2FF;
-    width:100%;
+    margin: 3px;
+    padding: 3px;
+	font-size: 12px;
+    font-family: monospace;
+    font-style: bold;
+    background: beige;
+    border: 1px solid #b2a7a7;
+    width: 790px;
     word-wrap: break-word;
-    margin-bottom:10px;
+    padding: 5px;
+    margin:10px;
 }
 
 .tinytable {
@@ -246,27 +248,9 @@ div.monospace {
 
 .genometable tr:nth-child(even){ background-color:#F7F7F7; }
 
-.formelement label {
-    display: inline-block;
-    width: 150px;
-}
-
-.myform{
-    background-color: white;
-    display: inline-block;
-    border-width:0px;
-    padding: 4px;
-}
-.myform input {
-    width: 150px;
-}
-.myform select {
-    width: 100px;
-}
-.myform label {
-    float: left;
-    text-align: right;
-    padding: 6px;
+.col-submit {
+  text-align: center;
+  padding: 20px;
 }
 
 .divheader {
@@ -274,7 +258,7 @@ div.monospace {
 	font-size: 16px;
 	background-color: #F1F1F1;
 	padding: 2px;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
 }
 
 .divheader h5 {
@@ -308,4 +292,47 @@ div.help-page{
 footer {
     background-color: #F1F1F1;
     padding: 4px;
+}
+
+form {
+    width: 800px;
+}
+
+input[type=text],input[type=password]{
+  font-size: 14px;
+  width: 120px;
+  height: 25px;
+  -webkit-border-radius: 0px 4px 4px 0px/5px 5px 4px 4px;
+  -moz-border-radius: 0px 4px 4px 0px/0px 0px 4px 4px;
+  border-radius: 0px 4px 4px 0px/5px 5px 4px 4px;
+  background-color: #fff;
+  -webkit-box-shadow: 1px 2px 5px rgba(0,0,0,.09);
+  -moz-box-shadow: 1px 2px 5px rgba(0,0,0,.09);
+  box-shadow: 1px 2px 5px rgba(0,0,0,.09);
+  border: solid 1px #cbc9c9;
+  margin-left: 2px;
+  margin-right: 4px;
+  margin-top: 10px;
+  padding-left: 10px;
+}
+
+input.button {
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-block;
+  text-decoration: none;
+  width: 100px; height: 22px;
+  transition: all 0.1s linear 0s;
+  top: 0px;
+  margin: 10px;
+}
+
+select {
+  font-size: 14px;
+  height: 22px;
+}
+
+.form label {
+    display: inline-block;
+    width: 150px;
 }

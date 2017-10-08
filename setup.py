@@ -16,15 +16,15 @@ setup(
     packages = ['epitopepredict'],
     package_data={'epitopepredict': ['mhcdata/*.csv', 'presets/*.csv',
                   'tepitope/*.txt','tepitope/pssm/*',
-                  'templates/index.html','static/*',
+                  'templates/*.html','static/*',
                   'description.txt']
                  },
     install_requires=['numpy>=1.10',
                       'pandas>=0.20',
                       'biopython>=1.5',
                       'bokeh>=0.12',
-                      'flask>=0.12',
                       'wtforms>=2.1',
+                      'wtforms_tornado',
                       'future'],
     entry_points = {
         'console_scripts': [

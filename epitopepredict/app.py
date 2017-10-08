@@ -254,8 +254,10 @@ def main():
         W = WorkFlow()
         W.analysis(opts.analysis)
     elif opts.server == True:
-        from epitopepredict.server import webapp
-        webapp.run(port=5000, debug=True)
+        #from epitopepredict.server import webapp
+        #webapp.run(port=5000, debug=True)
+        import epitopepredict.tornado_serve
+        epitopepredict.tornado_serve.main()
     else:
         print_help()
 

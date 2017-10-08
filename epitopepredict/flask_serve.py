@@ -25,18 +25,22 @@ from epitopepredict import base, plotting
 
 #apppath = os.path.dirname(os.path.abspath(__file__))
 webapp = Flask(__name__)
-#from epitopepredict import webapp
 path = 'results'
 predictors = base.predictors
+wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki'
+plotkinds = ['tracks','bar','text']
 
 class ControlsForm(Form):
     name = SelectField('name', choices=[])
     path = TextField('path', default='results')
     cutoff = FloatField('cutoff', default=5)
     n = TextField('n', default='2')
+    kinds = [(i,i) for i in plotkinds]
+    kind = SelectField('plot kind', choices=kinds)
     #submit = SubmitField()
 
 def get_file_lists(path):
+
     names = []
     for p in predictors:
         files = glob.glob(os.path.join(path, p, '*.csv'))
@@ -79,19 +83,21 @@ def get_predictors(name=None):
         preds.append(P)
     return preds
 
-def create_figure(preds, name='', kind='tracks', cutoff=5, n=2):
-    """Get plot of binders for single protein/sequence"""
+def create_figures(preds, name='', kind='tracks', cutoff=5, n=2):
+    """Get plots of binders for single protein/sequence"""
 
     figures = []
-    plot = plotting.bokeh_plot_tracks(preds, title=name,
-                        width=800, palette='Set1', cutoff=float(cutoff), n=int(n))
-
+    if kind == 'tracks':
+        plot = plotting.bokeh_plot_tracks(preds, title=name,
+                         width=800, palette='Set1', cutoff=float(cutoff), n=int(n))
+    elif kind == 'bar':
+        plot = plotting.bokeh_plot_bar(preds, title=name)
     if plot is not None:
         figures.append(plot)
     return figures
 
-def create_figures(name=None, kind='tracks'):
-    """Create multiple separate figures"""
+def create_multiple_figures(name=None, kind='bar'):
+    """Create multiple separate figures for each predictor"""
 
     if name==None:
         return []
@@ -103,8 +109,8 @@ def create_figures(name=None, kind='tracks'):
             xr = plot.x_range
         else:
             xr=None
-        plot = plotting.bokeh_plot_tracks([P], title=pred+' '+name, x_range=xr,
-                            width=800, height=180, palette='Set1')
+        plot = plotting.bokeh_plot_bars([P], title=pred+' '+name, x_range=xr,
+                            width=800, height=180)
 
         if plot is not None:
             figures.append(plot)
@@ -132,12 +138,21 @@ def create_pred_table(path, name):
     table = DataTable(source=source, columns=columns, width=400, height=280)
     return table
 
+def help_msg():
+    msg = '<a>results path not found, enter a folder with your results</a><br>'
+    msg += '<a href="%s"> see help page</a>' %wikipage
+    return msg
+
 @webapp.route('/')
 def index():
     """main index page"""
 
     path = request.args.get("path")
     if path == None: path= 'results'
+    if not os.path.exists(path):
+        msg = help_msg()
+        return render_template("index.html",form=ControlsForm(),div='',msg=msg)
+
     names = get_file_lists(path)
     current_name = request.args.get("name")
     if current_name is None: current_name='Rv0011c'
@@ -145,7 +160,8 @@ def index():
     if cutoff is None: cutoff=5
     n = request.args.get("n")
     if n is None: n=2
-    print (cutoff)
+    kind = request.args.get("kind")
+    if kind is None: kind='tracks'
 
     form = ControlsForm()
     form.path.data = path
@@ -153,22 +169,23 @@ def index():
     form.name.data = current_name
     form.cutoff.data = cutoff
     form.n.data = n
+    form.kind.data = kind
 
     script=''; div=''
     preds = get_predictors(current_name)
-    plots = create_figure(preds, current_name, cutoff=cutoff, n=n)
+    plots = create_figures(preds, current_name, cutoff=cutoff, n=n, kind=kind)
     info = get_seq_info(preds[0])['sequence']
 
     if len(plots) > 0:
         grid = gridplot(plots, ncols=1, merge_tools=True, #sizing_mode='stretch_both',
-                        toolbar_options=dict(logo='grey'))
+                        toolbar_options=dict(logo=None))
         #script, div = components(grid)
 
     #table = widgetbox(create_pred_table(path, current_name))
     script, div = components({"plots": grid})#, "table": table})
 
-    return render_template("index.html", form=form, script=script, div=div,
-            path=path, names=names, current_name=current_name)
+    return render_template("index.html", form=form, script=script, div=div, msg='',
+                           info=info, path=path, names=names, current_name=current_name)
 
 def main():
     webapp.run(port=5000, debug=True)
