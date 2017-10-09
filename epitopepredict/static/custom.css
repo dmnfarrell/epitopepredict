@@ -30,14 +30,16 @@ div {font: arial; vertical-align:top;}
 	width:100%;
 	border:1px solid #b2a7a7;
 
-}.mytable table{
+}
+.mytable table{
     border-collapse: collapse;
     border-spacing: 0;
 	width:100%;
 	height:100%;
 	margin:0px;padding:0px;
 
-}.mytable tr{ }.mytable th{
+}
+.mytable tr{ }.mytable th{
 	font-size:13px;
     background-color:#D0E1E6;
 }
@@ -135,17 +137,15 @@ div.floatright {
 }
 
 div.monospace {
-    margin: 3px;
-    padding: 3px;
+    margin: 5px;
+    padding: 5px 5px 5px 5px;
 	font-size: 12px;
     font-family: monospace;
     font-style: bold;
-    background: beige;
+    background: #F1F1F1;
     border: 1px solid #b2a7a7;
     width: 790px;
     word-wrap: break-word;
-    padding: 5px;
-    margin:10px;
 }
 
 .tinytable {
@@ -259,28 +259,11 @@ div.monospace {
 	background-color: #F1F1F1;
 	padding: 2px;
     margin-bottom: 8px;
+
 }
 
-.divheader h5 {
-    font-size:14px;
-	background-color: #F1F1F1;
-    padding: 4px;
-}
-
-div.heading {
-    word-wrap:  break-word;
-    font-size: 14px;
-    width: 18em;
-    margin:2px;
-}
-
-div.ajax-loader {
-  height: 200px;
-  width: 100px;
-  position: relative;
-  left: 50%;
-  top: 50%;
-
+.divheader img {
+    float: right;
 }
 
 div.help-page{
@@ -289,9 +272,13 @@ div.help-page{
   line-height: 1.48em;
 }
 
-footer {
+div.footer {
     background-color: #F1F1F1;
     padding: 4px;
+    position: fixed;
+    bottom: 0;
+    margin: 4px;
+    width: 98%;
 }
 
 form {
@@ -299,37 +286,37 @@ form {
 }
 
 input[type=text],input[type=password]{
-  font-size: 14px;
-  width: 120px;
-  height: 25px;
-  -webkit-border-radius: 0px 4px 4px 0px/5px 5px 4px 4px;
-  -moz-border-radius: 0px 4px 4px 0px/0px 0px 4px 4px;
-  border-radius: 0px 4px 4px 0px/5px 5px 4px 4px;
-  background-color: #fff;
-  -webkit-box-shadow: 1px 2px 5px rgba(0,0,0,.09);
-  -moz-box-shadow: 1px 2px 5px rgba(0,0,0,.09);
-  box-shadow: 1px 2px 5px rgba(0,0,0,.09);
-  border: solid 1px #cbc9c9;
-  margin-left: 2px;
-  margin-right: 4px;
-  margin-top: 10px;
-  padding-left: 10px;
+    font-size: 14px;
+    width: 120px;
+    height: 25px;
+    -webkit-border-radius: 0px 4px 4px 0px/5px 5px 4px 4px;
+    -moz-border-radius: 0px 4px 4px 0px/0px 0px 4px 4px;
+    border-radius: 0px 4px 4px 0px/5px 5px 4px 4px;
+    background-color: #fff;
+    -webkit-box-shadow: 1px 2px 5px rgba(0,0,0,.09);
+    -moz-box-shadow: 1px 2px 5px rgba(0,0,0,.09);
+    box-shadow: 1px 2px 5px rgba(0,0,0,.09);
+    border: solid 1px #cbc9c9;
+    margin-left: 2px;
+    margin-right: 4px;
+    margin-top: 10px;
+    padding-left: 10px;
 }
 
 input.button {
-  font-size: 14px;
-  font-weight: 600;
-  display: inline-block;
-  text-decoration: none;
-  width: 100px; height: 22px;
-  transition: all 0.1s linear 0s;
-  top: 0px;
-  margin: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-block;
+    text-decoration: none;
+    width: 100px; height: 22px;
+    transition: all 0.1s linear 0s;
+    top: 0px;
+    margin: 10px;
 }
 
 select {
-  font-size: 14px;
-  height: 22px;
+    font-size: 14px;
+    height: 22px;
 }
 
 .form label {

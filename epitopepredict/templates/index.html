@@ -3,7 +3,7 @@
 <html lang="en">
 	<head>
 	  <meta charset="utf-8">
-	 <title> epitopepredict results (tornado) </title>
+	 <title> epitopepredict results </title>
 		<link href="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.css"
 			 rel="stylesheet" type="text/css">
 		<link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.css"
@@ -18,7 +18,10 @@
 
 	<body>
 
-		<div class="divheader"><h4>epitopepredict results</h4></div>
+		<div class="divheader">
+			<h4>epitopepredict results</h4>
+		{% comment <img src="static/logo.png" alt="epitopepredict" height="42" width="42"> %}
+		</div>
 
 		<form action="/">
 			{{ form.path.label }}
@@ -39,14 +42,14 @@
 		{{ msg }}
 	    {{ script }}
 		{{ div }}
+		<div class="monospace">
+			<p>{{ "seq info here" }}</p>
+		</div>
 
 	</body>
 
-	<footer>
-		<div>
-			<h5>links:</h5>
-			<a href="https://github.com/dmnfarrell/epitopepredict/wiki">wiki page</a>
-		</div>
-	</footer>
+	<div class="footer">
+		<a href="https://github.com/dmnfarrell/epitopepredict/wiki">help page</a>
+	</div>
 
 </html>
