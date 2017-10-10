@@ -66,13 +66,15 @@ def get_predictors(path, name):
         preds.append(P)
     return preds
 
-def create_figures(preds, name='', kind='tracks', cutoff=5, n=2, **kwargs):
+def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
+                   cutoff_method='default', **kwargs):
     """Get plots of binders for single protein/sequence"""
 
     figures = []
     if kind == 'tracks':
         plot = plotting.bokeh_plot_tracks(preds, title=name,
-                         width=800, palette='Set1', cutoff=float(cutoff), n=int(n))
+                         width=800, palette='Set1', cutoff=float(cutoff), n=int(n),
+                         cutoff_method=cutoff_method)
 
     elif kind == 'bar':
         plot = plotting.bokeh_plot_bar(preds, title=name, width=800 )
@@ -84,6 +86,8 @@ def create_pred_table(path, name):
     """Create table of prediction data"""
 
     P = get_results(path, 'tepitope', name)
+    if P.data is None:
+        return
     df = P.data[:10]
     data = dict(
         peptide=df.peptide.values,

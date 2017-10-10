@@ -92,11 +92,13 @@ class WorkFlow(object):
             cutoff = self.cutoff
             cutoff_method = self.cutoff_method
             n = self.n
-            b = P.getBinders(cutoff=cutoff, value=cutoff_method)
-            print ('%s binders' %len(b))
+            b = P.getBinders(cutoff=cutoff, cutoff_method=cutoff_method)
+            print ('%s/%s binders' %(len(b), len(P.data)))
             b.to_csv(os.path.join(self.path,'binders_%s_%s.csv' %(p,n)))
-
-            pb = P.promiscuousBinders(binders=b, n=int(n), cutoff=cutoff, value=cutoff_method)
+            if len(b) == 0:
+                print ('no binders found, check your cutoff value')
+                return
+            pb = P.promiscuousBinders(binders=b, n=int(n), cutoff=cutoff, cutoff_method=cutoff_method)
             print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
             pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)))
             if self.verbose == True and len(pb)>0:

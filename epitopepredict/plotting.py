@@ -59,7 +59,7 @@ def get_bokeh_colors(palette='YlBuGn'):
         i+=1
     return clrs
 
-def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5,
+def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',
                 width=1000, height=None, x_range=None, tools=True,
                 palette='YlBuGn',
                 seqdepot=None, exp=None):
@@ -126,9 +126,9 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5,
             df = df[df.name==name]
         sckey = pred.scorekey
 
-        #binders = pred.getBinders(name, cutoff=cutoff, value=value)
-        print (cutoff, n)
-        pb = pred.promiscuousBinders(n=n, cutoff=cutoff)
+        binders = pred.getBinders(name, cutoff=cutoff, cutoff_method=cutoff_method)
+        #print (cutoff, n)
+        pb = pred.promiscuousBinders(n=n, cutoff=cutoff, cutoff_method=cutoff_method)
         if len(pb) == 0:
             continue
         l = base.get_length(pb)
@@ -142,7 +142,8 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5,
         seqlen = df.pos.max()+l
 
         for a,g in grps:
-            b = pred.getBinders(data=g, cutoff=cutoff)
+            #b = pred.getBinders(data=g, cutoff=cutoff)
+            b = binders[binders.allele==a]
             b = b[b.pos.isin(pb.pos)] #only promiscuous
             b.sort_values('pos',inplace=True)
             scores = b[sckey].values

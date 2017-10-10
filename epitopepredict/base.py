@@ -417,7 +417,7 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, name=None, cutoff=5, value='score', data=None):
+    def getBinders(self, name=None, cutoff=5, cutoff_method='default', data=None):
         """
         Get the top scoring binders. If using scores cutoffs are derived
         from the available prediction data stored in the object. For
@@ -442,9 +442,10 @@ class Predictor(object):
                 return
             data = data[data.name==name]
 
-        if value == 'score':
+        if cutoff_method  == 'default':
+            #calculates per allele cutoff over all data laoded
             value = self.scorekey
-            q = (1-cutoff/100.) #score quantile value
+            q = (1-cutoff/100.)
             #print (q)
             if hasattr(self, 'cutoffs'):
                 cuts = self.cutoffs
@@ -461,13 +462,18 @@ class Predictor(object):
                 b = g[g[value]>cuts[a]]
                 res.append(b)
             return pd.concat(res)
-        elif value == 'rank':
-            #done per allele per protein rank
+        elif cutoff_method == 'rank':
+            #done by rank in each sequence/allele
             res = data[data['rank'] < cutoff]
             return res
+        elif cutoff_method == 'score':
+            #done by global single score cutoff
+            #print (data[self.scorekey])
+            res = data[data[self.scorekey] > cutoff]
+            return res
 
-    def promiscuousBinders(self, binders=None, name=None, value='score',
-                           cutoff=5, n=1, unique_core=True):
+    def promiscuousBinders(self, binders=None, name=None, cutoff=5,
+                           cutoff_method='default', n=1, unique_core=True):
         """
         Use params for getbinders if no binders provided?
         Args:
@@ -483,7 +489,7 @@ class Predictor(object):
         """
 
         if binders is None:
-            binders = self.getBinders(name=name, cutoff=cutoff, value=value)
+            binders = self.getBinders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
         if binders is None:
             print('no binders found, check that prediction data is present')
             return
