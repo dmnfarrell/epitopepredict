@@ -73,7 +73,7 @@ class MainHandler(RequestHandler):
 
         preds = web.get_predictors(path, current_name)
         plots = web.create_figures(preds, **defaultargs)
-        table = web.create_pred_table(path, current_name)
+        #tables = web.create_pred_tables(preds, current_name)
         #info = get_seq_info(preds[0])['sequence']
 
         if len(plots) > 0:

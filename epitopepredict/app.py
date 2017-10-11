@@ -25,6 +25,7 @@ class WorkFlow(object):
     def setup(self):
         """Setup main parameters"""
 
+        pd.set_option('display.width', 120)
         base.iedbmhc1path = self.iedbmhc1_path
         base.iedbmhc2path = self.iedbmhc2_path
         self.sequences = get_sequences(self.sequence_file)
@@ -92,9 +93,26 @@ class WorkFlow(object):
             cutoff = self.cutoff
             cutoff_method = self.cutoff_method
             n = self.n
+            print ('-----------------------------')
+
+        self.preds = preds
+        self.analysis()
+        if self.plots == True:
+            self.plot_results()
+        return
+
+    def analysis(self):
+        """Do analysis of predictions"""
+        
+        preds = self.preds
+        for P in self.preds:
+            print (P)
+            p = P.name
+            cutoff = self.cutoff
+            cutoff_method = self.cutoff_method
+            n = self.n
             b = P.getBinders(cutoff=cutoff, cutoff_method=cutoff_method)
             print ('%s/%s binders' %(len(b), len(P.data)))
-            b.to_csv(os.path.join(self.path,'binders_%s_%s.csv' %(p,n)))
             if len(b) == 0:
                 print ('no binders found, check your cutoff value')
                 return
@@ -108,10 +126,6 @@ class WorkFlow(object):
                 cl = analysis.find_clusters(pb, genome=self.sequences)
                 cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
             print ('-----------------------------')
-
-        self.preds = preds
-        if self.plots == True:
-            self.plot_results()
         return
 
     def plot_results(self):
@@ -134,16 +148,6 @@ class WorkFlow(object):
             plt.savefig(os.path.join(path,prot), dpi=150)
             plt.close()
         print ('saved plots')
-        return
-
-    def analysis(self, path):
-
-        preds = self.preds
-        prots = self.names
-        for p in base.predictors:
-            P = base.get_predictor(p)
-            P.load(os.path.join(path, p))
-            print (P)
         return
 
 def get_sequences(filename):

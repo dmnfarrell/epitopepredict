@@ -63,9 +63,12 @@ class PredictorTests(unittest.TestCase):
             return
         alleles = ["HLA-A*02:02", "HLA-A*01:01"]
         for m in P.methods:
+            if m == 'comblib_sidney2008': continue
             print (m)
             P.predictProteins(df, length=8, alleles=alleles,
                                     method=m)
+            b = P.getBinders(data=P.data, cutoff=5, cutoff_method='rank')
+            print ('%s binders' %len(b))
         return
 
     def test_iedbmhc2(self):
@@ -74,6 +77,7 @@ class PredictorTests(unittest.TestCase):
         df = self.df
         P = base.get_predictor('iedbmhc2')
         base.iedbmhc2path = '/local/iedbmhc2'
+        print ()
         print (P)
         if not os.path.exists(base.iedbmhc1path):
             print ('IEDB MHC-II not found')
@@ -83,7 +87,9 @@ class PredictorTests(unittest.TestCase):
             print (m)
             P.predictProteins(df, length=8, alleles=alleles,
                                     method=m)
-            #print (P.data.iloc[0])
+            b = P.getBinders(data=P.data, cutoff=5)
+            #print (P.data.score)
+            print ('%s binders' %len(b))
         return
 
     '''def test_bcell(self):

@@ -82,7 +82,7 @@ def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
         figures.append(plot)
     return figures
 
-def create_pred_table(path, name):
+def create_bokeh_table(path, name):
     """Create table of prediction data"""
 
     P = get_results(path, 'tepitope', name)
@@ -104,7 +104,14 @@ def create_pred_table(path, name):
             TableColumn(field="allele", title="allele"),
         ]
     table = DataTable(source=source, columns=columns, width=400, height=280)
+    return table
 
+def create_pred_tables(preds, name):
+    """Create table of prediction data"""
+
+    tables = {}
+    for P in preds:
+        df = P.data
     return table
 
 def create_widgets():
@@ -117,11 +124,12 @@ def create_widgets():
 
 def test():
     from bokeh.io import output_file, show
-    path='results'
-    name='Rv0011c'
+    path = 'results'
+    name = 'Rv0011c'
     preds = get_predictors(path, name)
     plots = create_figures(preds)
-    table = create_pred_table(path, name)
+    #table = create_bokeh_table(path, name)
+    table = create_pred_tables(preds)
     grid = gridplot(plots, ncols=1, merge_tools=True)
     widgets = create_widgets()
     l = layout([[ plots, widgets ]], ncols=2, nrows=1)

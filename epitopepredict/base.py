@@ -368,7 +368,7 @@ class Predictor(object):
         self.name = ''
         self.scorekey = 'score'
         self.operator = '<'
-        self.rankascending = 1
+        self.rankascending = 0
         #can specify per allele cutoffs here
         self.allelecutoffs = None
         return
@@ -442,11 +442,13 @@ class Predictor(object):
                 return
             data = data[data.name==name]
 
-        if cutoff_method  == 'default':
+        if cutoff_method in ['default','']:
             #calculates per allele cutoff over all data laoded
             value = self.scorekey
-            q = (1-cutoff/100.)
-            #print (q)
+            if self.rankascending == 0:
+                q = (1-cutoff/100.)
+            else:
+                q = cutoff/100
             if hasattr(self, 'cutoffs'):
                 cuts = self.cutoffs
             else:
@@ -459,7 +461,10 @@ class Predictor(object):
             res=[]
             for a,g in data.groupby('allele'):
                 #print cuts[a]
-                b = g[g[value]>cuts[a]]
+                if self.rankascending == 0:
+                    b = g[g[value]>cuts[a]]
+                else:
+                    b = g[g[value]<cuts[a]]
                 res.append(b)
             return pd.concat(res)
         elif cutoff_method == 'rank':
@@ -469,7 +474,10 @@ class Predictor(object):
         elif cutoff_method == 'score':
             #done by global single score cutoff
             #print (data[self.scorekey])
-            res = data[data[self.scorekey] > cutoff]
+            if self.rankascending == 0:
+                res = data[data[self.scorekey] >= cutoff]
+            else:
+                res = data[data[self.scorekey] <= cutoff]
             return res
 
     def promiscuousBinders(self, binders=None, name=None, cutoff=5,
@@ -883,10 +891,10 @@ class NetMHCIIPanPredictor(Predictor):
         self.name = 'netmhciipan'
         self.colnames = ['pos','HLA','peptide','Identity','Pos','Core',
                          '1-log50k(aff)','Affinity','Rank']
-        self.scorekey = '1-log50k(aff)'
-        self.cutoff = .426
-        self.operator = '>'
-        self.rankascending = 0
+        self.scorekey = 'Affinity' #'1-log50k(aff)'
+        self.cutoff = 500 #.426
+        self.operator = '<'
+        self.rankascending = 1
 
     def readResult(self, res):
         """Read raw results from netMHCIIpan output"""
@@ -980,12 +988,12 @@ class IEDBMHCIPredictor(Predictor):
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc1'
-        self.scorekey = 'score'
         self.methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008',
                         'consensus', 'smm', 'netmhcpan', 'smmpmbec']
-        self.cutoff = .426
-        self.operator = '>'
-        self.rankascending = 0
+        self.scorekey = 'ic50'
+        self.cutoff = 500
+        self.operator = '<'
+        self.rankascending = 1
         self.iedbmethod = 'IEDB_recommended'
         return
 
@@ -1036,7 +1044,7 @@ class IEDBMHCIPredictor(Predictor):
         if self.iedbmethod in ['IEDB_recommended','consensus']:
             df['ic50'] = df.filter(regex="ic50").mean(1)
 
-        df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
+        #df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
         self.getRanking(df)
         self.data = df
         #print (df[:10])
@@ -1097,8 +1105,6 @@ class IEDBMHCIIPredictor(Predictor):
 
         if self.iedbmethod == 'IEDB_recommended':
             df['score'] = df.percentile_rank
-            self.operator = '<'
-            self.rankascending = 0
         else:
             if not 'ic50' in df.columns:
                 df['ic50'] = df.filter(regex="ic50").mean(1)
@@ -1116,7 +1122,7 @@ class IEDBMHCIIPredictor(Predictor):
         """
 
         self.iedbmethod = method
-        seqfile = write_fasta(sequence)
+        seqfile = write_fasta(sequence, id=name, filename=name+'.fa')
         path = iedbmhc2path
         if method == None: method = 'IEDB_recommended'
         if not os.path.exists(path):
@@ -1275,10 +1281,10 @@ class MHCFlurryPredictor(Predictor):
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'mhcflurry'
-        self.cutoff = .426
-        self.operator = '>'
+        self.cutoff = 500
+        self.operator = '<'
         self.scorekey = 'score'
-        self.rankascending = 0
+        self.rankascending = 1
         return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
@@ -1303,8 +1309,8 @@ class MHCFlurryPredictor(Predictor):
         df = df.rename(columns={'Allele':'allele','Peptide':'peptide'})
         df['name'] = name
         df['pos'] = df.index
-        df['score'] = df['prediction'].apply( lambda x: 1-math.log(x, 50000) )
-        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
+        #df['score'] = df['prediction'].apply( lambda x: 1-math.log(x, 50000) )
+        df['score'] = df.prediction
         self.getRanking(df)
         return df
 
