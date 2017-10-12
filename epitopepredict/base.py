@@ -418,7 +418,7 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, name=None, cutoff=5, cutoff_method='default', data=None):
+    def getBinders(self, name=None, cutoff=5, cutoff_method='default', data=None, **kwargs):
         """
         Get the top scoring binders. If using scores cutoffs are derived
         from the available prediction data stored in the object. For
@@ -436,7 +436,7 @@ class Predictor(object):
             if self.data is None:
                 return
             data = self.data
-
+        cutoff = float(cutoff)
         if name != None:
             if name not in self.proteins():
                 print ('no such protein name in binder data')
@@ -1054,8 +1054,8 @@ class IEDBMHCIPredictor(Predictor):
             df['method'] = self.iedbmethod
         if self.iedbmethod in ['IEDB_recommended','consensus']:
             df['ic50'] = df.filter(regex="ic50").mean(1)
-
-        #df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
+        if not 'score' in df.columns:
+            df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
         self.getRanking(df)
         self.data = df
         #print (df[:10])

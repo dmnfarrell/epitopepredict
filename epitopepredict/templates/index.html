@@ -3,7 +3,7 @@
 <html lang="en">
 	<head>
 	  <meta charset="utf-8">
-	 <title> epitopepredict results </title>
+	 <title> epitopepredict results viewer</title>
 		<link href="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.css"
 			 rel="stylesheet" type="text/css">
 		<link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.css"
@@ -41,13 +41,20 @@
 
 		</form>
 
+	  <div class="main">
+		<div class="floatleft">
 		{{ msg }}
 	    {{ script }}
 		{{ div }}
-		<div class="monospace">
+		</div>
+		<div class="floatright">
+			{{tables['tepitope']}}
+		</div>
+	  </div>
+
+	  	<div class="monospace">
 			<p>{{ "seq info here" }}</p>
 		</div>
-
 	</body>
 
 	<div class="footer">

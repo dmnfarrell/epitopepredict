@@ -199,7 +199,7 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=1000, height=1
     from bokeh.plotting import figure
     from bokeh.transform import dodge
     from bokeh.core.properties import value
-    
+
     height = 200
     seqlen = 0
     for P in preds:
@@ -210,7 +210,7 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=1000, height=1
     x_range = Range1d(0,seqlen)
     y_range = Range1d(start=0, end=1)
     if tools == True:
-        tools="xpan, xwheel_zoom, reset"
+        tools="xpan, xwheel_zoom, reset, hover"
     else:
         tools=None
     plot = figure(title=title,plot_width=width,
@@ -236,8 +236,8 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=1000, height=1
         X = X / (X.max() - X.min())
         data[m] = X.values
         data['pos'] = list(X.index)
+        #data['peptide'] = df.peptide.values
 
-    print (data.keys())
     source = ColumnDataSource(data)
     i=-.2
     for m in ['netmhciipan', 'iedbmhc1']:
@@ -245,6 +245,11 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=1000, height=1
         plot.vbar(x=dodge('pos', i, range=plot.x_range), top=m, width=0.2, source=source,
                    color=c, legend=value(m))
         i+=0.2
+
+    hover = plot.select(dict(type=HoverTool))
+    hover.tooltips = OrderedDict([
+        #("allele", "@allele"),
+        ("pos", "@pos") ])
 
     plot.min_border = 10
     plot.background_fill_color = "beige"

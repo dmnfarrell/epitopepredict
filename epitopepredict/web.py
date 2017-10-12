@@ -106,13 +106,17 @@ def create_bokeh_table(path, name):
     table = DataTable(source=source, columns=columns, width=400, height=280)
     return table
 
-def create_pred_tables(preds, name):
+def create_binder_tables(preds, name, promiscuous=False, classes='', **kwargs):
     """Create table of prediction data"""
 
     tables = {}
     for P in preds:
-        df = P.data
-    return table
+        df = P.getBinders(name=name, **kwargs)
+        if df is None:
+            continue
+        t = df.to_html(escape=True, classes=classes)
+        tables[P.name] = t
+    return tables
 
 def create_widgets():
 
@@ -126,10 +130,11 @@ def test():
     from bokeh.io import output_file, show
     path = 'results'
     name = 'Rv0011c'
+    kwargs ={'cutoff_method':'default'}
     preds = get_predictors(path, name)
     plots = create_figures(preds)
     #table = create_bokeh_table(path, name)
-    table = create_pred_tables(preds)
+    tables = create_binder_tables(preds, name)
     grid = gridplot(plots, ncols=1, merge_tools=True)
     widgets = create_widgets()
     l = layout([[ plots, widgets ]], ncols=2, nrows=1)

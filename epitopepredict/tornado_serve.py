@@ -73,7 +73,7 @@ class MainHandler(RequestHandler):
 
         preds = web.get_predictors(path, current_name)
         plots = web.create_figures(preds, **defaultargs)
-        #tables = web.create_pred_tables(preds, current_name)
+        tables = web.create_binder_tables(preds, classes='tinytable', **defaultargs)
         #info = get_seq_info(preds[0])['sequence']
 
         if len(plots) > 0:
@@ -84,7 +84,8 @@ class MainHandler(RequestHandler):
 
         script, div = components(grid)
 
-        self.render('index.html', script=script, div=div, form=form, msg='', info='')
+        self.render('index.html', script=script, div=div, form=form, tables=tables,
+                    msg='', info='')
 
     @staticmethod
     def modify_doc(doc):
