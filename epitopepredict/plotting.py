@@ -190,23 +190,25 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     plot.toolbar_location = "right"
     return plot
 
-def bokeh_plot_bar(preds, title='', width=1000, height=100,
+def bokeh_plot_bar(preds, name=None, allele=None, title='', width=1000, height=100,
                     palette='Set1', tools=True):
     """Plot bars combining one or more prediction results for a set of
     peptides in a protein/sequence"""
 
     from bokeh.models import Range1d,HoverTool,ColumnDataSource
     from bokeh.plotting import figure
-
+    from bokeh.transform import dodge
+    from bokeh.core.properties import value
+    
     height = 200
-    seqlen=0
+    seqlen = 0
     for P in preds:
         if P.data is None or len(P.data)==0:
             continue
         seqlen = get_seq_from_binders(P)
 
     x_range = Range1d(0,seqlen)
-    y_range = Range1d(start=0, end=100)
+    y_range = Range1d(start=0, end=1)
     if tools == True:
         tools="xpan, xwheel_zoom, reset"
     else:
@@ -216,22 +218,40 @@ def bokeh_plot_bar(preds, title='', width=1000, height=100,
                     y_axis_label='rank',
                     tools=tools)
     colors = get_bokeh_colors(palette)
-    for pred in preds[2:4]:
+    data = {}
+    for pred in preds:
         m = pred.name
-        c = colors[m]
         df = pred.data
         if df is None or len(df) == 0:
             continue
-        X = 100-df['rank']
-        print (pred)
-        print (X)
-        plot.vbar(x=X.index, top=X.values, width=0.5,
-                   color=c)
+        if name != None:
+            df = df[df.name==name]
+        grps = df.groupby('allele')
+        alleles = grps.groups.keys()
+        allele = alleles[0]
+        df = df[df.allele==allele]
+        df = df.sort_values('pos').set_index('pos')
+        key = pred.scorekey
+        X = df[key]
+        X = X / (X.max() - X.min())
+        data[m] = X.values
+        data['pos'] = list(X.index)
+
+    print (data.keys())
+    source = ColumnDataSource(data)
+    i=-.2
+    for m in ['netmhciipan', 'iedbmhc1']:
+        c = colors[m]
+        plot.vbar(x=dodge('pos', i, range=plot.x_range), top=m, width=0.2, source=source,
+                   color=c, legend=value(m))
+        i+=0.2
 
     plot.min_border = 10
     plot.background_fill_color = "beige"
     plot.toolbar.logo = None
     plot.toolbar_location = "right"
+    plot.legend.location = "top_right"
+    plot.legend.orientation = "horizontal"
     return plot
 
 def plot_tracks(preds, name, n=1, cutoff=5, value='score',

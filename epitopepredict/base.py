@@ -8,7 +8,7 @@
 
 from __future__ import absolute_import, print_function
 import sys, os, shutil, string
-import csv, glob, pickle
+import csv, glob, pickle, tempfile
 import time, io
 import operator as op
 import re, types
@@ -371,6 +371,7 @@ class Predictor(object):
         self.rankascending = 0
         #can specify per allele cutoffs here
         self.allelecutoffs = None
+        self.temppath = tempfile.mkdtemp()
         return
 
     def __repr__(self):
@@ -644,6 +645,7 @@ class Predictor(object):
         else:
             print ('results saved to %s' %os.path.abspath(path))
             results = None
+        self.cleanup()
         return results
 
     def predict_multiple(self, recs, path=None, overwrite=True, alleles=[], length=11, overlap=1,
@@ -883,6 +885,13 @@ class Predictor(object):
         else:
             return 1
 
+    def cleanup(self):
+        """Remove temp files from predictions"""
+
+        if os.path.exists(self.temppath):
+            shutil.rmtree(self.temppath)
+        return
+
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
 
@@ -927,7 +936,8 @@ class NetMHCIIPanPredictor(Predictor):
     def runSequence(self, seq, length, allele, name='temp', overlap=1):
         """Run netmhciipan for a single sequence"""
 
-        seqfile = write_fasta(seq, id=name, filename=name+'.fa')
+        tempfile = os.path.join(self.temppath, name+'.fa')
+        seqfile = write_fasta(seq, id=name, filename=tempfile)
         cmd = 'netMHCIIpan -s -length %s -a %s -f %s' %(length, allele, seqfile)
         #print cmd
         temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
@@ -1002,7 +1012,8 @@ class IEDBMHCIPredictor(Predictor):
         """Use IEDB MHCI python module to get predictions.
            Requires that the iedb MHC tools are installed locally"""
 
-        seqfile = write_fasta(sequence, id=name, filename=name+'.fa')
+        tempfile = os.path.join(self.temppath, name+'.fa')
+        seqfile = write_fasta(sequence, id=name, filename=tempfile)
         path = iedbmhc1path
         if not os.path.exists(path):
             print ('IEDB mhcI tools not found')
@@ -1122,7 +1133,8 @@ class IEDBMHCIIPredictor(Predictor):
         """
 
         self.iedbmethod = method
-        seqfile = write_fasta(sequence, id=name, filename=name+'.fa')
+        tempfile = os.path.join(self.temppath, name+'.fa')
+        seqfile = write_fasta(sequence, id=name, filename=tempfile)
         path = iedbmhc2path
         if method == None: method = 'IEDB_recommended'
         if not os.path.exists(path):

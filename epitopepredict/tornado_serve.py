@@ -23,7 +23,7 @@ from bokeh.embed import components
 
 path = 'results'
 plotkinds = ['tracks','bar','text']
-cut_methods = ['default','rank']
+cut_methods = ['default','rank','score']
 
 def help_msg():
     msg = '<a>results path not found, enter a folder with your results</a><br>'
