@@ -106,17 +106,42 @@ def create_bokeh_table(path, name):
     table = DataTable(source=source, columns=columns, width=400, height=280)
     return table
 
-def create_binder_tables(preds, name, promiscuous=False, classes='', **kwargs):
+def create_binder_tables(preds, name, promiscuous=False,
+                         escape=False, classes='', **kwargs):
     """Create table of prediction data"""
 
     tables = {}
+    import pylab as plt
+    cm = plt.get_cmap('Reds')
     for P in preds:
         df = P.getBinders(name=name, **kwargs)
         if df is None:
             continue
-        t = df.to_html(escape=True, classes=classes)
+        df = df.reset_index(drop=True)
+        s = df.style.set_table_attributes('class="%s"')
+              #.background_gradient(subset=[P.scorekey], cmap=cm) %classes
+        #t = df.to_html(escape=escape, classes=classes, index=True)
+        t = s.render(index=False)
         tables[P.name] = t
     return tables
+
+def tabbed_html(items):
+    """make a set of tabbed divs from dict of html items. Uses css
+       classes defined in static/custom.css"""
+
+    name = 'tab-group'
+    html = '<div class="tabs">\n'
+    for t in items:
+        html += '<div class="tab">\n'
+        html += '<input type="radio" id="%s" name="%s" checked>\n' %(t,name)
+        html +=	'<label for="%s">%s</label>\n' %(t,t)
+        html +=	'<div class="content">\n'
+        html += items[t]
+        #html += '<p>%s</p>' %t
+        html +=	'</div></div>\n'
+    html += '</div>'
+    print (html)
+    return html
 
 def create_widgets():
 

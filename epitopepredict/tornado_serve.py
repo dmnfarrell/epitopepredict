@@ -74,6 +74,7 @@ class MainHandler(RequestHandler):
         preds = web.get_predictors(path, current_name)
         plots = web.create_figures(preds, **defaultargs)
         tables = web.create_binder_tables(preds, classes='tinytable', **defaultargs)
+        tables = web.tabbed_html(tables)
         #info = get_seq_info(preds[0])['sequence']
 
         if len(plots) > 0:

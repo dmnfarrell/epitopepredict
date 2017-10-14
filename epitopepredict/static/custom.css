@@ -26,7 +26,6 @@ img {border:0}
 div {font: arial; vertical-align:top;}
 
 div.main {
-   
     width: 100%;
     overflow: hidden;
     float: none;
@@ -190,7 +189,6 @@ div.floatright {
 	background-color: #F1F1F1;
 	padding: 2px;
     margin-bottom: 8px;
-
 }
 
 .divheader img {
@@ -253,4 +251,51 @@ select {
 .form label {
     display: inline-block;
     width: 150px;
+}
+
+.tabs {
+  position: relative;
+  min-height: 450px;
+  min-width: 500px;
+  clear: both;
+  margin: 35px 0 25px;
+  background: white;
+}
+.tab {
+  float: left;
+
+}
+.tab label {
+  background: #eee;
+  padding: 10px;
+  border: 1px solid #ccc;
+  margin-left: -1px;
+  position: relative;
+  left: 1px;
+  top: -29px;
+  -webkit-transition: background-color .17s linear;
+}
+.tab [type=radio] {
+  display: none;
+}
+.content {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  background: white;
+  right: 0;
+  bottom: 0;
+  padding: 5px;
+  border: 1px solid #ccc;
+  -webkit-transition: opacity .6s linear;
+  opacity: 0;
+}
+[type=radio]:checked ~ label {
+  background: lightblue;
+  border-bottom: 1px solid white;
+  z-index: 2;
+}
+[type=radio]:checked ~ label ~ .content {
+  z-index: 1;
+  opacity: 1;
 }
