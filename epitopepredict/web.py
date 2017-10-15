@@ -41,14 +41,17 @@ def get_results(path, predictor, name):
     #print P.data
     return P
 
-def get_seq_info(P):
+def get_results_info(P):
+    """Info on sequence used for prediction"""
+
     df = P.data
     if df is None:
         return ''
     df = df.drop_duplicates('pos').sort_values('pos')
-    l = base.get_length(df)
+    #l = base.get_length(df)
     seq = sequence_from_peptides(df)
-    return {'n-mer':l, 'sequence':seq}
+    l = len(seq)
+    return {'length':l}
 
 def sequence_from_peptides(df):
     x = df.peptide.str[0]
@@ -73,11 +76,11 @@ def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
     figures = []
     if kind == 'tracks':
         plot = plotting.bokeh_plot_tracks(preds, title=name,
-                         width=800, palette='Set1', cutoff=float(cutoff), n=int(n),
+                         width=700, palette='Set1', cutoff=float(cutoff), n=int(n),
                          cutoff_method=cutoff_method)
 
     elif kind == 'bar':
-        plot = plotting.bokeh_plot_bar(preds, title=name, width=800 )
+        plot = plotting.bokeh_plot_bar(preds, title=name, width=700 )
     if plot is not None:
         figures.append(plot)
     return figures
@@ -118,16 +121,25 @@ def create_binder_tables(preds, name, promiscuous=False,
         if df is None:
             continue
         df = df.reset_index(drop=True)
-        s = df.style.set_table_attributes('class="%s"')
-              #.background_gradient(subset=[P.scorekey], cmap=cm) %classes
+        s = df.style\
+              .set_table_attributes('class="%s"' %classes)
+              #.background_gradient(subset=[P.scorekey], cmap=cm) #%classes
         #t = df.to_html(escape=escape, classes=classes, index=True)
         t = s.render(index=False)
         tables[P.name] = t
     return tables
 
+def dict_to_html(data):
+
+    s = ''
+    for k in data:
+        s += '<a>%s: %s</a><br>' %(k,data[k])
+
+    return s
+
 def tabbed_html(items):
-    """make a set of tabbed divs from dict of html items. Uses css
-       classes defined in static/custom.css"""
+    """Create html for a set of tabbed divs from dict of html code, one for
+       each tab. Uses css classes defined in static/custom.css"""
 
     name = 'tab-group'
     html = '<div class="tabs">\n'

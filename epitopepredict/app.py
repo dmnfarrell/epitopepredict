@@ -103,7 +103,7 @@ class WorkFlow(object):
 
     def analysis(self):
         """Do analysis of predictions"""
-        
+
         preds = self.preds
         for P in self.preds:
             print (P)
@@ -237,6 +237,8 @@ def main():
                         help="Analysis path", metavar="FILE")
     parser.add_option("-s", "--server", dest="server",  action="store_true",
                         default=False, help="Run web app")
+    parser.add_option("-x", "--port", dest="port", default=8888,
+                        help="Port for web app, default 8888")
     opts, remainder = parser.parse_args()
 
     if opts.config != None:
@@ -263,7 +265,7 @@ def main():
         #from epitopepredict.server import webapp
         #webapp.run(port=5000, debug=True)
         import epitopepredict.tornado_serve
-        epitopepredict.tornado_serve.main()
+        epitopepredict.tornado_serve.main(opts.port)
     else:
         print_help()
 

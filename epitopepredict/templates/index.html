@@ -1,64 +1,19 @@
-<!doctype html>
+{% extends "base.html" %}
 
-<html lang="en">
-	<head>
-	  <meta charset="utf-8">
-	 <title> epitopepredict results viewer</title>
-		<link href="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.css"
-			 rel="stylesheet" type="text/css">
-		<link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.css"
-			 rel="stylesheet" type="text/css">
-	 <link rel="shortcut icon" href="static/favicon.ico">
-	 <link rel="stylesheet" href="{{ static_url("custom.css") }}">
-	 {% comment <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}"> %}
-		<script src="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.js"></script>
-		<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.js"></script>
-		<script	src="http://cdn.pydata.org/bokeh/release/bokeh-compiler-0.12.9.min.js"></script>
-	</head>
-
-	<body>
-
-		<div class="divheader">
-			<h4>epitopepredict results</h4>
-		{% comment <img src="static/logo.png" alt="epitopepredict" height="42" width="42"> %}
-		</div>
-
-		<form action="/">
-			{{ form.path.label }}
-			{{ form.path }}
-			{{ form.name.label }}
-			{{ form.name }}
-			{{ form.cutoff.label }}
-			{{ form.cutoff }}
-			{{ form.n.label }}
-			{{ form.n }}
-			{{ form.cutoff_method.label }}
-			{{ form.cutoff_method }}
-
-			{{ form.kind.label }}
-			{{ form.kind }}
-			<input type="submit" class="button">
-
-		</form>
-
-	  <div class="main">
+{% block main %}
+	<div class="main">
 		<div class="floatleft">
-		{{ msg }}
-	    {{ script }}
-		{{ div }}
-		</div>
-		<div class="floatright">
-			{{ tables }}
-		</div>
-	  </div>
 
-	  	<div class="monospace">
-			<p>{{ "seq info here" }}</p>
-		</div>
-	</body>
+			<a href="/summary" class="largebtn">
+			<span>Summary</span>
+			</a>
+			<a>Summary view</a>
 
-	<div class="footer">
-		<a href="https://github.com/dmnfarrell/epitopepredict/wiki">help page</a>
+			<a href="/sequence" class="largebtn">
+			<span>Sequence</span>
+			</a>
+			<a>Sequence view</a>
+		</div>
 	</div>
 
-</html>
+{% end %}

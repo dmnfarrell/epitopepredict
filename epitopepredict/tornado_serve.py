@@ -44,6 +44,21 @@ class ControlsForm(Form):
 class MainHandler(RequestHandler):
     """Handler for main results page"""
     def get(self):
+        args = self.request.arguments
+        buttons = ''
+        self.render('index.html', buttons=buttons)
+
+class SummaryViewHandler(RequestHandler):
+    """Handler for showing multiple sequences in a results folder"""
+
+    def get(self):
+        args = self.request.arguments
+        info = '<p>summary view</p>'
+        self.render('summary.html', info=info)
+
+class SequenceViewHandler(RequestHandler):
+    """Handler for main results page"""
+    def get(self):
 
         args = self.request.arguments
         form = ControlsForm()
@@ -58,7 +73,7 @@ class MainHandler(RequestHandler):
 
         if not os.path.exists(path):
             msg = help_msg()
-            self.render('index.html', script='', div='', form=form, msg=msg)
+            self.render('sequence.html', script='', div='', form=form, msg=msg)
             return
 
         names = web.get_file_lists(path)
@@ -75,7 +90,7 @@ class MainHandler(RequestHandler):
         plots = web.create_figures(preds, **defaultargs)
         tables = web.create_binder_tables(preds, classes='tinytable', **defaultargs)
         tables = web.tabbed_html(tables)
-        #info = get_seq_info(preds[0])['sequence']
+        info = web.dict_to_html(web.get_results_info(preds[0]))
 
         if len(plots) > 0:
             grid = gridplot(plots, ncols=1, merge_tools=True, #sizing_mode='stretch_both',
@@ -85,8 +100,8 @@ class MainHandler(RequestHandler):
 
         script, div = components(grid)
 
-        self.render('index.html', script=script, div=div, form=form, tables=tables,
-                    msg='', info='')
+        self.render('sequence.html', script=script, div=div, form=form, tables=tables,
+                    msg='', info=info)
 
     @staticmethod
     def modify_doc(doc):
@@ -99,18 +114,21 @@ settings = dict(
         xsrf_cookies=True,
         debug=True)
 
-def main():
+def main(port=8888):
     #bokeh_app = Application(FunctionHandler(IndexHandler.modify_doc))
     #bokeh_server = Server({'/main': bokeh_app},
     #                      io_loop=io_loop,
     #                      extra_patterns=[('/', IndexHandler)],
     #                      allow_websocket_origin=['localhost:5006'])
     #bokeh_server.start()
-    handlers = [ (r"/", MainHandler) ]
+    handlers = [ (r"/", MainHandler),
+                 (r"/sequence", SequenceViewHandler),
+                 (r"/summary", SummaryViewHandler),
+                 ]
     app = tornado.web.Application(handlers, **settings)
     #app.listen(8888)
     http_server = tornado.httpserver.HTTPServer(app)
-    http_server.listen(8888)
+    http_server.listen(port)
     io_loop = tornado.ioloop.IOLoop.current()
     #io_loop.add_callback(view, "http://localhost:8888/")
     view("http://localhost:8888/")

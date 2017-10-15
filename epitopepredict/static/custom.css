@@ -26,7 +26,9 @@ img {border:0}
 div {font: arial; vertical-align:top;}
 
 div.main {
-    width: 100%;
+    width: 95%;
+    max-width: 1300px;
+    margin: auto;
     overflow: hidden;
     float: none;
 }
@@ -37,9 +39,9 @@ div.monospace {
 	font-size: 12px;
     font-family: monospace;
     font-style: bold;
-    background: #F1F1F1;
+    background: #F5F5ED;
     border: 1px solid #b2a7a7;
-    width: 790px;
+    width: 95%;
     word-wrap: break-word;
 }
 
@@ -102,6 +104,8 @@ div.floatright {
     border-spacing: 0;
     border:0px solid #b2a7a7;
     border-width:0px 0px 0px 0px;
+    width: 80px;
+    white-space: nowrap;
 }
 .tinytable th{
     background-color: #F1F1F1;
@@ -289,6 +293,8 @@ select {
   border: 1px solid #ccc;
   -webkit-transition: opacity .6s linear;
   opacity: 0;
+   height:450px;
+   overflow:auto;
 }
 [type=radio]:checked ~ label {
   background: lightblue;
@@ -298,4 +304,30 @@ select {
 [type=radio]:checked ~ label ~ .content {
   z-index: 1;
   opacity: 1;
+}
+
+.largebtn {
+  background: #336699;
+  -webkit-border-radius: 5;
+  -moz-border-radius: 5;
+  border-radius: 5px;
+  font-family: Arial;
+  color: #f5f5f5;
+  font-size: 28px;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+
+.largebtn:hover {
+  background: #3cb0fd;
+  text-decoration: none;
+}
+.largebtn span {
+    display: inline-block;
+    padding: 20px 30px;
+   
+}
+
+.largetable{
+    cellspacing: 70px;
 }

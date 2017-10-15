@@ -1,0 +1,37 @@
+<!doctype html>
+
+<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	 <title> epitopepredict results</title>
+		<link href="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.css"
+			 rel="stylesheet" type="text/css">
+		<link href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.css"
+			 rel="stylesheet" type="text/css">
+	 <link rel="shortcut icon" href="static/favicon.ico">
+	 <link rel="stylesheet" href="{{ static_url("custom.css") }}">
+	 {% comment <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}"> %}
+		<script src="http://cdn.pydata.org/bokeh/release/bokeh-0.12.9.min.js"></script>
+		<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-0.12.9.min.js"></script>
+		<script	src="http://cdn.pydata.org/bokeh/release/bokeh-compiler-0.12.9.min.js"></script>
+	</head>
+
+	<body>
+		<div class="divheader">
+			<h4>epitopepredict results</h4>
+			 <a href='/'>home</a>
+			 <a href='/sequence'>sequence view</a>
+			 <a href='/summary'>summary</a>
+			 <a href='/genome'>genome</a>
+		</div>
+
+	{% block main %}
+	{% end %}
+
+	</body>
+
+	<div class="footer">
+		<a href="https://github.com/dmnfarrell/epitopepredict/wiki">help page</a>
+	</div>
+
+</html>
