@@ -39,7 +39,7 @@ class ControlsForm(Form):
     cutoff_method = SelectField('cutoff method', choices=cm)
     kinds = [(i,i) for i in plotkinds]
     kind = SelectField('plot kind', choices=kinds)
-    #submit = SubmitField()
+
 
 class MainHandler(RequestHandler):
     """Handler for main results page"""
@@ -53,8 +53,23 @@ class SummaryViewHandler(RequestHandler):
 
     def get(self):
         args = self.request.arguments
-        info = '<p>summary view</p>'
-        self.render('summary.html', info=info)
+        form = ControlsForm()
+        defaultargs = {'path':'results','name':'','cutoff':5,'cutoff_method':'rank',
+                       'n':2,'kind':'tracks'}
+        for k in defaultargs:
+            if k in args:
+                defaultargs[k] = args[k][0]
+        path = defaultargs['path']
+        P = web.get_results(path, 'tepitope')
+        b = P.promiscuousBinders(**args)
+        t = b.to_html(classes="tinytable sortable")
+
+        self.render('summary.html', form=form, table=t)
+
+class GenomeViewHandler(RequestHandler):
+    def get(self):
+        args = self.request.arguments
+        self.render('genome.html')
 
 class SequenceViewHandler(RequestHandler):
     """Handler for main results page"""
@@ -62,7 +77,6 @@ class SequenceViewHandler(RequestHandler):
 
         args = self.request.arguments
         form = ControlsForm()
-        print args
         defaultargs = {'path':'results','name':'','cutoff':5,'cutoff_method':'rank',
                        'n':2,'kind':'tracks'}
         for k in defaultargs:
@@ -88,7 +102,7 @@ class SequenceViewHandler(RequestHandler):
 
         preds = web.get_predictors(path, current_name)
         plots = web.create_figures(preds, **defaultargs)
-        tables = web.create_binder_tables(preds, classes='tinytable', **defaultargs)
+        tables = web.create_binder_tables(preds, classes='tinytable sortable', **defaultargs)
         tables = web.tabbed_html(tables)
         info = web.dict_to_html(web.get_results_info(preds[0]))
 

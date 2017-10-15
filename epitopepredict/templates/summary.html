@@ -3,8 +3,20 @@
 {% block main %}
 
 	  <div class="main">
+		<form action="/summary">
+			{{ form.path.label }}
+			{{ form.path }}
+			{{ form.cutoff.label }}
+			{{ form.cutoff }}
+			{{ form.n.label }}
+			{{ form.n }}
+			{{ form.cutoff_method.label }}
+			{{ form.cutoff_method }}
+			<input type="submit" class="button">
+		</form>
+
 		<div class="floatleft">
-			{{ info }}
+			{{ table }}
 		</div>
 	  </div>
 

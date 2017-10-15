@@ -32,11 +32,14 @@ def get_file_lists(path):
     names = sorted(names)
     return names
 
-def get_results(path, predictor, name):
+def get_results(path, predictor, name=None):
 
-    filename = os.path.join(path, predictor, name)
     P = base.get_predictor(predictor)
-    P.load(filename+'.csv')
+    if name is not None:
+        filename = os.path.join(path, predictor, name)
+        P.load(filename+'.csv')
+    else:
+        P.load(path=os.path.join(path, predictor))
     #print filename
     #print P.data
     return P
