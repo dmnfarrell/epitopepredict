@@ -2,30 +2,25 @@
 
 {% block main %}
 	<div class="main">
-		<div class="floatleft">
+		<div>
 		<table class="largetable">
-			<tr><td>
-			<a href="/summary" class="largebtn">
-			<span>Summary</span>
-			</a> </td>
+			<tr><th>
+			<a href="/global" class="largebtn">
+			<span>All Results</span>
+			</a> </th>
 			<td>
-			<p>Summary view shows prediction results for multiple sequences together. Suitable if
+			<p>Global view showing prediction results for all sequences. Suitable if
 			you have several similar length sequences and want to compare them.</p></td>
 			</tr>
-			<tr><td>
+			<tr><th>
 			<a href="/sequence" class="largebtn">
 			<span>Sequence</span>
-			</a>
+			</a></th>
 			<td>
-			<p>Display results for a single sequence i.e. a protein</p></td>
+			<p>Display detailed results for a single sequence from multiple alleles and prediction
+				methods</p></td>
 			</tr>
-			<tr><td>
-			<a href="/sequence" class="largebtn">
-			<span>Genome</span>
-			</a>
-			<td>
-			<p>Analysis results for sequences within a genome.</p></td>
-			</tr>
+
 		</table>
 		</div>
 	</div>

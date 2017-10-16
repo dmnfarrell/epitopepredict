@@ -24,6 +24,7 @@ from bokeh.embed import components
 path = 'results'
 plotkinds = ['tracks','bar','text']
 cut_methods = ['default','rank','score']
+views = ['binders','promiscuous','summary']
 
 def help_msg():
     msg = '<a>results path not found, enter a folder with your results</a><br>'
@@ -39,7 +40,8 @@ class ControlsForm(Form):
     cutoff_method = SelectField('cutoff method', choices=cm)
     kinds = [(i,i) for i in plotkinds]
     kind = SelectField('plot kind', choices=kinds)
-
+    views = [(i,i) for i in views]
+    view = SelectField('view', choices=views)
 
 class MainHandler(RequestHandler):
     """Handler for main results page"""
@@ -48,23 +50,36 @@ class MainHandler(RequestHandler):
         buttons = ''
         self.render('index.html', buttons=buttons)
 
-class SummaryViewHandler(RequestHandler):
+class GlobalViewHandler(RequestHandler):
     """Handler for showing multiple sequences in a results folder"""
 
     def get(self):
         args = self.request.arguments
         form = ControlsForm()
-        defaultargs = {'path':'results','name':'','cutoff':5,'cutoff_method':'rank',
-                       'n':2,'kind':'tracks'}
+        defaultargs = {'path':'results','cutoff':5,'cutoff_method':'rank',
+                       'view':'promiscuous','n':2,'kind':'tracks'}
         for k in defaultargs:
             if k in args:
                 defaultargs[k] = args[k][0]
-        path = defaultargs['path']
-        P = web.get_results(path, 'tepitope')
-        b = P.promiscuousBinders(**args)
-        t = b.to_html(classes="tinytable sortable")
+        path = defaultargs['path'].strip()
+        view = defaultargs['view']
+        preds = web.get_predictors(path)
 
-        self.render('summary.html', form=form, table=t)
+        data = web.get_binder_tables(preds, **defaultargs)
+        #add url to prot/seq name
+        for k in data:
+            data[k] = web.column_to_url(data[k], 'name', '/sequence?path=%s&name=' %path)
+        #convert dfs to html
+        tables = web.dataframes_to_html(data, classes='tinytable sortable')
+        #put tables in tabbed divs
+        tables = web.tabbed_html(tables)
+        form.path.data = path
+        form.cutoff.data = defaultargs['cutoff']
+        form.n.data = defaultargs['n']
+        form.cutoff_method.data = defaultargs['cutoff_method']
+        form.view.data = view
+
+        self.render('global.html', form=form, tables=tables)
 
 class GenomeViewHandler(RequestHandler):
     def get(self):
@@ -102,12 +117,13 @@ class SequenceViewHandler(RequestHandler):
 
         preds = web.get_predictors(path, current_name)
         plots = web.create_figures(preds, **defaultargs)
-        tables = web.create_binder_tables(preds, classes='tinytable sortable', **defaultargs)
+        data = web.get_binder_tables(preds, **defaultargs)
+        tables = web.dataframes_to_html(data, classes='tinytable sortable')
         tables = web.tabbed_html(tables)
         info = web.dict_to_html(web.get_results_info(preds[0]))
 
         if len(plots) > 0:
-            grid = gridplot(plots, ncols=1, merge_tools=True, #sizing_mode='stretch_both',
+            grid = gridplot(plots, ncols=1, merge_tools=True, sizing_mode='scale_width',
                             toolbar_options=dict(logo=None))
         else:
             grid = ''
@@ -115,7 +131,7 @@ class SequenceViewHandler(RequestHandler):
         script, div = components(grid)
 
         self.render('sequence.html', script=script, div=div, form=form, tables=tables,
-                    msg='', info=info)
+                    msg='', info=info, name=current_name)
 
     @staticmethod
     def modify_doc(doc):
@@ -137,7 +153,7 @@ def main(port=8888):
     #bokeh_server.start()
     handlers = [ (r"/", MainHandler),
                  (r"/sequence", SequenceViewHandler),
-                 (r"/summary", SummaryViewHandler),
+                 (r"/global", GlobalViewHandler),
                  ]
     app = tornado.web.Application(handlers, **settings)
     #app.listen(8888)

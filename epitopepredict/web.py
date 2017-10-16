@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function
 import sys,os,glob
 import pandas as pd
 import numpy as np
-from . import base, plotting, sequtils
+from . import base, plotting, sequtils, analysis
 from bokeh.models import ColumnDataSource, Slider
 from bokeh.models.widgets import DataTable, TableColumn, Select, Button, Slider, TextInput
 from bokeh.layouts import row, column, gridplot, widgetbox, layout
@@ -61,11 +61,9 @@ def sequence_from_peptides(df):
     x = ''.join(x)
     return x
 
-def get_predictors(path, name):
+def get_predictors(path, name=None):
     """Get a set of predictors with available results"""
 
-    if name==None:
-        return []
     preds = []
     for pred in predictors:
         P = get_results(path, pred, name)
@@ -78,12 +76,12 @@ def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
 
     figures = []
     if kind == 'tracks':
-        plot = plotting.bokeh_plot_tracks(preds, title=name,
-                         width=700, palette='Set1', cutoff=float(cutoff), n=int(n),
+        plot = plotting.bokeh_plot_tracks(preds, title=name, width=700,
+                         palette='Set1', cutoff=float(cutoff), n=int(n),
                          cutoff_method=cutoff_method)
 
     elif kind == 'bar':
-        plot = plotting.bokeh_plot_bar(preds, title=name, width=700 )
+        plot = plotting.bokeh_plot_bar(preds, title=name, width=None )
     if plot is not None:
         figures.append(plot)
     return figures
@@ -112,24 +110,38 @@ def create_bokeh_table(path, name):
     table = DataTable(source=source, columns=columns, width=400, height=280)
     return table
 
-def create_binder_tables(preds, name, promiscuous=False,
-                         escape=False, classes='', **kwargs):
-    """Create table of prediction data"""
+def get_binder_tables(preds, name=None, view='binders', **kwargs):
+    """Create html tables of prediction data from predictor objects. The
+       data is assumed to be loaded into the predictors.
+       Returns: dict of dataframes
+       """
 
-    tables = {}
+    data = {}
     import pylab as plt
     cm = plt.get_cmap('Reds')
     for P in preds:
         df = P.getBinders(name=name, **kwargs)
         if df is None:
             continue
+        if view == 'promiscuous':
+            df = P.promiscuousBinders(df, **kwargs)
+        elif view == 'summary':
+            #df = analysis.find_clusters(df, min_binders=2)
+            df=df
+
         df = df.reset_index(drop=True)
+        data[P.name] = df
+    return data
+
+def dataframes_to_html(data, classes=''):
+
+    tables = {}
+    for k in data:
+        df = data[k]
         s = df.style\
               .set_table_attributes('class="%s"' %classes)
               #.background_gradient(subset=[P.scorekey], cmap=cm) #%classes
-        #t = df.to_html(escape=escape, classes=classes, index=True)
-        t = s.render(index=False)
-        tables[P.name] = t
+        tables[k] = s.render(index=False)
     return tables
 
 def dict_to_html(data):
@@ -137,8 +149,16 @@ def dict_to_html(data):
     s = ''
     for k in data:
         s += '<a>%s: %s</a><br>' %(k,data[k])
-
     return s
+
+def column_to_url(df, field, path):
+    """Add urls to specified field in a dataframe"""
+
+    if len(df) == 0:
+        return df
+    df[field] = df.apply(lambda x:
+                '<a href=%s>%s</a>' %(path+x[field],x[field]),1)
+    return df
 
 def tabbed_html(items):
     """Create html for a set of tabbed divs from dict of html code, one for

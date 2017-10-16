@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block heading %}
+  <h4> epitopepredict sequence view {{name}} </h4>
+{% end %}
+
 {% block main %}
 
 	  <div class="main">
@@ -22,15 +26,15 @@
 		</form>
 
 		<div class="floatleft">
-		{{ msg }}
-	    {{ script }}
-		{{ div }}
+		  {{ msg }}
+		  {{ script }}
+		  {{ div }}
 
-	  	<div class="monospace">
-			{{ info }}
+		  <div class="monospace">
+			  {{ info }}
+		  </div>
 		</div>
 
-		</div>
 		<div class="floatright">
 			{{ tables }}
 		</div>

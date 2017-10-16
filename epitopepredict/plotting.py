@@ -60,7 +60,7 @@ def get_bokeh_colors(palette='YlBuGn'):
     return clrs
 
 def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',
-                width=1000, height=None, x_range=None, tools=True,
+                width=None, height=None, x_range=None, tools=True,
                 palette='YlBuGn',
                 seqdepot=None, exp=None):
     """
@@ -82,7 +82,11 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
         tools="xpan, xwheel_zoom, hover, reset, save"
     else:
         tools=''
-
+    if width == None:
+        width=1000
+        sizing_mode='scale_width'
+    else:
+        sizing_mode=None
     alls=1
     seqlen=0
     for P in preds:
@@ -98,7 +102,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
         x_range = Range1d(0,seqlen)
     yrange = Range1d(start=0, end=alls+3)
 
-    plot = figure(title=title,plot_width=width,
+    plot = figure(title=title, plot_width=width, sizing_mode=sizing_mode,
                     plot_height=height, y_range=yrange, x_range=x_range,
                     y_axis_label='allele',
                     tools=tools)
@@ -190,7 +194,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     plot.toolbar_location = "right"
     return plot
 
-def bokeh_plot_bar(preds, name=None, allele=None, title='', width=1000, height=100,
+def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=100,
                     palette='Set1', tools=True):
     """Plot bars combining one or more prediction results for a set of
     peptides in a protein/sequence"""
@@ -202,6 +206,9 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=1000, height=1
 
     height = 200
     seqlen = 0
+    if width == None:
+        width=700
+        sizing_mode='scale_width'
     for P in preds:
         if P.data is None or len(P.data)==0:
             continue
@@ -213,7 +220,7 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=1000, height=1
         tools="xpan, xwheel_zoom, reset, hover"
     else:
         tools=None
-    plot = figure(title=title,plot_width=width,
+    plot = figure(title=title,plot_width=width,sizing_mode=sizing_mode,
                     plot_height=height, y_range=y_range, x_range=x_range,
                     y_axis_label='rank',
                     tools=tools)

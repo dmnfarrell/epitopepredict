@@ -482,7 +482,7 @@ class Predictor(object):
             return res
 
     def promiscuousBinders(self, binders=None, name=None, cutoff=5,
-                           cutoff_method='default', n=1, unique_core=True):
+                           cutoff_method='default', n=1, unique_core=True, **kwargs):
         """
         Use params for getbinders if no binders provided?
         Args:
@@ -497,6 +497,7 @@ class Predictor(object):
             a pandas dataframe
         """
 
+        n=int(n)
         if binders is None:
             binders = self.getBinders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
         if binders is None:
