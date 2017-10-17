@@ -18,7 +18,6 @@ from bokeh.embed import components
 
 path = 'results'
 predictors = base.predictors
-wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki'
 plotkinds = ['tracks','bar','text']
 
 def get_file_lists(path):
@@ -61,6 +60,19 @@ def sequence_from_peptides(df):
     x = ''.join(x)
     return x
 
+def get_alleles(preds):
+    """get available alleles"""
+
+    a = []
+    for P in preds:
+        df = P.data
+        if df is None:
+            continue
+        x = df.allele.unique()
+        a.extend(x)
+    a = list(set(a))
+    return a
+
 def get_predictors(path, name=None):
     """Get a set of predictors with available results"""
 
@@ -79,11 +91,13 @@ def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
         plot = plotting.bokeh_plot_tracks(preds, title=name, width=700,
                          palette='Set1', cutoff=float(cutoff), n=int(n),
                          cutoff_method=cutoff_method)
-
+        if plot is not None:
+            figures.append(plot)
     elif kind == 'bar':
-        plot = plotting.bokeh_plot_bar(preds, title=name, width=None )
-    if plot is not None:
-        figures.append(plot)
+        alleles = get_alleles(preds)
+        for a in alleles[:8]:
+            plot = plotting.bokeh_plot_bar(preds, title=a, allele=a, width=None )
+            figures.append(plot)
     return figures
 
 def create_bokeh_table(path, name):
@@ -152,7 +166,8 @@ def dict_to_html(data):
     return s
 
 def column_to_url(df, field, path):
-    """Add urls to specified field in a dataframe"""
+    """Add urls to specified field in a dataframe by prepending the supplied
+       path."""
 
     if len(df) == 0:
         return df
@@ -175,7 +190,7 @@ def tabbed_html(items):
         #html += '<p>%s</p>' %t
         html +=	'</div></div>\n'
     html += '</div>'
-    print (html)
+    #print (html)
     return html
 
 def create_widgets():

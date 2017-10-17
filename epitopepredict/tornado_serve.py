@@ -14,7 +14,7 @@ from epitopepredict import base, web
 import tornado.ioloop
 import tornado.web
 from wtforms_tornado import Form
-from wtforms import TextField, StringField, SelectField, FloatField
+from wtforms import TextField, StringField, SelectField, FloatField, BooleanField
 from tornado.web import RequestHandler
 from bokeh.util.browser import view
 from bokeh.plotting import figure
@@ -22,12 +22,13 @@ from bokeh.layouts import row, column, gridplot, widgetbox, layout
 from bokeh.embed import components
 
 path = 'results'
+wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki/Web-Application'
 plotkinds = ['tracks','bar','text']
 cut_methods = ['default','rank','score']
 views = ['binders','promiscuous','summary']
 
 def help_msg():
-    msg = '<a>results path not found, enter a folder with your results</a><br>'
+    msg = '<a>path for results not found, enter an existing folder with your results. </a> '
     msg += '<a href="%s"> see help page</a>' %wikipage
     return msg
 
@@ -42,6 +43,7 @@ class ControlsForm(Form):
     kind = SelectField('plot kind', choices=kinds)
     views = [(i,i) for i in views]
     view = SelectField('view', choices=views)
+    cached = BooleanField('use cached')
 
 class MainHandler(RequestHandler):
     """Handler for main results page"""
@@ -57,14 +59,17 @@ class GlobalViewHandler(RequestHandler):
         args = self.request.arguments
         form = ControlsForm()
         defaultargs = {'path':'results','cutoff':5,'cutoff_method':'rank',
-                       'view':'promiscuous','n':2,'kind':'tracks'}
+                       'view':'promiscuous','n':2,'cached':1}
         for k in defaultargs:
             if k in args:
                 defaultargs[k] = args[k][0]
         path = defaultargs['path'].strip()
         view = defaultargs['view']
-        preds = web.get_predictors(path)
+        usecached = defaultargs['cached']
+        if usecached == 1:
+            print ('using cached results')
 
+        preds = web.get_predictors(path)
         data = web.get_binder_tables(preds, **defaultargs)
         #add url to prot/seq name
         for k in data:
@@ -102,7 +107,7 @@ class SequenceViewHandler(RequestHandler):
 
         if not os.path.exists(path):
             msg = help_msg()
-            self.render('sequence.html', script='', div='', form=form, msg=msg)
+            self.render('sequence.html', form=form, status=0, name='', msg=msg)
             return
 
         names = web.get_file_lists(path)
@@ -116,6 +121,7 @@ class SequenceViewHandler(RequestHandler):
         form.kind.data = defaultargs['kind']
 
         preds = web.get_predictors(path, current_name)
+        #alleles = web.get_alleles(preds)
         plots = web.create_figures(preds, **defaultargs)
         data = web.get_binder_tables(preds, **defaultargs)
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
@@ -131,7 +137,7 @@ class SequenceViewHandler(RequestHandler):
         script, div = components(grid)
 
         self.render('sequence.html', script=script, div=div, form=form, tables=tables,
-                    msg='', info=info, name=current_name)
+                    msg='', info=info, name=current_name, status=1)
 
     @staticmethod
     def modify_doc(doc):

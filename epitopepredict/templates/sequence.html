@@ -25,19 +25,23 @@
 
 		</form>
 
+		{%if status == 0 %}
+		<div class="warning">{{ msg }}</div>
+		{% else %}
 		<div class="floatleft">
-		  {{ msg }}
+
 		  {{ script }}
 		  {{ div }}
 
 		  <div class="monospace">
-			  {{ info }}
+			 <!-- {{ info }} -->
 		  </div>
 		</div>
 
 		<div class="floatright">
 			{{ tables }}
 		</div>
+		{% end %}
 	  </div>
 
 {% end %}

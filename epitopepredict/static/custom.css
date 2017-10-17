@@ -44,6 +44,11 @@ div.monospace {
     word-wrap: break-word;
 }
 
+div.warning{
+    background:#ffcccc;
+    padding: 5px 5px 5px 5px;
+    font-size: 18px;
+}
 div.scrollableContainer {
     position: relative;
     width: 1124px;
@@ -161,7 +166,8 @@ div.floatright {
 }
 .sortable th{
     background-color:  #E0ECF8;
-    border-width:0px 0px 0px 0px;
+    border-width: 0px 0px 0px 0px;
+    width: 30px;
 }
 .sortable tr:nth-child(even){ background-color:#F7F7F7; }
 

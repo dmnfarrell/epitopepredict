@@ -204,7 +204,7 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
     from bokeh.transform import dodge
     from bokeh.core.properties import value
 
-    height = 200
+    height = 180
     seqlen = 0
     if width == None:
         width=700
@@ -235,7 +235,8 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
             df = df[df.name==name]
         grps = df.groupby('allele')
         alleles = grps.groups.keys()
-        allele = alleles[0]
+        if allele == None or allele not in alleles:
+            allele = alleles[0]
         df = df[df.allele==allele]
         df = df.sort_values('pos').set_index('pos')
         key = pred.scorekey
@@ -249,8 +250,8 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
     i=-.2
     for m in ['netmhciipan', 'iedbmhc1']:
         c = colors[m]
-        plot.vbar(x=dodge('pos', i, range=plot.x_range), top=m, width=0.2, source=source,
-                   color=c, legend=value(m))
+        plot.vbar(x=dodge('pos', i, range=plot.x_range), top=m, width=8, source=source,
+                   color=c, legend=value(m), alpha=.5)
         i+=0.2
 
     hover = plot.select(dict(type=HoverTool))
@@ -260,6 +261,7 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
 
     plot.min_border = 10
     plot.background_fill_color = "beige"
+    plot.background_fill_alpha = 0.5
     plot.toolbar.logo = None
     plot.toolbar_location = "right"
     plot.legend.location = "top_right"
