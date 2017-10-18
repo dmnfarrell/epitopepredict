@@ -49,15 +49,20 @@ def get_results_info(P):
     df = P.data
     if df is None:
         return ''
-    df = df.drop_duplicates('pos').sort_values('pos')
     #l = base.get_length(df)
-    seq = sequence_from_peptides(df)
+    seq = sequence_from_peptides(P.data)
     l = len(seq)
     return {'length':l}
 
 def sequence_from_peptides(df):
+    """Derive sequence from set of peptides"""
+
+    l = base.get_length(df)
+    df = df.drop_duplicates('pos').sort_values('pos')
     x = df.peptide.str[0]
+    last = df.iloc[-1].peptide[1:]
     x = ''.join(x)
+    x = x + last
     return x
 
 def get_alleles(preds):
@@ -81,6 +86,72 @@ def get_predictors(path, name=None):
         P = get_results(path, pred, name)
         preds.append(P)
     return preds
+
+def get_sequences(pred):
+    """Get set of sequences from loaded data"""
+
+    seqs = {}
+    df = pred.data
+    for n,df in pred.data.groupby('name'):
+        s = sequence_from_peptides(df)
+        seqs[n] = s
+    seqs = pd.DataFrame(seqs.items(), columns=['name','seq'])
+    #print (seqs)
+    return seqs
+
+def sequences_to_html_table(seqs, classes=''):
+    """Convert seqs to html"""
+
+    tabledata=[]
+    tabledata.append('<th>name</th><th>sequence</th>')
+    for i,row in seqs.iterrows():
+        seq = row.seq
+        name = row['name']
+        seqhtml = ''
+        for i in range(len(seq)):
+            seqhtml += '<span style="background-color:white">%s</span>' %seq[i]
+        row = '<tr><th>%s</th><td>%s</td></tr>' %(name, seqhtml)
+        tabledata.append(row)
+    table = '\n'.join(tabledata)
+    table = '<table class="%s">\n' %classes + table + '</table>'
+    return table
+
+def create_sequence_html(preds, name='', classes='', **kwargs):
+
+    seqs=[]
+    tabledata=[]
+    tabledata.append('<th>allele</th><th>sequence</th>')
+    colors = plotting.get_bokeh_colors()
+
+    for P in preds:
+        df = P.data
+        if df is None:
+            continue
+        b = P.getBinders(**kwargs)
+        l = base.get_length(df)
+        seq = sequence_from_peptides(df)
+        clr = colors[P.name]
+        grps = b.groupby('allele')
+        for a,g in grps:
+            pos=[]
+            for i in g.pos: pos.extend(np.arange(i,i+l))
+            seqhtml = ''
+            for i in range(len(seq)):
+                if i in pos:
+                    seqhtml += '<span style="background-color:%s; opacity:0.8">%s</span>' %(clr,seq[i])
+                else:
+                    seqhtml += '<span style="background-color:white">%s</span>' %seq[i]
+            row = '<tr><th>%s</th><td>%s</td></tr>' %(a, seqhtml)
+            tabledata.append(row)
+    table = '\n'.join(tabledata)
+    table = '<table class="%s">\n' %classes + table + '</table>'
+    return table
+
+def sequence_to_html_grid():
+    """Put aligned or multiple identical rows in dataframe and convert to
+    grid of aas as html table"""
+
+    return
 
 def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
                    cutoff_method='default', **kwargs):
@@ -139,10 +210,6 @@ def get_binder_tables(preds, name=None, view='binders', **kwargs):
             continue
         if view == 'promiscuous':
             df = P.promiscuousBinders(df, **kwargs)
-        elif view == 'summary':
-            #df = analysis.find_clusters(df, min_binders=2)
-            df=df
-
         df = df.reset_index(drop=True)
         data[P.name] = df
     return data

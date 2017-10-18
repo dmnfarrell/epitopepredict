@@ -42,6 +42,7 @@ div.monospace {
     border: 1px solid #b2a7a7;
     width: 95%;
     word-wrap: break-word;
+    overflow: scroll;
 }
 
 div.warning{

@@ -48,20 +48,21 @@ def get_seq_from_binders(P, name=None):
     seqlen = P.data.pos.max()+l
     return seqlen
 
-def get_bokeh_colors(palette='YlBuGn'):
+def get_bokeh_colors(palette='Set1', n=6):
 
     from bokeh.palettes import brewer
-    pal = brewer[palette][6]
+    pal = brewer[palette][n]
     i=0
     clrs={}
     for m in base.predictors:
         clrs[m] = pal[i]
         i+=1
+    print (clrs)
     return clrs
 
 def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',
                 width=None, height=None, x_range=None, tools=True,
-                palette='YlBuGn',
+                palette='Set1',
                 seqdepot=None, exp=None):
     """
     Plot binding predictions as parallel tracks of blocks for each allele.
@@ -115,7 +116,6 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
         plotExp(plot, exp)
 
     colors = get_bokeh_colors(palette)
-
     x=[];y=[];allele=[];widths=[];clrs=[];peptide=[]
     predictor=[];position=[];score=[];leg=[]
     l=80

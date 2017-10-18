@@ -9,7 +9,7 @@
 import sys,os,glob
 import pandas as pd
 import numpy as np
-from epitopepredict import base, web
+from epitopepredict import base, web, analysis
 
 import tornado.ioloop
 import tornado.web
@@ -70,14 +70,32 @@ class GlobalViewHandler(RequestHandler):
             print ('using cached results')
 
         preds = web.get_predictors(path)
-        data = web.get_binder_tables(preds, **defaultargs)
-        #add url to prot/seq name
-        for k in data:
-            data[k] = web.column_to_url(data[k], 'name', '/sequence?path=%s&name=' %path)
+        data = {}
+        if view == 'summary':
+            for P in preds:
+                if P.data is None: continue
+                seqs = web.get_sequences(P)
+                #tables = web.sequences_to_html_table(seqs, classes="seqtable")
+                pb = P.promiscuousBinders(**defaultargs)
+                #print (pb)
+                #cl = analysis.find_clusters(b, min_binders=2)
+                x = pb.groupby('name').agg({'peptide':np.size,
+                                            P.scorekey:np.median}).reset_index()
+                x = x.rename(columns={'peptide':'binders'})
+                x = x.merge(seqs, on='name')
+                x = web.column_to_url(x, 'name', '/sequence?path=%s&name=' %path)
+                data[P.name] = x
+        else:
+            data = web.get_binder_tables(preds, **defaultargs)
+            #add url to prot/seq name
+            for k in data:
+                data[k] = web.column_to_url(data[k], 'name', '/sequence?path=%s&name=' %path)
+
         #convert dfs to html
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
         #put tables in tabbed divs
         tables = web.tabbed_html(tables)
+
         form.path.data = path
         form.cutoff.data = defaultargs['cutoff']
         form.n.data = defaultargs['n']
@@ -122,19 +140,26 @@ class SequenceViewHandler(RequestHandler):
 
         preds = web.get_predictors(path, current_name)
         #alleles = web.get_alleles(preds)
-        plots = web.create_figures(preds, **defaultargs)
+
         data = web.get_binder_tables(preds, **defaultargs)
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
         tables = web.tabbed_html(tables)
         info = web.dict_to_html(web.get_results_info(preds[0]))
 
-        if len(plots) > 0:
-            grid = gridplot(plots, ncols=1, merge_tools=True, sizing_mode='scale_width',
-                            toolbar_options=dict(logo=None))
+        if defaultargs['kind'] == 'text':
+            seqhtml = web.create_sequence_html(preds, classes="seqtable")
+            #print (seqhtml[:400])
+            div = '<div class="monospace">%s</div>' %seqhtml
+            script = ''
         else:
-            grid = ''
+            plots = web.create_figures(preds, **defaultargs)
 
-        script, div = components(grid)
+            if len(plots) > 0:
+                grid = gridplot(plots, ncols=1, merge_tools=True, sizing_mode='scale_width',
+                                toolbar_options=dict(logo=None))
+                script, div = components(grid)
+            else:
+                script = ''; div = ''
 
         self.render('sequence.html', script=script, div=div, form=form, tables=tables,
                     msg='', info=info, name=current_name, status=1)
