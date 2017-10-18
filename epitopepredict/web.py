@@ -84,7 +84,8 @@ def get_predictors(path, name=None):
     preds = []
     for pred in predictors:
         P = get_results(path, pred, name)
-        preds.append(P)
+        if P.data is not None and len(P.data)>0:
+            preds.append(P)
     return preds
 
 def get_sequences(pred):
@@ -166,8 +167,11 @@ def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
             figures.append(plot)
     elif kind == 'bar':
         alleles = get_alleles(preds)
-        for a in alleles[:8]:
-            plot = plotting.bokeh_plot_bar(preds, title=a, allele=a, width=None )
+        xr=None
+        for a in alleles:
+            plot = plotting.bokeh_plot_bar(preds, title=a, allele=a, width=None, x_range=xr )
+            if xr==None:
+                xr = plot.x_range
             figures.append(plot)
     return figures
 
@@ -203,7 +207,6 @@ def get_binder_tables(preds, name=None, view='binders', **kwargs):
 
     data = {}
     import pylab as plt
-    cm = plt.get_cmap('Reds')
     for P in preds:
         df = P.getBinders(name=name, **kwargs)
         if df is None:

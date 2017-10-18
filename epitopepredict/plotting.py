@@ -57,7 +57,6 @@ def get_bokeh_colors(palette='Set1', n=6):
     for m in base.predictors:
         clrs[m] = pal[i]
         i+=1
-    print (clrs)
     return clrs
 
 def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',
@@ -195,7 +194,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     return plot
 
 def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=100,
-                    palette='Set1', tools=True):
+                    palette='Set1', tools=True, x_range=None):
     """Plot bars combining one or more prediction results for a set of
     peptides in a protein/sequence"""
 
@@ -214,7 +213,8 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
             continue
         seqlen = get_seq_from_binders(P)
 
-    x_range = Range1d(0,seqlen)
+    if x_range == None:
+        x_range = Range1d(0,seqlen)
     y_range = Range1d(start=0, end=1)
     if tools == True:
         tools="xpan, xwheel_zoom, reset, hover"
@@ -226,6 +226,7 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
                     tools=tools)
     colors = get_bokeh_colors(palette)
     data = {}
+    mlist = []
     for pred in preds:
         m = pred.name
         df = pred.data
@@ -235,24 +236,28 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
             df = df[df.name==name]
         grps = df.groupby('allele')
         alleles = grps.groups.keys()
-        if allele == None or allele not in alleles:
-            allele = alleles[0]
+        if allele not in alleles:
+            continue
+        #print (m, alleles, allele)
         df = df[df.allele==allele]
         df = df.sort_values('pos').set_index('pos')
         key = pred.scorekey
         X = df[key]
-        X = X / (X.max() - X.min())
+        X = (X+abs(X.min())) / (X.max() - X.min())
         data[m] = X.values
         data['pos'] = list(X.index)
         #data['peptide'] = df.peptide.values
-
+        mlist.append(m)
     source = ColumnDataSource(data)
-    i=-.2
-    for m in ['netmhciipan', 'iedbmhc1']:
+
+    w = round(1.0/len(mlist),1)-.1
+    i=-w/2
+    for m in mlist:
+        #m = pred.name
         c = colors[m]
-        plot.vbar(x=dodge('pos', i, range=plot.x_range), top=m, width=8, source=source,
-                   color=c, legend=value(m), alpha=.5)
-        i+=0.2
+        plot.vbar(x=dodge('pos', i, range=plot.x_range), top=m, width=w, source=source,
+                   color=c, legend=value(m), alpha=.8)
+        i+=w
 
     hover = plot.select(dict(type=HoverTool))
     hover.tooltips = OrderedDict([
