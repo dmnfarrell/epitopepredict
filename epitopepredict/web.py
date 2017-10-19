@@ -148,11 +148,29 @@ def create_sequence_html(preds, name='', classes='', **kwargs):
     table = '<table class="%s">\n' %classes + table + '</table>'
     return table
 
-def sequence_to_html_grid():
+def sequence_to_html_grid(preds, classes='', **kwargs):
     """Put aligned or multiple identical rows in dataframe and convert to
     grid of aas as html table"""
 
-    return
+    data = []
+    for P in preds:
+        df = P.data
+        if df is None:
+            continue
+        b = P.getBinders(**kwargs)
+        l = base.get_length(df)
+        grps = b.groupby('allele')
+        alleles = grps.groups
+        seq = sequence_from_peptides(df)
+        #put into new df one row per allele
+        x = [(P.name,a,seq) for a in alleles]
+
+        df = pd.DataFrame(x, columns=['pred','allele','seq']).set_index(['pred','allele'])
+        df = df.seq.apply(lambda x: pd.Series(list(x)))
+        data.append(df)
+    data = pd.concat(data)
+    table = data.to_html(classes=classes)
+    return table
 
 def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
                    cutoff_method='default', **kwargs):

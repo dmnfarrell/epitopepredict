@@ -194,6 +194,8 @@ def fasta_to_dataframe(infile):
     data = [(r.name,str(r.seq),str(r.description)) for r in recs]
     df = pd.DataFrame(data,columns=(keys))
     df['type'] = 'CDS'
+    #fix bad names
+    df['locus_tag'] = df.locus_tag.str.replace('|','_')
     return df
 
 def convert_sequence_format(infile, outformat='embl'):

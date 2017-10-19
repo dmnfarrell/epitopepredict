@@ -21,9 +21,8 @@ from bokeh.plotting import figure
 from bokeh.layouts import row, column, gridplot, widgetbox, layout
 from bokeh.embed import components
 
-path = 'results'
 wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki/Web-Application'
-plotkinds = ['tracks','bar','text']
+plotkinds = ['tracks','bar','text','grid']
 cut_methods = ['default','rank','score']
 views = ['binders','promiscuous','summary']
 
@@ -50,7 +49,7 @@ class MainHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         buttons = ''
-        self.render('index.html', buttons=buttons)
+        self.render('index.html', buttons=buttons, path='')
 
 class GlobalViewHandler(RequestHandler):
     """Handler for showing multiple sequences in a results folder"""
@@ -58,7 +57,7 @@ class GlobalViewHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         form = ControlsForm()
-        defaultargs = {'path':'results','cutoff':5,'cutoff_method':'rank',
+        defaultargs = {'path':'','cutoff':5,'cutoff_method':'rank',
                        'view':'promiscuous','n':2,'cached':1}
         for k in defaultargs:
             if k in args:
@@ -82,7 +81,7 @@ class GlobalViewHandler(RequestHandler):
                 x = pb.groupby('name').agg({'peptide':np.size,
                                             P.scorekey:np.median}).reset_index()
                 x = x.rename(columns={'peptide':'binders'})
-                x = x.merge(seqs, on='name')
+                x = x.merge(seqs, on='name', how='right')
                 x = web.column_to_url(x, 'name', '/sequence?path=%s&name=' %path)
                 data[P.name] = x
         else:
@@ -102,7 +101,7 @@ class GlobalViewHandler(RequestHandler):
         form.cutoff_method.data = defaultargs['cutoff_method']
         form.view.data = view
 
-        self.render('global.html', form=form, tables=tables)
+        self.render('global.html', form=form, tables=tables, path=path)
 
 class GenomeViewHandler(RequestHandler):
     def get(self):
@@ -125,7 +124,7 @@ class SequenceViewHandler(RequestHandler):
 
         if not os.path.exists(path):
             msg = help_msg()
-            self.render('sequence.html', form=form, status=0, name='', msg=msg)
+            self.render('sequence.html', form=form, status=0, name='', msg=msg, path=path)
             return
 
         names = web.get_file_lists(path)
@@ -144,11 +143,16 @@ class SequenceViewHandler(RequestHandler):
         data = web.get_binder_tables(preds, **defaultargs)
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
         tables = web.tabbed_html(tables)
-        info = web.dict_to_html(web.get_results_info(preds[0]))
+        #info = web.dict_to_html(web.get_results_info(preds[0]))
+        info=''
+        kind = defaultargs['kind']
 
-        if defaultargs['kind'] == 'text':
+        if kind == 'grid':
+            seqhtml = web.sequence_to_html_grid(preds, classes="gridtable")
+            div = '<div class="monospace">%s</div>' %seqhtml
+            script = ''
+        elif kind == 'text':
             seqhtml = web.create_sequence_html(preds, classes="seqtable")
-            #print (seqhtml[:400])
             div = '<div class="monospace">%s</div>' %seqhtml
             script = ''
         else:
@@ -162,7 +166,7 @@ class SequenceViewHandler(RequestHandler):
                 script = ''; div = ''
 
         self.render('sequence.html', script=script, div=div, form=form, tables=tables,
-                    msg='', info=info, name=current_name, status=1)
+                    msg='', info=info, name=current_name, status=1, path=path)
 
     @staticmethod
     def modify_doc(doc):

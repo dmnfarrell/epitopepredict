@@ -1015,6 +1015,7 @@ class IEDBMHCIPredictor(Predictor):
 
         tempfile = os.path.join(self.temppath, name+'.fa')
         seqfile = write_fasta(sequence, id=name, filename=tempfile)
+        #print (seqfile)
         path = iedbmhc1path
         if not os.path.exists(path):
             print ('IEDB mhcI tools not found')
