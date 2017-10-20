@@ -164,12 +164,24 @@ def sequence_to_html_grid(preds, classes='', **kwargs):
         seq = sequence_from_peptides(df)
         #put into new df one row per allele
         x = [(P.name,a,seq) for a in alleles]
-
         df = pd.DataFrame(x, columns=['pred','allele','seq']).set_index(['pred','allele'])
         df = df.seq.apply(lambda x: pd.Series(list(x)))
         data.append(df)
     data = pd.concat(data)
-    table = data.to_html(classes=classes)
+
+    colors = plotting.get_bokeh_colors()
+
+    def color(x):
+        p, a = x.name
+        #print (a)
+        clr = colors[p]
+        color = [ 'background-color: %s; opacity: .8;' %clr for i in x]
+        return color
+
+    s = data.style\
+             .set_table_attributes('class="%s"' %classes)\
+             .apply(color,1)
+    table = s.render()
     return table
 
 def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
@@ -224,6 +236,7 @@ def get_binder_tables(preds, name=None, view='binders', **kwargs):
        """
 
     data = {}
+    drop=True
     import pylab as plt
     for P in preds:
         df = P.getBinders(name=name, **kwargs)
@@ -231,7 +244,11 @@ def get_binder_tables(preds, name=None, view='binders', **kwargs):
             continue
         if view == 'promiscuous':
             df = P.promiscuousBinders(df, **kwargs)
-        df = df.reset_index(drop=True)
+        elif view == 'by allele':
+            df = pd.pivot_table(P.data, index=['pos','peptide'],
+                                columns='allele', values=P.scorekey)
+            drop=False
+        df = df.reset_index(drop=drop)
         data[P.name] = df
     return data
 

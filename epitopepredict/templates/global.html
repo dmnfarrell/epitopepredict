@@ -19,9 +19,13 @@
 			<input type="submit" class="button">
 		</form>
 
+		{%if status == 0 %}
+		<div class="warning">{{ msg }}</div>
+		{% else %}
 		<div class="floatleft">
 			{{ tables }}
 		</div>
+		{% end %}
 	  </div>
 
 {% end %}

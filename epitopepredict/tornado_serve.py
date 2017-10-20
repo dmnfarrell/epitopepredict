@@ -24,7 +24,7 @@ from bokeh.embed import components
 wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki/Web-Application'
 plotkinds = ['tracks','bar','text','grid']
 cut_methods = ['default','rank','score']
-views = ['binders','promiscuous','summary']
+views = ['binders','promiscuous','by allele','summary']
 
 def help_msg():
     msg = '<a>path for results not found, enter an existing folder with your results. </a> '
@@ -68,6 +68,10 @@ class GlobalViewHandler(RequestHandler):
         if usecached == 1:
             print ('using cached results')
 
+        if not os.path.exists(path):
+            msg = help_msg()
+            self.render('global.html', form=form, msg=msg, path=path, status=0)
+
         preds = web.get_predictors(path)
         data = {}
         if view == 'summary':
@@ -101,7 +105,7 @@ class GlobalViewHandler(RequestHandler):
         form.cutoff_method.data = defaultargs['cutoff_method']
         form.view.data = view
 
-        self.render('global.html', form=form, tables=tables, path=path)
+        self.render('global.html', form=form, tables=tables, msg='', status=1, path=path)
 
 class GenomeViewHandler(RequestHandler):
     def get(self):
@@ -114,8 +118,8 @@ class SequenceViewHandler(RequestHandler):
 
         args = self.request.arguments
         form = ControlsForm()
-        defaultargs = {'path':'results','name':'','cutoff':5,'cutoff_method':'rank',
-                       'n':2,'kind':'tracks'}
+        defaultargs = {'path':'','name':'','cutoff':5,'cutoff_method':'rank',
+                       'n':2,'kind':'tracks','view':'binders'}
         for k in defaultargs:
             if k in args:
                 defaultargs[k] = args[k][0]
@@ -136,6 +140,7 @@ class SequenceViewHandler(RequestHandler):
         form.n.data = defaultargs['n']
         form.cutoff_method.data = defaultargs['cutoff_method']
         form.kind.data = defaultargs['kind']
+        form.view.data = defaultargs['view']
 
         preds = web.get_predictors(path, current_name)
         #alleles = web.get_alleles(preds)

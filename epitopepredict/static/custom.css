@@ -144,14 +144,16 @@ div.floatright {
 .seqtable tr:nth-child(even){ background-color:#F7F7F7; }
 
 .gridtable{
-    border:1px solid #b2a7a7;
-    font-size:13px;
+    border: 1px solid #b2a7a7;
+    font-size: 13px;
     font-family: monospace;
     background-color: white;
 }.gridtable td{
     cellspacing: 0px;
-    width:100%;
-    border:1px solid #b2a7a7;
+    min-width: 16px;
+    text-align: center;
+    width: 100%;
+    border: 1px solid #b2a7a7;
 	margin: 0px;
 	padding: 1px 2px 1px 2px;
 }
