@@ -7,6 +7,7 @@
 {% block main %}
 
 	  <div class="main">
+		<div class="floatleft">
 		<form action="/sequence">
 			{{ form.path.label }}
 			{{ form.path }}
@@ -25,10 +26,20 @@
 			<input type="submit" class="button">
 
 		</form>
-
+		</div>
 		{%if status == 0 %}
 		<div class="warning">{{ msg }}</div>
 		{% else %}
+
+		<div class="floatright">
+			 <div class="monospace" >
+			  download:
+			  {% for l in links %}
+				 {{ l }}
+			  {% end %}
+			 </div>
+		</div>
+
 		<div class="floatleft">
 
 		  {{ script }}

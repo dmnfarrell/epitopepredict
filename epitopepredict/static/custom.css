@@ -26,10 +26,18 @@ img {border:0}
 div {font: arial; vertical-align:top;}
 
 div.main {
-    width: 95%;
+    width: 97%;
     margin: auto;
     overflow: hidden;
     float: none;
+}
+
+div.scrolled{
+    background: #FCFCF8;
+    padding: 5px 5px 5px 5px;
+    border: 1px solid #b2a7a7;
+    width: 95%;
+    overflow: scroll;
 }
 
 div.monospace {
@@ -42,7 +50,6 @@ div.monospace {
     border: 1px solid #b2a7a7;
     width: 95%;
     word-wrap: break-word;
-    overflow: scroll;
 }
 
 div.warning{
@@ -128,9 +135,11 @@ div.floatright {
 	font-style: bold;
 	font-size:12px;
 	white-space: nowrap;
-}.seqtable table{
+}
+.seqtable table{
 	margin:2px;
-}.seqtable td{
+}
+.seqtable td{
     width:100%;
     border:0px solid #b2a7a7;
 	border-width:0px 0px 0px 0px;
@@ -145,11 +154,12 @@ div.floatright {
 
 .gridtable{
     border: 1px solid #b2a7a7;
-    font-size: 13px;
+    font-size: 11px;
     font-family: monospace;
     background-color: white;
-}.gridtable td{
-    cellspacing: 0px;
+}
+.gridtable td{
+    font-size: 11px;
     min-width: 16px;
     text-align: center;
     width: 100%;
@@ -158,6 +168,7 @@ div.floatright {
 	padding: 1px 2px 1px 2px;
 }
 .gridtable th{
+    font-size: 11px;
     padding: 2px 4px 2px 4px;
     border:1px;
 }
@@ -173,16 +184,18 @@ div.floatright {
 	border:1px solid #b2a7a7;
 	font-family: monospace;
 	font-size:11px;
-}.sortable table{
+}
+.sortable table{
     border-collapse: collapse;
     border-spacing: 0;
 	height:100%;
 	margin:0px;padding:2px;
 }
 .sortable td{
-	font-size:11px;
-	border-width:0px 0px 0px 0px;
-	margin:1px;padding:2px;
+	font-size: 11px;
+	border-width: 0px 0px 0px 0px;
+	margin: 1px;
+    padding: 2px;
 }
 .sortable th{
     background-color:  #E0ECF8;

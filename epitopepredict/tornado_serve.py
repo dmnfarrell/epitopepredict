@@ -22,7 +22,7 @@ from bokeh.layouts import row, column, gridplot, widgetbox, layout
 from bokeh.embed import components
 
 wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki/Web-Application'
-plotkinds = ['tracks','bar','text','grid']
+plotkinds = ['tracks','text','grid']
 cut_methods = ['default','rank','score']
 views = ['binders','promiscuous','by allele','summary']
 
@@ -30,6 +30,14 @@ def help_msg():
     msg = '<a>path for results not found, enter an existing folder with your results. </a> '
     msg += '<a href="%s"> see help page</a>' %wikipage
     return msg
+
+def get_args(args):
+    defaults = {'path':'','name':'','cutoff':5,'cutoff_method':'rank', 'pred':'tepitope',
+                   'n':2,'kind':'tracks','view':'binders'}
+    for k in defaults:
+        if k in args:
+            defaults[k] = args[k][0]
+    return defaults
 
 class ControlsForm(Form):
     name = SelectField('name', choices=[])
@@ -43,6 +51,7 @@ class ControlsForm(Form):
     views = [(i,i) for i in views]
     view = SelectField('view', choices=views)
     cached = BooleanField('use cached')
+
 
 class MainHandler(RequestHandler):
     """Handler for main results page"""
@@ -117,12 +126,8 @@ class SequenceViewHandler(RequestHandler):
     def get(self):
 
         args = self.request.arguments
+        defaultargs = get_args(args)
         form = ControlsForm()
-        defaultargs = {'path':'','name':'','cutoff':5,'cutoff_method':'rank',
-                       'n':2,'kind':'tracks','view':'binders'}
-        for k in defaultargs:
-            if k in args:
-                defaultargs[k] = args[k][0]
         path = defaultargs['path']
         current_name = defaultargs['name']
 
@@ -154,11 +159,11 @@ class SequenceViewHandler(RequestHandler):
 
         if kind == 'grid':
             seqhtml = web.sequence_to_html_grid(preds, classes="gridtable")
-            div = '<div class="monospace">%s</div>' %seqhtml
+            div = '<div class="scrolled">%s</div>' %seqhtml
             script = ''
         elif kind == 'text':
             seqhtml = web.create_sequence_html(preds, classes="seqtable")
-            div = '<div class="monospace">%s</div>' %seqhtml
+            div = '<div class="scrolled">%s</div>' %seqhtml
             script = ''
         else:
             plots = web.create_figures(preds, **defaultargs)
@@ -170,12 +175,44 @@ class SequenceViewHandler(RequestHandler):
             else:
                 script = ''; div = ''
 
-        self.render('sequence.html', script=script, div=div, form=form, tables=tables,
-                    msg='', info=info, name=current_name, status=1, path=path)
+        links = []
+        for k in data.keys():
+            defaultargs['pred'] = k
+            links.append(self.get_url(defaultargs, link=k))
 
-    @staticmethod
-    def modify_doc(doc):
-        return
+        self.render('sequence.html', script=script, div=div, form=form, tables=tables,
+                    msg='', info=info, name=current_name, status=1, links=links, path=path)
+
+    def get_url(self, args, link='download'):
+        """Get url from current args"""
+
+        import urllib
+        s = '<a href=/download?'
+        s += urllib.urlencode(args)
+        s += '>%s<a>' %link
+        return s
+
+class DownloadHandler(RequestHandler):
+    def get(self):
+        args = self.request.arguments
+        args = get_args(args)
+        #args['method'] = 'tepitope'
+        filename = args['name']+'_'+args['pred']+'.csv'
+        self.set_header ('Content-Type', 'text/csv')
+        self.set_header ('Content-Disposition', 'attachment; filename=%s' %filename)
+        preds = web.get_predictors(args['path'], args['name'])
+        data = web.get_binder_tables(preds, **args)
+        out = self.get_csv(data, args['pred'])
+        self.write (out)
+
+    def get_csv(self, data, key):
+        import io
+        if key not in data: return ''
+        df=data[key]
+        output = io.BytesIO()
+        df.to_csv(output, float_format='%.2f')
+        csvdata = output.getvalue()
+        return csvdata
 
 settings = dict(
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
@@ -194,6 +231,7 @@ def main(port=8888):
     handlers = [ (r"/", MainHandler),
                  (r"/sequence", SequenceViewHandler),
                  (r"/global", GlobalViewHandler),
+                 (r"/download", DownloadHandler)
                  ]
     app = tornado.web.Application(handlers, **settings)
     #app.listen(8888)

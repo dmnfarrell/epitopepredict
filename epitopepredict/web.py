@@ -152,12 +152,15 @@ def sequence_to_html_grid(preds, classes='', **kwargs):
     """Put aligned or multiple identical rows in dataframe and convert to
     grid of aas as html table"""
 
-    data = []
+    seqdf = []
+    bdata = {}
     for P in preds:
         df = P.data
         if df is None:
             continue
         b = P.getBinders(**kwargs)
+        bdata[P.name] = b
+        #pb = P.promiscuousBinders(binders=b,**kwargs)
         l = base.get_length(df)
         grps = b.groupby('allele')
         alleles = grps.groups
@@ -166,19 +169,24 @@ def sequence_to_html_grid(preds, classes='', **kwargs):
         x = [(P.name,a,seq) for a in alleles]
         df = pd.DataFrame(x, columns=['pred','allele','seq']).set_index(['pred','allele'])
         df = df.seq.apply(lambda x: pd.Series(list(x)))
-        data.append(df)
-    data = pd.concat(data)
+        seqdf.append(df)
+    seqdf = pd.concat(seqdf)
 
     colors = plotting.get_bokeh_colors()
 
     def color(x):
         p, a = x.name
-        #print (a)
+        pos = []
         clr = colors[p]
-        color = [ 'background-color: %s; opacity: .8;' %clr for i in x]
-        return color
+        b = bdata[p]
+        f = list(b[b.allele==a].pos)
+        for i in f: pos.extend(np.arange(i,i+l))
+        clrs = ['' for i in x]
+        for i in pos:
+            clrs[i] = 'background-color: %s; opacity: .8;' %clr
+        return clrs
 
-    s = data.style\
+    s = seqdf.style\
              .set_table_attributes('class="%s"' %classes)\
              .apply(color,1)
     table = s.render()
