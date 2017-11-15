@@ -104,7 +104,7 @@ def ete_tree(aln):
     return
 
 def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
-                    compress=False):
+                    compress=False, cmd='blastp'):
     """Blast a local database"""
 
     start = time.time()
@@ -112,7 +112,7 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
         output = os.path.splitext(query)[0]+'.xml'
     #print output
     from Bio.Blast.Applications import NcbiblastxCommandline
-    cline = NcbiblastxCommandline(query=query,  cmd='blastp', max_target_seqs=maxseqs,
+    cline = NcbiblastxCommandline(query=query,  cmd=cmd, max_target_seqs=maxseqs,
                                  db=database, outfmt=5, out=output,
                                  evalue=evalue, num_threads=3)
     #print cline

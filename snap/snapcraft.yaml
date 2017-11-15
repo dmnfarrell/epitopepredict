@@ -1,5 +1,6 @@
 name: epitopepredict
 version: 'latest'
+version-script: git describe --abbrev=1 --tags
 summary: python package for MHC binding prediction
 description: |
  epitopepredict is a python package and command line interface that provides a standardized
