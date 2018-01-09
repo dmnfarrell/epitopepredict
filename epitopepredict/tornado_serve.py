@@ -14,7 +14,9 @@ from epitopepredict import base, web, analysis
 import tornado.ioloop
 import tornado.web
 from wtforms_tornado import Form
-from wtforms import TextField, StringField, SelectField, FloatField, BooleanField
+from wtforms import TextField, StringField, FloatField, IntegerField, BooleanField
+from wtforms import SelectField, SelectMultipleField
+from wtforms import widgets
 from tornado.web import RequestHandler
 from bokeh.util.browser import view
 from bokeh.plotting import figure
@@ -52,6 +54,21 @@ class ControlsForm(Form):
     view = SelectField('view', choices=views)
     cached = BooleanField('use cached')
 
+class SubmitForm(Form):
+    path = TextField('path', default='results')
+    pm = [(i,i) for i in base.predictors]
+    predictors = SelectMultipleField('predictors', choices=pm)
+    length = IntegerField('length', default=5)
+    p1 = base.get_predictor('iedbmhc1')
+    #x = [(i,i) for i in p1.getAlleles()]
+    #mhc1alleles = SelectField('MHC-I alleles', choices=x)
+    p2 = base.get_predictor('tepitope')
+    x = [(i,i) for i in p2.getAlleles()]
+    #drballeles = base.getDRBList(mhc2alleles)
+    #dqpalleles = base.getDQPList(mhc2alleles)
+    mhc2alleles = SelectMultipleField('MHC-II alleles', choices=x,
+                                     option_widget=widgets.Select(multiple=True))
+    mhc2alleles.size=5
 
 class MainHandler(RequestHandler):
     """Handler for main results page"""
@@ -214,6 +231,18 @@ class DownloadHandler(RequestHandler):
         csvdata = output.getvalue()
         return csvdata
 
+class SubmitJobHandler(RequestHandler):
+    def get(self):
+        args = self.request.arguments
+        defaultargs = get_args(args)
+        form = SubmitForm()
+        path = defaultargs['path']
+        #current_name = defaultargs['name']
+        helptext = 'The usual method is to select one or more predictors and appropriate alleles '\
+                   'which are then run at once for all the proteins in the chosen genome. '\
+                   'An entire proteome using multiple methods may take several hours to process. '
+        self.render('submit.html', form=form, path=path, helptext=helptext)
+
 settings = dict(
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
         static_path=os.path.join(os.path.dirname(__file__), "static"),
@@ -231,6 +260,7 @@ def main(port=8888):
     handlers = [ (r"/", MainHandler),
                  (r"/sequence", SequenceViewHandler),
                  (r"/global", GlobalViewHandler),
+                 (r"/submit", SubmitJobHandler),
                  (r"/download", DownloadHandler)
                  ]
     app = tornado.web.Application(handlers, **settings)

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block main %}
+
+	  <div class="main">
+		<div class="floatleft">
+		Submit new binding prediction calculations.
+		</div>
+		<form action="/submit" class="submitform">
+		  <div class="floatleft">
+			{{ form.path.label }}
+			{{ form.path }}
+			{{ form.predictors.label }}
+			{{ form.predictors }}
+			{{ form.length.label }}
+			{{ form.length }}
+			</div>
+
+			{{ form.mhc2alleles.label }}
+			{{ form.mhc2alleles }}
+
+			<input type="submit" class="button">
+		</form>
+
+		<div class="floatright">
+			{{ helptext }}
+		</div>
+
+	  </div>
+
+{% end %}

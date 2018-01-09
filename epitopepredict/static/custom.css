@@ -296,6 +296,10 @@ select {
     width: 150px;
 }
 
+.submitform {
+    background: #D8F6CE;
+}
+
 .tabs {
   position: relative;
   min-height: 450px;
