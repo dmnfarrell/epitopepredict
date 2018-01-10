@@ -296,10 +296,6 @@ select {
     width: 150px;
 }
 
-.submitform {
-    background: #D8F6CE;
-}
-
 .tabs {
   position: relative;
   min-height: 450px;
@@ -381,4 +377,17 @@ select {
 }
 .largetable td{
     padding: 0 0 0 20px ;
+}
+
+.combobox {
+    height: 100px;
+    width: 150px;
+}
+
+.submitform table{
+    background:  #F1F1F1;
+    padding: 10px;
+}
+.submitform td{
+    vertical-align: center;
 }

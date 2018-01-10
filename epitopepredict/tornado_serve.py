@@ -57,17 +57,22 @@ class ControlsForm(Form):
 class SubmitForm(Form):
     path = TextField('path', default='results')
     pm = [(i,i) for i in base.predictors]
-    predictors = SelectMultipleField('predictors', choices=pm)
-    length = IntegerField('length', default=5)
+    predictors = SelectMultipleField('predictors', choices=pm,
+                                     render_kw={"class": "combobox"})
+    length = IntegerField('length', default=11)
+    ps = [(i,i) for i in base.mhc1_presets+base.mhc2_presets]
+    ps.insert(0, ('',''))
+    presets = SelectField('Presets', choices=ps)
     p1 = base.get_predictor('iedbmhc1')
-    #x = [(i,i) for i in p1.getAlleles()]
-    #mhc1alleles = SelectField('MHC-I alleles', choices=x)
+    x = [(i,i) for i in p1.getAlleles()]
+    mhc1alleles = SelectMultipleField('MHC-I alleles', choices=x,
+                                      render_kw={"class": "combobox"})
     p2 = base.get_predictor('tepitope')
     x = [(i,i) for i in p2.getAlleles()]
     #drballeles = base.getDRBList(mhc2alleles)
     #dqpalleles = base.getDQPList(mhc2alleles)
     mhc2alleles = SelectMultipleField('MHC-II alleles', choices=x,
-                                     option_widget=widgets.Select(multiple=True))
+                                     render_kw={"class": "combobox"})
     mhc2alleles.size=5
 
 class MainHandler(RequestHandler):
@@ -240,8 +245,14 @@ class SubmitJobHandler(RequestHandler):
         #current_name = defaultargs['name']
         helptext = 'The usual method is to select one or more predictors and appropriate alleles '\
                    'which are then run at once for all the proteins in the chosen genome. '\
-                   'An entire proteome using multiple methods may take several hours to process. '
-        self.render('submit.html', form=form, path=path, helptext=helptext)
+                   'An entire proteome using multiple methods may take several hours to process. '\
+                   'Selection of alleles should always be tailored to your needs or the results '\
+                   'will not be meaningful. '
+        config = 'hi!'
+        #config.write_default_config(conffile, defaults=config.baseoptions)
+
+        self.render('submit.html', form=form, path=path, helptext=helptext, config=config)
+
 
 settings = dict(
         template_path=os.path.join(os.path.dirname(__file__), "templates"),

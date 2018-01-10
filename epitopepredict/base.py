@@ -1063,18 +1063,22 @@ class IEDBMHCIPredictor(Predictor):
         #print (df[:10])
         return df
 
-    def getMHCIList(self):
+    def getAlleles(self):
         """Get available alleles from model_list file and
             convert to standard names"""
 
-        afile = os.path.join(iedbmhc1path, 'data/MHCI_mhcibinding20130222/consensus/model_list.txt')
-        df = pd.read_csv(afile,sep='\t',names=['name','x'])
-        alleles = list(df['name'])
-        alleles = sorted(list(set([get_standard_mhc1(i) for i in alleles])))
+        try:
+            afile = os.path.join(iedbmhc1path, 'data/MHCI_mhcibinding20130222/consensus/model_list.txt')
+            df = pd.read_csv(afile,sep='\t',names=['name','x'])
+            alleles = list(df['name'])
+            alleles = sorted(list(set([get_standard_mhc1(i) for i in alleles])))
+        except:
+            alleles = pd.read_csv(os.path.join(datadir, 'iedb_mhc1_alleles.csv')).allele.values
         return alleles
 
-    def getAlleles(self):
+    def getAlleleData(self):
         if not os.path.exists(iedbmhc1path):
+            print ('iedb tools not found')
             return
         c = os.path.join(iedbmhc1path,'src/predict_binding.py')
         for m in self.methods:

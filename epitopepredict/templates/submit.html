@@ -5,25 +5,47 @@
 	  <div class="main">
 		<div class="floatleft">
 		Submit new binding prediction calculations.
-		</div>
-		<form action="/submit" class="submitform">
-		  <div class="floatleft">
-			{{ form.path.label }}
-			{{ form.path }}
-			{{ form.predictors.label }}
-			{{ form.predictors }}
-			{{ form.length.label }}
-			{{ form.length }}
-			</div>
 
-			{{ form.mhc2alleles.label }}
-			{{ form.mhc2alleles }}
+		<form action="/submit">
+		  <div class="submitform">
+			 <table class="submitform">
+				<tr>
+				<td>{{ form.path.label }}</td>
+				<td>{{ form.path }}</td>
+			 </tr>
+				<tr>
+			  <td>{{ form.predictors.label }}</td>
+				<td>{{ form.predictors }}
+			 </tr>
+				<tr>
+			  <td>{{ form.length.label }}</td>
+			  <td>{{ form.length }}</td>
+		   </tr>
+		  </table>
+			 </div>
+
+		  <div class="submitform">
+				<table class="submitform">
+					<tr>
+				<td>{{ form.presets.label}}</td>
+				<td>{{ form.presets}}</td>
+				<td>{{ form.mhc1alleles.label }}</td>
+				<td>{{ form.mhc1alleles }}</td>
+				<td>{{ form.mhc2alleles.label }}</td>
+				<td>{{ form.mhc2alleles}}</td></tr>
+				</table>
+				</div>
 
 			<input type="submit" class="button">
 		</form>
-
+	  </div>
 		<div class="floatright">
 			{{ helptext }}
+			<p><a>Configuration file is updated below. Save this and then run
+			<b>epitopepredict -r -c conffile</b> </a> </p>
+			<div class="monospace">
+				{{config}}
+			</div>
 		</div>
 
 	  </div>
