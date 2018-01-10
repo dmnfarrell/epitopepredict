@@ -7,15 +7,16 @@
 """
 
 import sys,os,glob
+from StringIO import StringIO
 import pandas as pd
 import numpy as np
-from epitopepredict import base, web, analysis
+from epitopepredict import base, web, analysis, config
 
 import tornado.ioloop
 import tornado.web
 from wtforms_tornado import Form
 from wtforms import TextField, StringField, FloatField, IntegerField, BooleanField
-from wtforms import SelectField, SelectMultipleField
+from wtforms import SelectField, SelectMultipleField, FileField
 from wtforms import widgets
 from tornado.web import RequestHandler
 from bokeh.util.browser import view
@@ -41,6 +42,12 @@ def get_args(args):
             defaults[k] = args[k][0]
     return defaults
 
+def str_to_html(s):
+    x=''
+    for i in s.split('\n'):
+        x+='<a>'+i+'</a><br>'
+    return x
+
 class ControlsForm(Form):
     name = SelectField('name', choices=[])
     path = TextField('path', default='results')
@@ -54,12 +61,17 @@ class ControlsForm(Form):
     view = SelectField('view', choices=views)
     cached = BooleanField('use cached')
 
-class SubmitForm(Form):
-    path = TextField('path', default='results')
+class ConfigForm(Form):
+    path = TextField('output path', default='results',
+                     render_kw={"class": "textbox"})
     pm = [(i,i) for i in base.predictors]
     predictors = SelectMultipleField('predictors', choices=pm,
                                      render_kw={"class": "combobox"})
-    length = IntegerField('length', default=11)
+    mhc1_length = IntegerField('mhc1 length', default=11)
+    mhc2_length = IntegerField('mhc2 length', default=15)
+    sequence_file = FileField('sequence file', default='')
+    overwrite = BooleanField('overwrite', default=True)
+
     ps = [(i,i) for i in base.mhc1_presets+base.mhc2_presets]
     ps.insert(0, ('',''))
     presets = SelectField('Presets', choices=ps)
@@ -236,22 +248,30 @@ class DownloadHandler(RequestHandler):
         csvdata = output.getvalue()
         return csvdata
 
-class SubmitJobHandler(RequestHandler):
+class MakeConfigHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
-        defaultargs = get_args(args)
-        form = SubmitForm()
-        path = defaultargs['path']
+        path=''
+        print ()
+        for a in args:
+            print (a, args[a])
+        #config.baseoptions
+
+        form = ConfigForm()
+        #path = defaultargs['path']
         #current_name = defaultargs['name']
         helptext = 'The usual method is to select one or more predictors and appropriate alleles '\
                    'which are then run at once for all the proteins in the chosen genome. '\
                    'An entire proteome using multiple methods may take several hours to process. '\
                    'Selection of alleles should always be tailored to your needs or the results '\
                    'will not be meaningful. '
-        config = 'hi!'
-        #config.write_default_config(conffile, defaults=config.baseoptions)
+        configtext = 'hi!'
+        cp = config.create_config_parser_from_dict()
+        out = StringIO()
+        cp.write(out)
+        conftext = str_to_html(out.getvalue())
 
-        self.render('submit.html', form=form, path=path, helptext=helptext, config=config)
+        self.render('makeconfig.html', form=form, path=path, helptext=helptext, conftext=conftext)
 
 
 settings = dict(
@@ -271,7 +291,7 @@ def main(port=8888):
     handlers = [ (r"/", MainHandler),
                  (r"/sequence", SequenceViewHandler),
                  (r"/global", GlobalViewHandler),
-                 (r"/submit", SubmitJobHandler),
+                 (r"/makeconfig", MakeConfigHandler),
                  (r"/download", DownloadHandler)
                  ]
     app = tornado.web.Application(handlers, **settings)

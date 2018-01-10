@@ -63,9 +63,11 @@ def write_default_config(conffile='default.conf', defaults={}):
         print ('wrote config file %s' %conffile)
     return conffile
 
-def create_config_parser_from_dict(data, sections, **kwargs):
+def create_config_parser_from_dict(data=None, sections=['base'], **kwargs):
     """Helper method to create a ConfigParser from a dict and/or keywords"""
 
+    if data is None:
+        data = baseoptions
     cp = configparser.ConfigParser()
     for s in sections:
         cp.add_section(s)
