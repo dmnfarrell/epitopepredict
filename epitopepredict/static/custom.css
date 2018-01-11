@@ -54,7 +54,9 @@ div.monospace {
     width: 95%;
     word-wrap: break-word;
 }
-
+b.monospace{
+  font-family: monospace;
+}
 div.warning{
     background:#ffcccc;
     padding: 5px 5px 5px 5px;

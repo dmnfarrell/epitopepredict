@@ -28,6 +28,7 @@ wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki/Web-Application'
 plotkinds = ['tracks','text','grid']
 cut_methods = ['default','rank','score']
 views = ['binders','promiscuous','by allele','summary']
+opts = config.baseoptions.copy()
 
 def help_msg():
     msg = '<a>path for results not found, enter an existing folder with your results. </a> '
@@ -45,7 +46,7 @@ def get_args(args):
 def str_to_html(s):
     x=''
     for i in s.split('\n'):
-        x+='<a>'+i+'</a><br>'
+        x+=i+'<br>'
     return x
 
 class ControlsForm(Form):
@@ -71,21 +72,23 @@ class ConfigForm(Form):
     mhc2_length = IntegerField('mhc2 length', default=15)
     sequence_file = FileField('sequence file', default='')
     overwrite = BooleanField('overwrite', default=True)
-
+    cpus = IntegerField('cpus', default=1)
     ps = [(i,i) for i in base.mhc1_presets+base.mhc2_presets]
     ps.insert(0, ('',''))
     presets = SelectField('Presets', choices=ps)
     p1 = base.get_predictor('iedbmhc1')
     x = [(i,i) for i in p1.getAlleles()]
-    mhc1alleles = SelectMultipleField('MHC-I alleles', choices=x,
+    mhc1_alleles = SelectMultipleField('MHC-I alleles', choices=x,
                                       render_kw={"class": "combobox"})
     p2 = base.get_predictor('tepitope')
     x = [(i,i) for i in p2.getAlleles()]
     #drballeles = base.getDRBList(mhc2alleles)
     #dqpalleles = base.getDQPList(mhc2alleles)
-    mhc2alleles = SelectMultipleField('MHC-II alleles', choices=x,
+    mhc2_alleles = SelectMultipleField('MHC-II alleles', choices=x,
                                      render_kw={"class": "combobox"})
-    mhc2alleles.size=5
+    mhc2_alleles.size=5
+    iedbmhc1_path = TextField('iedb MHCI tools path', default='/local/iedbmhc1')
+    iedbmhc2_path = TextField('iedb MHCII tools path', default='/local/iedbmhc2')
 
 class MainHandler(RequestHandler):
     """Handler for main results page"""
@@ -252,26 +255,24 @@ class MakeConfigHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         path=''
-        print ()
-        for a in args:
-            print (a, args[a])
-        #config.baseoptions
+        #opts = config.baseoptions
+        for s in opts:
+            for i in opts[s]:
+                for a in args:
+                    if a in opts[s]:
+                        print (args[a])
+                        opts[s][a] = args[a]
+        #print (opts)
 
-        form = ConfigForm()
-        #path = defaultargs['path']
-        #current_name = defaultargs['name']
-        helptext = 'The usual method is to select one or more predictors and appropriate alleles '\
-                   'which are then run at once for all the proteins in the chosen genome. '\
-                   'An entire proteome using multiple methods may take several hours to process. '\
-                   'Selection of alleles should always be tailored to your needs or the results '\
-                   'will not be meaningful. '
-        configtext = 'hi!'
-        cp = config.create_config_parser_from_dict()
+        #get configparser from args to make conf from form
+        cp = config.create_config_parser_from_dict(opts)
         out = StringIO()
         cp.write(out)
         conftext = str_to_html(out.getvalue())
 
-        self.render('makeconfig.html', form=form, path=path, helptext=helptext, conftext=conftext)
+        form = ConfigForm()
+
+        self.render('makeconfig.html', form=form, path=path, conftext=conftext)
 
 
 settings = dict(

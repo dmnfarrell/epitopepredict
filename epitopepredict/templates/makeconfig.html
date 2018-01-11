@@ -6,7 +6,7 @@
 		<div class="floatleft">
 		This form creates a config file for running binding predictions.
 
-		<form action="/makeconfig">
+	  <form action="/makeconfig">
 		  <div class="configform">
 			 <table class="configform">
 			  <tr>
@@ -24,40 +24,61 @@
 			  <tr>
 			    <td>{{ form.mhc2_length.label }}</td>
 			    <td>{{ form.mhc2_length }}</td>
-		      </tr>
+		     </tr>
 			  <tr>
 			    <td>{{ form.sequence_file.label }}</td>
 			    <td>{{ form.sequence_file }}</td>
-		      </tr>
+		     </tr>
 			  <tr>
 			    <td>{{ form.overwrite.label }}</td>
 			    <td>{{ form.overwrite }}</td>
-		      </tr>
-		  </table>
+		     </tr>
+			  <tr>
+			    <td>{{ form.cpus.label }}</td>
+			    <td>{{ form.cpus }}</td>
+		     </tr>
+ 		    </table>
 			 </div>
+
+		  <div class="configform">
+			  <table class="configform">
+			   <tr>
+				 <td>{{ form.iedbmhc1_path.label }}</td>
+				 <td>{{ form.iedbmhc1_path }}</td>
+			  </tr>
+			  </table>
+			</div>
 
 		  <div class="configform">
 				<table class="configform">
 					<tr>
 				<td>{{ form.presets.label}}</td>
 				<td>{{ form.presets}}</td>
-				<td>{{ form.mhc1alleles.label }}</td>
-				<td>{{ form.mhc1alleles }}</td>
-				<td>{{ form.mhc2alleles.label }}</td>
-				<td>{{ form.mhc2alleles}}</td></tr>
+				<td>{{ form.mhc1_alleles.label }}</td>
+				<td>{{ form.mhc1_alleles }}</td>
+				<td>{{ form.mhc2_alleles.label }}</td>
+				<td>{{ form.mhc2_alleles}}</td></tr>
 				</table>
 				</div>
 
 			<input type="submit" class="button">
 		</form>
 	  </div>
+
 		<div class="floatright">
-			{{ helptext }}
-			<p><a>Configuration file is updated below. Save this and then run
-			<b>epitopepredict -r -c conffile</b> </a> </p>
+			<p>
+				This page helps you generate a configuration file that can be used to then call the
+				command line interface to generate epitope predictions.
+				Select one or more predictors and appropriate alleles which are then run
+				for all the proteins in the chosen genome/sequence file. An entire proteome using
+				multiple methods may take some time to process. Selection of alleles should always
+				be tailored to your needs or the results will not be meaningful.
+			</p>
 			<div class="monospace">
 				{{conftext}}
 			</div>
+			<p>You can copy the configuration file text above and then use it to run
+			<b class="monospace">epitopepredict -r -c conffile</b> </p>
 		</div>
 
 	  </div>
