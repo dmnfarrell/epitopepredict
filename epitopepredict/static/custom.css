@@ -24,8 +24,8 @@ img {border:0}
 div {font: arial; vertical-align:top;}
 
 @font-face{
-font-family: lato;
-src: url('Lato-Regular.ttf');
+font-family: open sans;
+src: url('OpenSans-Regular.ttf');
 }
 
 div.main {
@@ -210,8 +210,8 @@ div.floatright {
 .sortable tr:nth-child(even){ background-color:#F7F7F7; }
 
 .genometable {
-    font-family:monospace;
-	font-size:13px;
+    font-family: monospace;
+	font-size: 13px;
 }.genometable td{
     border-spacing: 0;
     border-width:0px 0px 0px 0px;
@@ -233,18 +233,18 @@ div.floatright {
 }
 
 .divheader {
-    font-family: "Lato";
+    font-family: "open sans";
 	font-style: bold;
-	font-size: 18px;
+	font-size: 16px;
 	background-color: #F1F1F1;
 	padding: 4px;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
     background-image:url('pattern1.png');
 }
 
 .divheader h3{
     font-size:2.00em;
-    font-family: "Lato";
+    font-family: "open sans";
 }
 .divheader img {
     float: right;
@@ -286,8 +286,8 @@ input[type=text],input[type=password]{
     border: solid 1px #cbc9c9;
     margin-left: 2px;
     margin-right: 4px;
-    margin-top: 10px;
-    padding-left: 10px;
+    margin-top: 5px;
+    padding-left: 5px;
 }
 
 input.button {
@@ -366,7 +366,7 @@ select {
   -webkit-border-radius: 5;
   -moz-border-radius: 5;
   border-radius: 5px;
-  font-family: "Lato" Arial;
+  font-family: "open sans" Arial;
   color: #f5f5f5;
   font-size: 24px;
   padding: 10px 20px 10px 20px;
@@ -378,7 +378,7 @@ select {
   text-decoration: none;
 }
 .largebtn span {
-    font-family: "Lato" Arial;
+    font-family: "open sans" Arial;
     display: inline-block;
     padding: 20px 30px 20px 30px;
     width: 120px;
@@ -391,7 +391,7 @@ select {
     max-width: 70%;
 }
 .largetable td{
-    font-family: "Lato" Arial;
+    font-family: "open sans" Arial;
     padding: 0 0 0 20px ;
 }
 
@@ -409,4 +409,7 @@ select {
 }
 .configform td{
     valign: top;
+}
+.configform input{
+    width: 200px;
 }

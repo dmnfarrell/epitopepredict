@@ -17,6 +17,7 @@ import tornado.web
 from wtforms_tornado import Form
 from wtforms import TextField, StringField, FloatField, IntegerField, BooleanField
 from wtforms import SelectField, SelectMultipleField, FileField
+from wtforms.validators import DataRequired, Length
 from wtforms import widgets
 from tornado.web import RequestHandler
 from bokeh.util.browser import view
@@ -49,6 +50,14 @@ def str_to_html(s):
         x+=i+'<br>'
     return x
 
+def is_seqfile(message=u'Wrong format file!', extensions=None):
+    if not extensions:
+        extensions = ('fasta', 'faa', 'fa', 'gbk', 'gb')
+    def _is_seqfile(form, field):
+        if not field.data or field.data.split('.')[-1] not in extensions:
+            raise ValidationError(message)
+    return _is_seqfile
+
 class ControlsForm(Form):
     name = SelectField('name', choices=[])
     path = TextField('path', default='results')
@@ -63,14 +72,14 @@ class ControlsForm(Form):
     cached = BooleanField('use cached')
 
 class ConfigForm(Form):
-    path = TextField('output path', default='results',
+    path = TextField('output path', default='results', validators=[DataRequired()],
                      render_kw={"class": "textbox"})
     pm = [(i,i) for i in base.predictors]
     predictors = SelectMultipleField('predictors', choices=pm,
                                      render_kw={"class": "combobox"})
     mhc1_length = IntegerField('mhc1 length', default=11)
     mhc2_length = IntegerField('mhc2 length', default=15)
-    sequence_file = FileField('sequence file', default='')
+    sequence_file = FileField('sequence file', validators=[DataRequired(), is_seqfile()], default='')
     overwrite = BooleanField('overwrite', default=True)
     cpus = IntegerField('cpus', default=1)
     ps = [(i,i) for i in base.mhc1_presets+base.mhc2_presets]
@@ -270,8 +279,9 @@ class MakeConfigHandler(RequestHandler):
         cp.write(out)
         conftext = str_to_html(out.getvalue())
 
-        form = ConfigForm()
-
+        form = ConfigForm(args)
+        if form.validate():
+            pass
         self.render('makeconfig.html', form=form, path=path, conftext=conftext)
 
 
