@@ -8,6 +8,7 @@
 
 import sys,os,glob
 from StringIO import StringIO
+import pprint
 import pandas as pd
 import numpy as np
 from epitopepredict import base, web, analysis, config
@@ -17,7 +18,7 @@ import tornado.web
 from wtforms_tornado import Form
 from wtforms import TextField, StringField, FloatField, IntegerField, BooleanField
 from wtforms import SelectField, SelectMultipleField, FileField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Length, ValidationError
 from wtforms import widgets
 from tornado.web import RequestHandler
 from bokeh.util.browser import view
@@ -46,11 +47,19 @@ def get_args(args):
 
 def str_to_html(s):
     x=''
-    for i in s.split('\n'):
+    for i in s.splitlines():
         x+=i+'<br>'
     return x
 
-def is_seqfile(message=u'Wrong format file!', extensions=None):
+def dict_to_html(d):
+    x=''
+    pp = pprint.PrettyPrinter(depth=2)
+    s = pp.pformat(d)
+    for i in s.splitlines():
+        x+=i+'<br>'
+    return x
+
+def is_seqfile(message=u'Wrong format file. Should be fasta or genbank', extensions=None):
     if not extensions:
         extensions = ('fasta', 'faa', 'fa', 'gbk', 'gb')
     def _is_seqfile(form, field):
@@ -79,12 +88,13 @@ class ConfigForm(Form):
                                      render_kw={"class": "combobox"})
     mhc1_length = IntegerField('mhc1 length', default=11)
     mhc2_length = IntegerField('mhc2 length', default=15)
-    sequence_file = FileField('sequence file', validators=[DataRequired(), is_seqfile()], default='')
+    sequence_file = FileField('sequence file',
+                              validators=[DataRequired(), is_seqfile()], default='')
     overwrite = BooleanField('overwrite', default=True)
     cpus = IntegerField('cpus', default=1)
     ps = [(i,i) for i in base.mhc1_presets+base.mhc2_presets]
     ps.insert(0, ('',''))
-    presets = SelectField('Presets', choices=ps)
+    presets = SelectField('Presets', choices=ps, default='')
     p1 = base.get_predictor('iedbmhc1')
     x = [(i,i) for i in p1.getAlleles()]
     mhc1_alleles = SelectMultipleField('MHC-I alleles', choices=x,
@@ -96,8 +106,8 @@ class ConfigForm(Form):
     mhc2_alleles = SelectMultipleField('MHC-II alleles', choices=x,
                                      render_kw={"class": "combobox"})
     mhc2_alleles.size=5
-    iedbmhc1_path = TextField('iedb MHCI tools path', default='/local/iedbmhc1')
-    iedbmhc2_path = TextField('iedb MHCII tools path', default='/local/iedbmhc2')
+    iedbmhc1_path = TextField('iedb MHC-I tools path')
+    iedbmhc2_path = TextField('iedb MHC-II tools path')
 
 class MainHandler(RequestHandler):
     """Handler for main results page"""
@@ -169,8 +179,8 @@ class GenomeViewHandler(RequestHandler):
 
 class SequenceViewHandler(RequestHandler):
     """Handler for main results page"""
-    def get(self):
 
+    def get(self):
         args = self.request.arguments
         defaultargs = get_args(args)
         form = ControlsForm()
@@ -239,6 +249,8 @@ class SequenceViewHandler(RequestHandler):
         return s
 
 class DownloadHandler(RequestHandler):
+    """Download tables as csv"""
+
     def get(self):
         args = self.request.arguments
         args = get_args(args)
@@ -261,17 +273,21 @@ class DownloadHandler(RequestHandler):
         return csvdata
 
 class MakeConfigHandler(RequestHandler):
+    """Make a config file from form"""
+
     def get(self):
         args = self.request.arguments
         path=''
-        #opts = config.baseoptions
         for s in opts:
             for i in opts[s]:
                 for a in args:
                     if a in opts[s]:
-                        print (args[a])
                         opts[s][a] = args[a]
-        #print (opts)
+
+        if 'sequence_file' in args:
+            seqfile = args['sequence_file'][0]
+            #if os.path.exists(seqfile):
+            opts['base']['sequence_file'] = seqfile = os.path.abspath(seqfile)
 
         #get configparser from args to make conf from form
         cp = config.create_config_parser_from_dict(opts)
@@ -280,9 +296,14 @@ class MakeConfigHandler(RequestHandler):
         conftext = str_to_html(out.getvalue())
 
         form = ConfigForm(args)
+        #form.sequence_file.data = seqfile
+        errors='no errors'
         if form.validate():
             pass
-        self.render('makeconfig.html', form=form, path=path, conftext=conftext)
+        else:
+            errors = 'please fix the following errors:<br>'
+            errors += dict_to_html(form.errors)
+        self.render('makeconfig.html', form=form, path=path, conftext=conftext, errors=errors)
 
 
 settings = dict(

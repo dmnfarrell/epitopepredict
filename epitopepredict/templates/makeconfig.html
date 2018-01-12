@@ -7,7 +7,8 @@
 		This form creates a config file for running binding predictions.
 
 	  <form action="/makeconfig">
-		  <div class="configform">
+			<div>
+		  <div class="configform" style="float:left;">
 			 <table class="configform">
 			  <tr>
 				<td>{{ form.path.label }}</td>
@@ -40,13 +41,18 @@
  		    </table>
 			 </div>
 
-		  <div class="configform">
+		  <div class="configform" style="float:right;">
 			  <table class="configform">
 			   <tr>
 				 <td>{{ form.iedbmhc1_path.label }}</td>
 				 <td>{{ form.iedbmhc1_path }}</td>
 			  </tr>
+			   <tr>
+				 <td>{{ form.iedbmhc2_path.label }}</td>
+				 <td>{{ form.iedbmhc2_path }}</td>
+			  </tr>
 			  </table>
+			</div>
 			</div>
 
 		  <div class="configform">
@@ -74,6 +80,9 @@
 				multiple methods may take some time to process. Selection of alleles should always
 				be tailored to your own requirements.
 			</p>
+			<div class="monospace" style="background: #F7DDD8;">
+				{{errors}}
+			</div>
 			<div class="monospace">
 				{{conftext}}
 			</div>
