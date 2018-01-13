@@ -14,13 +14,17 @@ from . import base, analysis, sequtils
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
+path = os.path.dirname(os.path.abspath(__file__))
+testdir = os.path.join(path, 'testing')
+
 class PredictorTests(unittest.TestCase):
     """Basic tests for predictor"""
 
     def setUp(self):
-        genbankfile = 'testing/zaire-ebolavirus.gb'
-        self.df = sequtils.genbank_to_dataframe(genbankfile, cds=True)
-        self.testdir = 'testing'
+        self.genbankfile = os.path.join(testdir, 'zaire-ebolavirus.gb')
+        self.fastafile = os.path.join(testdir, 'zaire-ebolavirus.faa')
+        self.df = sequtils.genbank_to_dataframe(self.genbankfile, cds=True)
+        self.testdir = testdir
         if not os.path.exists(self.testdir):
             os.mkdir(self.testdir)
         return
@@ -105,8 +109,7 @@ class PredictorTests(unittest.TestCase):
     def test_fasta(self):
         """Test fasta predictions"""
 
-        fastafile = 'testing/zaire-ebolavirus.faa'
-        df = sequtils.fasta_to_dataframe(fastafile)
+        df = sequtils.fasta_to_dataframe(self.fastafile)
         alleles = ["HLA-DRB1*0101"]
         P = base.get_predictor('tepitope')
         P.predictProteins(df, length=11, alleles=alleles, path=self.testdir)
@@ -137,8 +140,7 @@ class PredictorTests(unittest.TestCase):
     def test_features(self):
         """Test genbank feature handling"""
 
-        fastafile = 'testing/zaire-ebolavirus.faa'
-        df = sequtils.fasta_to_dataframe(fastafile)
+        df = sequtils.fasta_to_dataframe(self.fastafile)
         name = 'ZEBOVgp1'
         sequtils.dataframe_to_fasta(df)
         sequtils.check_tags(df)

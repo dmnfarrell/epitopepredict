@@ -33,7 +33,8 @@ except:
 path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')
 
-baseoptions = {'base': {'predictors': 'tepitope',
+baseoptions = OrderedDict()
+baseoptions['base'] = {'predictors': 'tepitope',
                 'mhc2_alleles':'HLA-DRB1*01:01,HLA-DRB1*04:01',
                 'mhc1_alleles':'HLA-A*01:01',
                 'mhc1_length': 11,
@@ -49,12 +50,10 @@ baseoptions = {'base': {'predictors': 'tepitope',
                 'overwrite': 'no',
                 'plots': 'no', #whether to save plots
                 'genome_analysis': 'no',
-                'cpus': 1},
-              'iedbtools': {'iedbmhc1_path':'', 'iedbmhc2_path':'',
+                'cpus': 1}
+baseoptions['iedbtools'] = {'iedbmhc1_path':'', 'iedbmhc2_path':'',
                             'iedb_mhc1_method':'IEDB_recommended',
                             'iedb_mhc2_method':'IEDB_recommended'}
-                }
-#baseoptions = OrderedDict(baseoptions)
 
 def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
@@ -76,8 +75,7 @@ def create_config_parser_from_dict(data=None, sections=['base','iedbtools'], **k
         cp.add_section(s)
         if not data.has_key(s):
             continue
-        for name in data[s]:
-            #name,val = i
+        for name in sorted(data[s]):
             val = data[s][name]
             if type(val) is list:
                 val = ','.join(val)

@@ -217,6 +217,20 @@ def list_alleles():
         print ()
     return
 
+def test_run():
+    """Test run for a HIV sample file"""
+
+    path = os.path.dirname(os.path.abspath(__file__))
+    options = config.baseoptions
+    options['base']['sequence_file'] = os.path.join(path, 'testing','HIV-1.fa')
+    options['base']['mhc2_alleles'] = 'human_common_mhc2'
+    options['base']['path'] = 'hiv1_test'
+    options['base']['verbose'] = True
+    options = config.check_options(options)
+    W = WorkFlow(options)
+    st = W.setup()
+    W.run()
+
 def main():
     "Run the application"
 
@@ -232,7 +246,7 @@ def main():
     parser.add_option("-l", "--list-alleles", dest="list_alleles",  action="store_true",
                         default=False, help="List available alleles")
     parser.add_option("-t", "--test", dest="test",  action="store_true",
-                        default=False, help="Do quick test")
+                        default=False, help="Do test predictions")
     parser.add_option("-a", "--analysis", dest="analysis",
                         help="Analysis path", metavar="FILE")
     parser.add_option("-s", "--server", dest="server",  action="store_true",
@@ -266,6 +280,9 @@ def main():
         #webapp.run(port=5000, debug=True)
         import epitopepredict.tornado_serve
         epitopepredict.tornado_serve.main(opts.port)
+    elif opts.test == True:
+        test_run()
+        print ('these test predictions can be viewed in the web app')
     else:
         print_help()
 

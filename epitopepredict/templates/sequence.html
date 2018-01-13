@@ -24,10 +24,10 @@
 			{{ form.view.label }}
 			{{ form.view }}
 			<input type="submit" class="button">
-
 		</form>
 		</div>
 		{%if status == 0 %}
+	    </div>
 		<div class="warning">{{ msg }}</div>
 		{% else %}
 
@@ -54,6 +54,7 @@
 			{{ tables }}
 		</div>
 		{% end %}
+
 	  </div>
 
 {% end %}

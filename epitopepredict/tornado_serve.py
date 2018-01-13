@@ -33,7 +33,7 @@ views = ['binders','promiscuous','by allele','summary']
 opts = config.baseoptions.copy()
 
 def help_msg():
-    msg = '<a>path for results not found, enter an existing folder with your results. </a> '
+    msg = 'path for results not found, enter an existing folder with your results.  '
     msg += '<a href="%s"> see help page</a>' %wikipage
     return msg
 
@@ -67,6 +67,12 @@ def is_seqfile(message=u'Wrong format file. Should be fasta or genbank', extensi
             raise ValidationError(message)
     return _is_seqfile
 
+def exists(message=u'File does not exist'):
+    def _exists(form, field):
+        if not os.path.exists(field.data):
+            raise ValidationError(message)
+    return _exists
+
 class ControlsForm(Form):
     name = SelectField('name', choices=[])
     path = TextField('path', default='results')
@@ -88,13 +94,16 @@ class ConfigForm(Form):
                                      render_kw={"class": "combobox"})
     mhc1_length = IntegerField('mhc1 length', default=11)
     mhc2_length = IntegerField('mhc2 length', default=15)
-    sequence_file = FileField('sequence file',
-                              validators=[DataRequired(), is_seqfile()], default='')
-    overwrite = BooleanField('overwrite', default=True)
+    sequence_file = TextField('sequence file',
+                              validators=[DataRequired(), is_seqfile(), exists()], default='')
+    overwrite = BooleanField('overwrite', default=False, false_values={False, 'n', ''})
     cpus = IntegerField('cpus', default=1)
-    ps = [(i,i) for i in base.mhc1_presets+base.mhc2_presets]
-    ps.insert(0, ('',''))
-    presets = SelectField('Presets', choices=ps, default='')
+    ps1 = [(i,i) for i in base.mhc1_presets]
+    ps1.insert(0, ('',''))
+    mhc1_presets = SelectField('MHC-I presets', choices=ps1, default='')
+    ps2 = [(i,i) for i in base.mhc2_presets]
+    ps2.insert(0, ('',''))
+    mhc2_presets = SelectField('MHC-II presets', choices=ps2, default='')
     p1 = base.get_predictor('iedbmhc1')
     x = [(i,i) for i in p1.getAlleles()]
     mhc1_alleles = SelectMultipleField('MHC-I alleles', choices=x,
@@ -284,11 +293,14 @@ class MakeConfigHandler(RequestHandler):
                     if a in opts[s]:
                         opts[s][a] = args[a]
 
-        if 'sequence_file' in args:
-            seqfile = args['sequence_file'][0]
-            #if os.path.exists(seqfile):
-            opts['base']['sequence_file'] = seqfile = os.path.abspath(seqfile)
-
+        #print (args)
+        o=opts['base']
+        if 'overwrite' not in args:
+            o['overwrite'] = 'no'
+        if 'mhc1_presets' in args and args['mhc1_presets'][0] != '':
+            o['mhc1_alleles'] = args['mhc1_presets']
+        if 'mhc2_presets' in args and args['mhc2_presets'][0] != '':
+            o['mhc2_alleles'] = args['mhc2_presets']
         #get configparser from args to make conf from form
         cp = config.create_config_parser_from_dict(opts)
         out = StringIO()
@@ -296,7 +308,6 @@ class MakeConfigHandler(RequestHandler):
         conftext = str_to_html(out.getvalue())
 
         form = ConfigForm(args)
-        #form.sequence_file.data = seqfile
         errors='no errors'
         if form.validate():
             pass

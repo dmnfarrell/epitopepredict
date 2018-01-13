@@ -58,12 +58,14 @@
 		  <div class="configform">
 				<table class="configform">
 					<tr>
-				<td>{{ form.presets.label}}</td>
-				<td>{{ form.presets}}</td>
-				<td>{{ form.mhc1_alleles.label }}</td>
-				<td>{{ form.mhc1_alleles }}</td>
-				<td>{{ form.mhc2_alleles.label }}</td>
-				<td>{{ form.mhc2_alleles}}</td></tr>
+				<td>{{ form.mhc1_presets.label}}
+				{{ form.mhc1_presets}}</td>
+				<td>{{ form.mhc2_presets.label}}
+				{{ form.mhc2_presets}}</td>
+				<td>{{ form.mhc1_alleles.label }}
+				{{ form.mhc1_alleles }}</td>
+				<td>{{ form.mhc2_alleles.label }}
+				{{ form.mhc2_alleles}}</td></tr>
 				</table>
 				</div>
 
@@ -73,11 +75,10 @@
 
 		<div class="floatright">
 			<p>
-				This page helps you generate a configuration file that can be used to then call the
-				command line interface to generate epitope predictions.
-				Select one or more predictors and appropriate alleles which are then run
-				for all the proteins in the chosen genome/sequence file. An entire proteome using
-				multiple methods may take some time to process. Selection of alleles should always
+				This page generates a configuration file from a form that can be used to then call the
+				command line interface to generate epitope predictions. You can then view the results in this
+				web application. Select one or more predictors and appropriate alleles which are then run
+				for all the proteins in the chosen genome/sequence file. Selection of alleles should always
 				be tailored to your own requirements.
 			</p>
 			<div class="monospace" style="background: #F7DDD8;">
