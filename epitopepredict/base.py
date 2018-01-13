@@ -12,6 +12,13 @@ import csv, glob, pickle, tempfile
 import time, io
 import operator as op
 import re, types
+try:
+    unicode = unicode
+except NameError:
+    #unicode is undefined, must be Python 3
+    str = str
+    unicode = str
+    basestring = (str,bytes)
 import math
 import subprocess
 from subprocess import CalledProcessError
@@ -103,7 +110,7 @@ def dbscan(B=None, x=None, dist=7, minsize=4):
         if len(B)==0:
             return
         x = sorted(B.pos.astype('int'))
-    X = np.array(zip(x,np.zeros(len(x))), dtype=np.int)
+    X = np.array(list(zip(x,np.zeros(len(x)))), dtype=np.int)
     db = DBSCAN(eps=dist, min_samples=minsize)
     db.fit(X)
     labels = db.labels_

@@ -134,7 +134,7 @@ def check_options(opts):
     """Check for missing default options in dict. Meant to handle
        incomplete config files"""
 
-    sections = baseoptions.keys()
+    sections = list(baseoptions.keys())
     for s in sections:
         defaults = dict(baseoptions[s])
         for i in defaults:
