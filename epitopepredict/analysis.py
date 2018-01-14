@@ -353,6 +353,77 @@ def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=No
                 cbar=False, square=True)
     return c
 
+def _region_query(P, eps, D):
+	neighbourPts = []
+	for point in D:
+		if abs(P - point)<eps:
+			neighbourPts.append(point)
+	return neighbourPts
+
+def _expand_cluster(P, neighbourPts, C, c_n, eps, MinPts, D, visited):
+
+    flatten = lambda l: [i for sublist in l for i in sublist]
+    C[c_n].append(P)
+    for point in neighbourPts:
+        if point not in visited:
+            visited.append(point)
+            neighbourPts_2 = _region_query(point, eps, D)
+            if len(neighbourPts_2) >= MinPts:
+                neighbourPts += neighbourPts_2
+        #print (point,C)
+        if point not in flatten(C):
+            C[c_n].append(point)
+
+def _dbscan(D, eps=5, minsize=2):
+    """
+    1D intervals using dbscan. Density-Based Spatial clustering.
+    Finds core samples of high density and expands clusters from them.
+    """
+    from numpy.random import rand
+    noise = []
+    visited = []
+    C = []
+    c_n = -1
+    for point in D:
+        visited.append(point)
+        neighbourPts = _region_query(point, eps, D)
+        if len(neighbourPts) < minsize:
+            noise.append(point)
+        else:
+            C.append([])
+            c_n+=1
+            _expand_cluster(point, neighbourPts, C, c_n,eps, minsize, D, visited)
+
+    C = [i for i in C if len(i)>=minsize]
+    #for cl in C:
+    #    print (cl)
+    return C
+
+def dbscan(B=None, x=None, dist=7, minsize=4):
+    """Use dbscan algorithm to cluster binder positions"""
+
+    if B is not None:
+        if len(B)==0:
+            return
+        x = sorted(B.pos.astype('int'))
+    clusts = _dbscan(x, dist, minsize)
+
+    '''from sklearn.cluster import DBSCAN
+    X = np.array(list(zip(x,np.zeros(len(x)))), dtype=np.int)
+    db = DBSCAN(eps=dist, min_samples=minsize)
+    db.fit(X)
+    labels = db.labels_
+    n_clusters_ = len(set(labels))
+    clusts=[]
+    for k in range(n_clusters_):
+        my_members = labels == k
+        #print "cluster {0}: {1}".format(k, X[my_members, 0])
+        if len(X[my_members, 0])>0:
+            clusts.append(list(X[my_members, 0]))'''
+
+    #print (clusts)
+    return clusts
+
 def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
                  genome=None, colname='peptide'):
     """
@@ -378,7 +449,7 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
         #print ('using dist for clusters: %s' %dist)
     for n,b in grps:
         if len(b)==0: continue
-        clusts = base.dbscan(b,dist=dist,minsize=min_binders)
+        clusts = dbscan(b,dist=dist,minsize=min_binders)
         if len(clusts) == 0:
             continue
         for c in clusts:

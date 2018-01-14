@@ -101,29 +101,6 @@ def get_overlapping(index, s, length=9, cutoff=25):
             break
     return g
 
-def dbscan(B=None, x=None, dist=7, minsize=4):
-    """Density-Based Spatial clustering. Finds core samples of
-      high density and expands clusters from them."""
-
-    from sklearn.cluster import DBSCAN
-    if B is not None:
-        if len(B)==0:
-            return
-        x = sorted(B.pos.astype('int'))
-    X = np.array(list(zip(x,np.zeros(len(x)))), dtype=np.int)
-    db = DBSCAN(eps=dist, min_samples=minsize)
-    db.fit(X)
-    labels = db.labels_
-    n_clusters_ = len(set(labels))
-    clusts=[]
-    for k in range(n_clusters_):
-        my_members = labels == k
-        #print "cluster {0}: {1}".format(k, X[my_members, 0])
-        if len(X[my_members, 0])>0:
-            clusts.append(list(X[my_members, 0]))
-    #print clusts
-    return clusts
-
 def get_predictor(name='tepitope', **kwargs):
     """Get a predictor"""
 
