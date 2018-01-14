@@ -9,7 +9,7 @@ description: |
 
 grade: stable
 confinement: strict
-icon: ../img/logo.png
+icon: snap/gui/icon.png
 
 apps:
   epitopepredict:
