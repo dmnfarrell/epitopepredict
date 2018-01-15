@@ -253,6 +253,9 @@ def main():
                         default=False, help="Run web app")
     parser.add_option("-x", "--port", dest="port", default=8888,
                         help="Port for web app, default 8888")
+    parser.add_option("-v", "--version", dest="version", action="store_true",
+                        help="Get version")
+
     opts, remainder = parser.parse_args()
 
     if opts.config != None:
@@ -283,6 +286,9 @@ def main():
     elif opts.test == True:
         test_run()
         print ('these test predictions can be viewed in the web app')
+    elif opts.version == True:
+        from . import __version__
+        print ('epitopepredict version %s' %__version__)
     else:
         print_help()
 
