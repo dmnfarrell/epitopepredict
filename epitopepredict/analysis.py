@@ -209,7 +209,7 @@ def get_overlaps(df1, df2, label='overlap', how='inside'):
 def get_orthologs(seq, db=None, expect=1, hitlist_size=400, equery=None,
                   email=''):
     """
-    Fetch orthologous sequences using online blast and return the records
+    Fetch orthologous sequences using remote or local blast and return the records
     as a dataframe.
     Args:
         seq: sequence to blast
@@ -249,6 +249,11 @@ def get_orthologs(seq, db=None, expect=1, hitlist_size=400, equery=None,
     df = df.drop(['subj','positive','query_length','score'],1)
     df.drop_duplicates(subset=['definition','perc_ident'], inplace=True)
     df = df[df['perc_ident']!=100]
+    return df
+
+def alignment_to_dataframe(aln):
+    alnrows = [[str(a.id),str(a.seq)] for a in aln]
+    df = pd.DataFrame(alnrows,columns=['accession','seq'])
     return df
 
 def align_blast_results(df, aln=None, idkey='accession', productkey='definition'):
@@ -347,10 +352,6 @@ def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=No
     if len(c) == 0:
         print ('no conserved epitopes in any sequence')
         return
-    #c['fraction'] = (c.count(1)/len(c.columns)).round(2)
-    h=int(len(c)/2.)+2
-    sns.heatmap(c, linewidths=1, cmap='summer', linecolor='black',
-                cbar=False, square=True)
     return c
 
 def _region_query(P, eps, D):
