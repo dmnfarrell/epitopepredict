@@ -29,6 +29,9 @@ class WorkFlow(object):
         base.iedbmhc1path = self.iedbmhc1_path
         base.iedbmhc2path = self.iedbmhc2_path
         self.sequences = get_sequences(self.sequence_file)
+        if len(self.sequences) == 0:
+            print ('no sequences found')
+            return False
         self.mhc1_alleles = self.mhc1_alleles.split(',')
         self.mhc2_alleles = self.mhc2_alleles.split(',')
         if len(self.mhc1_alleles)==0 and len(self.mhc2_alleles)==0:
@@ -156,10 +159,9 @@ def get_sequences(filename):
     ext = os.path.splitext(filename)[1]
     if ext in ['.fa','.faa','.fasta']:
         seqs = sequtils.fasta_to_dataframe(filename)
-        print ('found fasta file')
-    elif ext in ['.gb','.gbk','.genbank']:
+        #print ('found fasta file')
+    elif ext in ['.gb','.gbk','.genbank','.gbff']:
         seqs = sequtils.genbank_to_dataframe(filename, cds=True)
-        print ('found genbank file')
     return seqs
 
 def iedb_checks(method):

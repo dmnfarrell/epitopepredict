@@ -268,8 +268,8 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
         allfeat.append(d)
 
     df = pd.DataFrame(allfeat,columns=featurekeys)
+    df['length'] = df.translation.astype('str').str.len()
     #print (df)
-    df['length'] = df.translation.str.len()
     df = check_tags(df)
     if quiet == False:
         print('---- %s summary ----' %infile)
@@ -279,6 +279,10 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
     if cds == True:
         df = getCDS(df)
         df['order'] = range(1,len(df)+1)
+    #print (df)
+    if len(df) == 0:
+        print ('ERROR: genbank file return empty data, check that the file contains protein sequences '\
+               'in the translation qualifier of each protein feature.' )
     return df
 
 def check_tags(df):
