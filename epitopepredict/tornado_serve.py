@@ -343,7 +343,7 @@ def main(port=8888):
     http_server.listen(port)
     io_loop = tornado.ioloop.IOLoop.current()
     #io_loop.add_callback(view, "http://localhost:8888/")
-    view("http://localhost:8888/")
+    view("http://localhost:%s/" %port)
     io_loop.start()
 
 

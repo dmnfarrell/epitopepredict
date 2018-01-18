@@ -50,7 +50,9 @@ baseoptions['base'] = {'predictors': 'tepitope',
                 'overwrite': 'no',
                 'plots': 'no', #whether to save plots
                 'genome_analysis': 'no',
-                'cpus': 1}
+                'cpus': 1,
+                'fasta_header_sep': ' '}
+
 baseoptions['iedbtools'] = {'iedbmhc1_path':'', 'iedbmhc2_path':'',
                             'iedb_mhc1_method':'IEDB_recommended',
                             'iedb_mhc2_method':'IEDB_recommended'}

@@ -28,7 +28,7 @@ class WorkFlow(object):
         pd.set_option('display.width', 120)
         base.iedbmhc1path = self.iedbmhc1_path
         base.iedbmhc2path = self.iedbmhc2_path
-        self.sequences = get_sequences(self.sequence_file)
+        self.sequences = get_sequences(self.sequence_file, header_sep=self.fasta_header_sep)
         if len(self.sequences) == 0:
             print ('no sequences found')
             return False
@@ -153,12 +153,12 @@ class WorkFlow(object):
         print ('saved plots')
         return
 
-def get_sequences(filename):
+def get_sequences(filename, header_sep=None):
     """Determine file type and get sequences"""
 
     ext = os.path.splitext(filename)[1]
     if ext in ['.fa','.faa','.fasta']:
-        seqs = sequtils.fasta_to_dataframe(filename)
+        seqs = sequtils.fasta_to_dataframe(filename, header_sep=header_sep)
         #print ('found fasta file')
     elif ext in ['.gb','.gbk','.genbank','.gbff']:
         seqs = sequtils.genbank_to_dataframe(filename, cds=True)

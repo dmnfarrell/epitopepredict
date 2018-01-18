@@ -186,7 +186,7 @@ def blast_sequences(database, seqs, labels=None, maxseqs=10):
         res.append(df)
     return pd.concat(res)
 
-def fasta_to_dataframe(infile):
+def fasta_to_dataframe(infile, header_sep=None):
     """Get fasta proteins into dataframe"""
 
     recs = SeqIO.parse(infile,'fasta')
@@ -195,6 +195,9 @@ def fasta_to_dataframe(infile):
     df = pd.DataFrame(data,columns=(keys))
     df['type'] = 'CDS'
     #fix bad names
+    print ('header_sep')
+    if header_sep not in ['',None]:
+        df['locus_tag'] = df.locus_tag.apply(lambda x: x.split(header_sep)[0],1)
     df['locus_tag'] = df.locus_tag.str.replace('|','_')
     return df
 
