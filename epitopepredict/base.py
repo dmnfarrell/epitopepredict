@@ -411,7 +411,7 @@ class Predictor(object):
         Args:
             name: name of protein in predictions, optional
             cutoff: percentile cutoff for score or rank cutoff if value='rank'
-            value: 'score' or 'rank'
+            value: 'default', 'score' or 'rank'
         Returns:
             binders above cutoff in all alleles, pandas dataframe
         """
@@ -559,6 +559,9 @@ class Predictor(object):
 
         results=[]
         #print (sequences)
+        if len(alleles)==0:
+            print ('no alleles specified')
+            return
         if type(sequences) is list:
             sequences = pd.DataFrame(sequences, columns=['peptide'])
             sequences['name'] = sequences.peptide

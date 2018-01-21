@@ -7,6 +7,7 @@
 """
 
 import os, random, csv
+import pandas as pd
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
@@ -42,6 +43,19 @@ def create_random_peptides(size=100,length=9):
         files.append(sfile)
     return files
 
+def get_fragments(seq=None, overlap=1, length=11, **kwargs):
+    """Generate peptide fragments from a sequence.
+    Returns:
+        dataframe of peptides with position column.
+    """
+
+    frags=[]
+    for i in range(0,len(seq),overlap):
+        if i+length>len(seq): continue
+        frags.append([i+1,seq[i:i+length]])
+    df = pd.DataFrame(frags, columns=['pos','peptide'])
+    return df
+
 def create_fragments(protfile=None, seq=None, length=9, overlap=1, quiet=True):
     """generate peptide fragments from a sequence"""
 
@@ -60,24 +74,8 @@ def create_fragments(protfile=None, seq=None, length=9, overlap=1, quiet=True):
             cw.writerow([f])
     return frags, seq
 
-def create_protein_fragments(protfile, seqrange='', length=9):
-    """Create peptide structures for a protein sequence"""
-
-    seqs, seqstr = create_fragments(protfile, length=length)
-    filenames = []
-    if seqrange != '':
-        lims = utilities.getListfromConfig(seqrange)
-        seqrange = seqs[lims[0]:lims[1]]
-    else:
-        seqrange = seqs
-    for s in seqrange:
-        fname = buildPeptideStructure(s)
-        filenames.append(fname)
-    return filenames
-
 def get_all_fragments(exp, length=11):
 
-    import pandas as pd
     P=pd.read_csv(exp)
     peptides = P['SEQ_SEQUENCE']
     allseqs=[]
