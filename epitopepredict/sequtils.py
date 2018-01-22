@@ -233,6 +233,15 @@ def fasta_format_from_feature(feature):
     fastafmt = rec.format("fasta")
     return fastafmt
 
+def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id'):
+    """dataframe to list of Bio.SeqRecord objects"""
+
+    seqs=[]
+    for i,r in df.iterrows():
+        s=SeqRecord(Seq(r[seqkey]),id=r[idkey])
+        seqs.append(s)
+    return seqs
+
 def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
                      descrkey='description',
                      outfile='out.faa'):

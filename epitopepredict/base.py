@@ -572,6 +572,7 @@ class Predictor(object):
             for a in alleles:
                df = self.predict(sequence=seq, length=len(seq),
                                     allele=a, name=name)
+               df['pos'] = row.pos
                res.append(df)
             res = pd.concat(res)
             results.append(res)
