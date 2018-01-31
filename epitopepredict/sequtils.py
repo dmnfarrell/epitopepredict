@@ -104,67 +104,35 @@ def ete_tree(aln):
     return
 
 def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
-                    compress=False, cmd='blastp'):
+                    compress=False, cmd='blastp', cpus=2):
     """Blast a local database"""
 
-    start = time.time()
     if output == None:
-        output = os.path.splitext(query)[0]+'.xml'
-    #print output
+        output = os.path.splitext(query)[0]+'_blast.txt'
     from Bio.Blast.Applications import NcbiblastxCommandline
-    cline = NcbiblastxCommandline(query=query,  cmd=cmd, max_target_seqs=maxseqs,
-                                 db=database, outfmt=5, out=output,
-                                 evalue=evalue, num_threads=3)
+    outfmt = '"6 qseqid sseqid qseq sseq pident length mismatch gapopen qstart qend sstart send evalue bitscore"'
+    cline = NcbiblastxCommandline(query=query, cmd=cmd, db=database,
+                                 max_target_seqs=maxseqs,
+                                 outfmt=outfmt, out=output,
+                                 evalue=evalue, num_threads=cpus)
     #print cline
     stdout, stderr = cline()
-    end = time.time()
-    #print 'BLAST done. took %s seconds' %(round(end-start,2))
-    if compress == True:
-        utilities.compress(output, remove=True)
     return
 
-def parse_blast_record(rec):
-    """Parse blast record alignment(s)"""
+def get_blast_results(filename):
+    """
+    Get blast results into dataframe. Assumes column names from local_blast method.
+    Returns:
+        dataframe
+    """
 
-    if len(rec.alignments) == 0 : print('no alignments')
-    recs=[]
-    qry = rec.query.split()[0]
-    #print rec.query_length
-    for align in rec.alignments:
-        hsp = align.hsps[0]
-        subj = align.title.split('>')[0]
-        if qry == subj: continue
-        recs.append([subj, hsp.score, hsp.expect, hsp.identities,
-                    hsp.positives, rec.query_length,hsp.sbjct])
-    return recs
+    cols = ['qseqid','sseqid','qseq','sseq','pident','length','mismatch','gapopen',
+            'qstart','qend','sstart','send','evalue','bitscore']
+    res = pd.read_csv(filename, names=cols, sep='\t')
+    #res = res[res['pident']>=ident]
+    return res
 
-def get_blast_results(handle=None, filename=None, n=80, local=True):
-    """Get blast results into dataframe"""
-
-    from Bio.Blast import NCBIXML
-    import gzip
-    if filename != None:
-        if os.path.splitext(filename)[1] == 'gz':
-            handle = gzip.open(filename, 'rb')
-        else:
-            handle = open(filename)
-    blastrecs = NCBIXML.parse(handle)
-    rows=[]
-    for rec in blastrecs:
-        r = parse_blast_record(rec)
-        rows.extend(r)
-    df = pd.DataFrame(rows, columns=['subj','score','expect','identity',
-                            'positive','query_length','sequence'])
-    if local == True:
-        df['accession'] = df.subj.apply(lambda x: x.split(' ')[1])
-        df['definition'] = df.subj.apply(lambda x: ' '.join(x.split(' ')[2:]))
-    else:
-        df['accession'] = df.subj.apply(lambda x: x.split('|')[3])
-        df['definition'] = df.subj.apply(lambda x: x.split('|')[4])
-    df['perc_ident'] = df.identity/df.query_length*100
-    return df
-
-def blast_sequences(database, seqs, labels=None, maxseqs=10):
+def blast_sequences(database, seqs, labels=None, **kwargs):
     """
     Blast a set of sequences to a local blast database
     Args:
@@ -180,9 +148,9 @@ def blast_sequences(database, seqs, labels=None, maxseqs=10):
     for seq, name in zip(seqs,labels):
         rec = SeqRecord(Seq(seq),id='temp')
         SeqIO.write([rec], 'tempseq.fa', "fasta")
-        local_blast(database, 'tempseq.fa', maxseqs=maxseqs)
-        df = get_blast_results(filename='tempseq.xml')
-        df['name'] = name
+        local_blast(database, 'tempseq.fa', **kwargs)
+        df = get_blast_results(filename='tempseq_blast.txt')
+        df['id'] = name
         res.append(df)
     return pd.concat(res)
 

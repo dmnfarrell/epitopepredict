@@ -36,7 +36,7 @@ def create_random_sequences(size=100,length=9):
 def create_random_peptides(size=100,length=9):
     """Create random peptide structures of given length"""
 
-    seqs = createRandomSequences(size, length)
+    seqs = create_random_sequences(size, length)
     files=[]
     for seq in seqs:
         sfile = buildPeptideStructure(seq)
