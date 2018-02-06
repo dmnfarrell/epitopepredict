@@ -570,10 +570,12 @@ class Predictor(object):
             name = row['name']
             res=[]
             for a in alleles:
-               df = self.predict(sequence=seq, length=len(seq),
+                df = self.predict(sequence=seq, length=len(seq),
                                     allele=a, name=name)
-               df['pos'] = row.pos
-               res.append(df)
+                if df is None:
+                    continue
+                df['pos'] = row.pos
+                res.append(df)
             res = pd.concat(res)
             results.append(res)
         data = pd.concat(results)
@@ -997,22 +999,28 @@ class IEDBMHCIPredictor(Predictor):
         return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
-                   allele='HLA-A*01:01', name='', method=None):
+                   allele='HLA-A*01:01', name='', method=None, show_cmd=False):
         """Use IEDB MHCI python module to get predictions.
-           Requires that the iedb MHC tools are installed locally"""
+           Requires that the iedb MHC tools are installed locally
+           Args:
+            sequence: a sequence to be predicted
+           Returns:
+            pandas dataframe
+           """
 
         tempfile = os.path.join(self.temppath, name+'.fa')
         seqfile = write_fasta(sequence, id=name, filename=tempfile)
         #print (seqfile)
         path = iedbmhc1path
         if not os.path.exists(path):
-            print ('IEDB mhcI tools not found')
+            print ('IEDB MHC-I tools not found, set the iedbmhc1path variable')
             return
         if method == None: method = 'IEDB_recommended'
         self.iedbmethod = method
         cmd = os.path.join(path,'src/predict_binding.py')
         cmd = cmd+' %s %s %s %s' %(method,allele,length,seqfile)
-        #print (cmd)
+        if show_cmd == True:
+            print (cmd)
         from subprocess import Popen, PIPE
         try:
             p = Popen(cmd, stdout=PIPE, shell=True)
@@ -1027,7 +1035,12 @@ class IEDBMHCIPredictor(Predictor):
     def prepareData(self, rows, name):
         """Prepare data from results"""
 
-        df = pd.read_csv(io.BytesIO(rows),sep="\t")
+        try:
+            df = pd.read_csv(io.BytesIO(rows),sep="\t")
+        except:
+            #print ('no output to read')
+            return
+        #print (df)
         if len(df)==0:
             print (rows) #should print error string from output
             return
