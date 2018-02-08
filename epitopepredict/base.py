@@ -551,7 +551,7 @@ class Predictor(object):
         #print cores
         return cores
 
-    def predictSequences(self, sequences, alleles=[]):
+    def predictSequences(self, sequences, alleles=[], **kwargs):
         """
         Predict a set of arbitary sequences in a list, dict or dataframe.
         These are treated as individual peptides and not split into n-mers.
@@ -571,7 +571,7 @@ class Predictor(object):
             res=[]
             for a in alleles:
                 df = self.predict(sequence=seq, length=len(seq),
-                                    allele=a, name=name)
+                                    allele=a, name=name, **kwargs)
                 if df is None:
                     continue
                 df['pos'] = row.pos

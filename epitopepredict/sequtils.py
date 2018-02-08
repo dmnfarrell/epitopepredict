@@ -104,7 +104,7 @@ def ete_tree(aln):
     return
 
 def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
-                    compress=False, cmd='blastp', cpus=2):
+                    compress=False, cmd='blastp', cpus=2, **kwargs):
     """Blast a local database"""
 
     if output == None:
@@ -114,7 +114,7 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
     cline = NcbiblastxCommandline(query=query, cmd=cmd, db=database,
                                  max_target_seqs=maxseqs,
                                  outfmt=outfmt, out=output,
-                                 evalue=evalue, num_threads=cpus)
+                                 evalue=evalue, num_threads=cpus, **kwargs)
     #print cline
     stdout, stderr = cline()
     return
@@ -154,19 +154,19 @@ def blast_sequences(database, seqs, labels=None, **kwargs):
         res.append(df)
     return pd.concat(res)
 
-def fasta_to_dataframe(infile, header_sep=None):
+def fasta_to_dataframe(infile, header_sep=None, key='locus_tag'):
     """Get fasta proteins into dataframe"""
 
     recs = SeqIO.parse(infile,'fasta')
-    keys = ['locus_tag','translation','description']
+    keys = [key,'translation','description']
     data = [(r.name,str(r.seq),str(r.description)) for r in recs]
     df = pd.DataFrame(data,columns=(keys))
     df['type'] = 'CDS'
     #fix bad names
     print ('header_sep')
     if header_sep not in ['',None]:
-        df['locus_tag'] = df.locus_tag.apply(lambda x: x.split(header_sep)[0],1)
-    df['locus_tag'] = df.locus_tag.str.replace('|','_')
+        df[key] = df[key].apply(lambda x: x.split(header_sep)[0],1)
+    df[key] = df[key].str.replace('|','_')
     return df
 
 def convert_sequence_format(infile, outformat='embl'):
