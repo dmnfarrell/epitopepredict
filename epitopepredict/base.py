@@ -566,8 +566,12 @@ class Predictor(object):
             sequences = pd.DataFrame(sequences, columns=['peptide'])
             sequences['name'] = sequences.peptide
         for i,row in sequences.iterrows():
-            seq = row.peptide
             name = row['name']
+            seq = row.peptide
+            if type(seq) is float or len(seq)<9:
+                print ('peptide too short or empty data passed')
+                print (row)
+                continue
             res=[]
             for a in alleles:
                 df = self.predict(sequence=seq, length=len(seq),

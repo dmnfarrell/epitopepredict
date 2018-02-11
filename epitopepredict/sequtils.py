@@ -115,7 +115,7 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
                                  max_target_seqs=maxseqs,
                                  outfmt=outfmt, out=output,
                                  evalue=evalue, num_threads=cpus, **kwargs)
-    #print cline
+    #print (cline)
     stdout, stderr = cline()
     return
 
@@ -137,7 +137,7 @@ def blast_sequences(database, seqs, labels=None, **kwargs):
     Blast a set of sequences to a local blast database
     Args:
         database: local blast db name
-        seqs: sequences to query
+        seqs: sequences to query, list of strings or Bio.SeqRecords
     Returns:
         pandas dataframe with top blast results
     """
@@ -146,7 +146,11 @@ def blast_sequences(database, seqs, labels=None, **kwargs):
     if labels == None:
         labels = seqs
     for seq, name in zip(seqs,labels):
-        rec = SeqRecord(Seq(seq),id='temp')
+        if type(seq) is not SeqRecord:
+            rec = SeqRecord(Seq(seq),id='temp')
+        else:
+            rec = seq
+            name = seq.id
         SeqIO.write([rec], 'tempseq.fa', "fasta")
         local_blast(database, 'tempseq.fa', **kwargs)
         df = get_blast_results(filename='tempseq_blast.txt')
