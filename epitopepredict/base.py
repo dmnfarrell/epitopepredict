@@ -67,8 +67,12 @@ testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHAS
 
 presets_dir = os.path.join(path, 'presets')
 
-def worker(P, recs, kwargs):
+def predict_proteins_worker(P, recs, kwargs):
     df = P.predict_multiple(recs, **kwargs)
+    return df
+
+def predict_peptides_worker(P, recs, kwargs):
+    df = P.predictSequences(recs, **kwargs)
     return df
 
 def get_preset_alleles(name):
@@ -551,9 +555,28 @@ class Predictor(object):
         #print cores
         return cores
 
+    def seqs_to_dataframe(self, seqs):
+        df = pd.DataFrame(seqs, columns=['peptide'])
+        df['name'] = df.peptide
+        df['pos'] = range(len(seqs))
+        return df
+
+    def _predictSequences(self, sequences, cpus=1, **kwargs):
+        """Predict a set of individual peptides without splitting them.
+        This is a wrapper for _predictSequences to allow multiprocessing.
+        """
+        if type(sequences) is list:
+            sequences = self.seqs_to_dataframe(sequences)
+        data = self._run_multiprocess(sequences,
+                                   worker=predict_peptides_worker, cpus=cpus, **kwargs )
+
+        data = data.groupby('allele').apply(self.getRanking)
+        data = data.reset_index(drop=True)
+        return data
+
     def predictSequences(self, sequences, alleles=[], **kwargs):
         """
-        Predict a set of arbitary sequences in a list, dict or dataframe.
+        Predict a set of arbitary peptide sequences in a list, dict or dataframe.
         These are treated as individual peptides and not split into n-mers.
         """
 
@@ -563,8 +586,7 @@ class Predictor(object):
             print ('no alleles specified')
             return
         if type(sequences) is list:
-            sequences = pd.DataFrame(sequences, columns=['peptide'])
-            sequences['name'] = sequences.peptide
+            sequences = self.seqs_to_dataframe(sequences)
         for i,row in sequences.iterrows():
             name = row['name']
             seq = row.peptide
@@ -583,9 +605,9 @@ class Predictor(object):
             res = pd.concat(res)
             results.append(res)
         data = pd.concat(results)
-        data.reset_index(drop=True,inplace=True)
         #rank is now just global over all sequences per allele
-        data = data.groupby('allele').apply(self.getRanking).reset_index(drop=True)
+        data = data.groupby('allele').apply(self.getRanking)
+        data = data.reset_index(drop=True)
         self.data = data
         return data
 
@@ -597,7 +619,7 @@ class Predictor(object):
         This is mostly a wrapper for predict_multiple. Sequences should be put into
         a dataframe and supplied to this method as the first argument.
           Args:
-            recs: protein sequences in a pandas DataFrame
+            recs: protein sequences in a pandas DataFrame or lists
             key: seq/protein name key
             seqkey: key for sequence column
             names: names of proteins to use from sequences, list or pandas series
@@ -616,6 +638,12 @@ class Predictor(object):
             print ('no alleles provided')
             return
 
+        if type(recs) is str:
+            recs = [recs]
+        if type(recs) is list:
+            idx = range(len(recs))
+            recs = pd.DataFrame(zip(idx,recs), columns=['locus_tag','translation'])
+
         if names is not None:
             recs = recs[recs[key].isin(names)]
         results = []
@@ -629,7 +657,7 @@ class Predictor(object):
             results = self.predict_multiple(recs, path, alleles=alleles, seqkey=seqkey,
                                             key=key, verbose=verbose, **kwargs)
         else:
-            results = self._multiprocess_predict(recs, path=path, alleles=alleles, seqkey=seqkey,
+            results = self._run_multiprocess(recs, path=path, alleles=alleles, seqkey=seqkey,
                                             key=key, verbose=verbose, cpus=cpus, **kwargs )
 
         print ('predictions done for %s sequences in %s alleles' %(len(recs),len(alleles)))
@@ -709,10 +737,14 @@ class Predictor(object):
                            .format(x['name'], x.allele, x.peptide, x[self.scorekey] ))
         return s
 
-    def _multiprocess_predict(self, recs, names=[], cpus=2, **kwargs):
-        """Call predictproteins with multiprocessing pools
-           for running predictions in parallel."""
-
+    def _run_multiprocess(self, recs, names=[], cpus=2, worker=None, **kwargs):
+        """Call function with multiprocessing pools.
+           Used for running predictions in parallel.
+           Returns:
+           """
+        if worker is None:
+            worker = predict_proteins_worker
+            #print (worker)
         import multiprocessing as mp
         maxcpu = mp.cpu_count()
         if cpus == 0 or cpus > maxcpu:
