@@ -1091,6 +1091,7 @@ class IEDBMHCIPredictor(Predictor):
         elif peptides is not None:
             if type(peptides) is not pd.DataFrame:
                 peptides = self.seqs_to_dataframe(peptides)
+            #print (peptides[:3])
             tempf = tempfile.mktemp()+'.txt'
             seqfile = sequtils.dataframe_to_fasta(peptides, outfile=tempf, seqkey='peptide', idkey='name')
             length = peptides.peptide.str.len().max()
@@ -1118,6 +1119,7 @@ class IEDBMHCIPredictor(Predictor):
         except OSError as e:
             print (e)
             return
+        #print (temp)
         df = self.prepareData(temp, name)
         return df
 
