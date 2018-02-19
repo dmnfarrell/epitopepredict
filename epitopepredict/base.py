@@ -32,7 +32,7 @@ from . import utilities, peptutils, sequtils, tepitope
 home = os.path.expanduser("~")
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'mhcdata')
-predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','iedbbcell']
+predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets','iedbbcell']
 iedbmethods = ['arbpython','comblib','consensus3','IEDB_recommended',
                'NetMHCIIpan','nn_align','smm_align','tepitope']
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
@@ -68,11 +68,11 @@ testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHAS
 presets_dir = os.path.join(path, 'presets')
 
 def predict_proteins_worker(P, recs, kwargs):
-    df = P.predict_multiple(recs, **kwargs)
+    df = P._predictSequences(recs, **kwargs)
     return df
 
 def predict_peptides_worker(P, recs, kwargs):
-    df = P.predictSequences(recs, **kwargs)
+    df = P._predictPeptides(recs, **kwargs)
     return df
 
 def get_preset_alleles(name):
@@ -120,8 +120,11 @@ def get_predictor(name='tepitope', **kwargs):
         return TEpitopePredictor(**kwargs)
     elif name == 'mhcflurry':
         return MHCFlurryPredictor(**kwargs)
+    elif name == 'mhcnuggets':
+        return MHCNuggetsPredictor(**kwargs)
     else:
         print ('no such predictor %s' %name)
+        print ('valid names are %s' %', '.join(predictors))
         return
 
 def get_length(data):
@@ -370,7 +373,7 @@ class Predictor(object):
             n = len(self.data.name.unique())
             return '%s predictor with results in %s proteins' %(self.name, n)
 
-    def predict(self, sequence, peptide, length=9, overlap=1,
+    def predict(self, sequence=None, peptides=None, length=9, overlap=1,
                     allele='', name=''):
         """Does the actual scoring of a sequence. Should be overriden.
            Should return a pandas DataFrame"""
@@ -561,23 +564,11 @@ class Predictor(object):
         df['pos'] = range(len(seqs))
         return df
 
-    def _predictSequences(self, sequences, cpus=1, **kwargs):
-        """Predict a set of individual peptides without splitting them.
-        This is a wrapper for _predictSequences to allow multiprocessing.
-        """
-        if type(sequences) is list:
-            sequences = self.seqs_to_dataframe(sequences)
-        data = self._run_multiprocess(sequences,
-                                   worker=predict_peptides_worker, cpus=cpus, **kwargs )
-
-        data = data.groupby('allele').apply(self.getRanking)
-        data = data.reset_index(drop=True)
-        return data
-
-    def predictSequences(self, sequences, alleles=[], **kwargs):
+    '''def _predictPeptides(self, sequences, alleles=[], **kwargs):
         """
         Predict a set of arbitary peptide sequences in a list, dict or dataframe.
-        These are treated as individual peptides and not split into n-mers.
+        These are treated as individual peptides and not split into n-mers. This is
+        usually called wrapped by predictPeptides.
         """
 
         results=[]
@@ -606,64 +597,86 @@ class Predictor(object):
             results.append(res)
         data = pd.concat(results)
         #rank is now just global over all sequences per allele
+        #data = data.groupby('allele').apply(self.getRanking)
+        #data = data.reset_index(drop=True)
+        self.data = data
+        return data'''
+
+    def _predictPeptides(self, peptides, alleles=[], **kwargs):
+        """
+        Predict a set of arbitary peptide sequences in a list or dataframe.
+        These are treated as individual peptides and not split into n-mers. This is
+        usually called wrapped by predictPeptides. If the predict method for the class
+        can only accept protein sequences this needs to be overriden.
+        """
+
+        res=[]
+        if len(alleles)==0:
+            print ('no alleles specified')
+            return
+        if type(alleles) is str:
+            alleles = [alleles]
+        for a in alleles:
+            df = self.predict(peptides=peptides, allele=a, **kwargs)
+            if df is None:
+                continue
+            res.append(df)
+        if len(res) == 0:
+            return
+        data = pd.concat(res)
+        self.data = data
+        return data
+
+    def predictPeptides(self, peptides, cpus=1, **kwargs):
+        """Predict a set of individual peptides without splitting them.
+        This is a wrapper for _predictPeptides to allow multiprocessing.
+        """
+
+        if cpus == 1:
+            data = self._predictPeptides(peptides,  **kwargs)
+        else:
+            data = self._run_multiprocess(peptides,
+                                   worker=predict_peptides_worker, cpus=cpus, **kwargs)
+        if data is None:
+            print ('empty result returned')
+            return
         data = data.groupby('allele').apply(self.getRanking)
         data = data.reset_index(drop=True)
         self.data = data
         return data
 
-    def predictProteins(self, recs, key='locus_tag', seqkey='translation',
-                        names=None, alleles=[], path=None, verbose=False,
-                        cpus=1, **kwargs):
-        """
-        Get predictions for a set of proteins and/or over multiple alleles.
-        This is mostly a wrapper for predict_multiple. Sequences should be put into
-        a dataframe and supplied to this method as the first argument.
-          Args:
-            recs: protein sequences in a pandas DataFrame or lists
-            key: seq/protein name key
-            seqkey: key for sequence column
-            names: names of proteins to use from sequences, list or pandas series
-            cpus: number of threads to run, use 0 for all cpus
-            see predict_multiple for other kwargs
-          Returns:
-            a dataframe of predictions over multiple proteins
-        """
-
-        if type(alleles) is str:
-            alleles = [alleles]
-        elif type(alleles) is pd.Series:
-            alleles = alleles.tolist()
-        #self.check_alleles(alleles)
-        if len(alleles) == 0:
-            print ('no alleles provided')
-            return
-
+    def _convert_to_dataframe(self, recs):
+        """convert sequence list input to dataframe"""
         if type(recs) is str:
             recs = [recs]
         if type(recs) is list:
             idx = range(len(recs))
             recs = pd.DataFrame(zip(idx,recs), columns=['locus_tag','translation'])
+        return recs
 
-        if names is not None:
-            recs = recs[recs[key].isin(names)]
-        results = []
-        if path is not None and path != '':
-            if not os.path.exists(path):
-                os.mkdir(path)
+    def predictProteins(self, recs, cpus=1, alleles=[], path=None, verbose=False, **kwargs):
+        """
+        Get predictions for a set of proteins over multiple alleles that allows
+        running in parallel using the cpus parameter.
+        This is a wrapper for _predictSequences with the same args.
+          Args:
+            recs: list or dataframe with sequences
+            cpus: number of processors
+          Returns:
+            a dataframe of predictions over multiple proteins
+        """
 
+        recs = self._convert_to_dataframe(recs)
         if verbose == True:
             self.print_heading()
         if cpus == 1:
-            results = self.predict_multiple(recs, path, alleles=alleles, seqkey=seqkey,
-                                            key=key, verbose=verbose, **kwargs)
+            results = self._predictSequences(recs, alleles=alleles, **kwargs)
         else:
-            results = self._run_multiprocess(recs, path=path, alleles=alleles, seqkey=seqkey,
-                                            key=key, verbose=verbose, cpus=cpus, **kwargs )
+            results = self._run_multiprocess(recs, alleles=alleles, cpus=cpus, **kwargs )
 
         print ('predictions done for %s sequences in %s alleles' %(len(recs),len(alleles)))
         if path is None:
-            #if no path we keep assign results to the data object
-            #assumes we have enough memory..
+            #if no path we assign results to the data attribute
             self.data = results
         else:
             print ('results saved to %s' %os.path.abspath(path))
@@ -671,10 +684,13 @@ class Predictor(object):
         self.cleanup()
         return results
 
-    def predict_multiple(self, recs, path=None, overwrite=True, alleles=[], length=11, overlap=1,
-                          key='locus_tag', seqkey='sequence', verbose=False,
+    def _predictSequences(self, recs, path=None, overwrite=True, alleles=[], length=11, overlap=1,
+                          key='locus_tag', seqkey='translation', names=None, verbose=False,
                           method=None):
-        """Predictions for multiple proteins in a dataframe
+        """
+        Get predictions for a set of proteins and/or over multiple alleles.
+        Sequences should be put into
+        a dataframe and supplied to this method as the first argument.
             Args:
                 recs: protein sequences in a pandas DataFrame
                 path: if results are to be saved to disk provide a path, otherwise results
@@ -689,6 +705,23 @@ class Predictor(object):
             Returns: a dataframe of the results if no path is given
         """
 
+        if type(alleles) is str:
+            alleles = [alleles]
+        elif type(alleles) is pd.Series:
+            alleles = alleles.tolist()
+        #self.check_alleles(alleles)
+        if len(alleles) == 0:
+            print ('no alleles provided')
+            return
+
+        recs = self._convert_to_dataframe(recs)
+        if names is not None:
+            recs = recs[recs[key].isin(names)]
+        results = []
+        if path is not None and path != '':
+            if not os.path.exists(path):
+                os.mkdir(path)
+
         results = []
         self.length = length
         for i,row in recs.iterrows():
@@ -701,10 +734,11 @@ class Predictor(object):
                 if os.path.exists(fname) and overwrite == False:
                     continue
             res = []
+            peptides, s = peptutils.create_fragments(seq=seq, length=length, overlap=overlap)
             for a in alleles:
-                #print (a)
-                df = self.predict(sequence=seq, length=length, overlap=overlap,
-                                    allele=a, name=name, method=method)
+                #we pass sequence, length, overlap for predictors that have to run on whole seq
+                df = self.predict(peptides=peptides, sequence=seq, allele=a, name=name, method=method,
+                                  length=length, overlap=overlap)
                 if df is not None:
                     res.append(df)
                 else:
@@ -737,11 +771,14 @@ class Predictor(object):
                            .format(x['name'], x.allele, x.peptide, x[self.scorekey] ))
         return s
 
-    def _run_multiprocess(self, recs, names=[], cpus=2, worker=None, **kwargs):
-        """Call function with multiprocessing pools.
-           Used for running predictions in parallel.
-           Returns:
+    def _run_multiprocess(self, recs, cpus=2, worker=None, **kwargs):
+        """
+        Call function with multiprocessing pools. Used for running predictions
+        in parallel where the main input is a pandas dataframe.
+        Returns:
+            concatenated result, a dataframe
            """
+
         if worker is None:
             worker = predict_proteins_worker
             #print (worker)
@@ -749,10 +786,13 @@ class Predictor(object):
         maxcpu = mp.cpu_count()
         if cpus == 0 or cpus > maxcpu:
             cpus = maxcpu
+        if cpus >= len(recs):
+            cpus = len(recs)
         pool = mp.Pool(cpus)
         funclist = []
         st = time.time()
         chunks = np.array_split(recs,cpus)
+        #print ([len(i) for i in chunks])
         for recs in chunks:
             f = pool.apply_async(worker, [self,recs,kwargs])
             #print (f)
@@ -769,7 +809,7 @@ class Predictor(object):
             result = pd.concat(result)
             #print result.info()
         t=time.time()-st
-        print ('took %s' %str(t))
+        print ('took %s seconds' %str(round(t,3)))
         return result
 
     def load(self, path=None, names=None,
@@ -1037,21 +1077,34 @@ class IEDBMHCIPredictor(Predictor):
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
                    allele='HLA-A*01:01', name='', method=None, show_cmd=False):
         """Use IEDB MHCI python module to get predictions.
-           Requires that the iedb MHC tools are installed locally
+           Requires that the IEDB MHC tools are installed locally
            Args:
             sequence: a sequence to be predicted
+            peptides: a list of arbitrary peptides instead of single sequence
            Returns:
             pandas dataframe
            """
 
-        tempfile = os.path.join(self.temppath, name+'.fa')
-        seqfile = write_fasta(sequence, id=name, filename=tempfile)
-        #print (seqfile)
+        if sequence is not None:
+            tempf = os.path.join(self.temppath, name+'.fa')
+            seqfile = write_fasta(sequence, id=name, filename=tempf)
+        elif peptides is not None:
+            if type(peptides) is not pd.DataFrame:
+                peptides = self.seqs_to_dataframe(peptides)
+            tempf = tempfile.mktemp()+'.txt'
+            seqfile = sequtils.dataframe_to_fasta(peptides, outfile=tempf, seqkey='peptide', idkey='name')
+            length = peptides.peptide.str.len().max()
+        else:
+            return
+        #print (seqfile, length)
         path = iedbmhc1path
         if not os.path.exists(path):
             print ('IEDB MHC-I tools not found, set the iedbmhc1path variable')
             return
         if method == None: method = 'IEDB_recommended'
+        if method not in self.methods:
+            print ('available methods are %s' %self.methods)
+            return
         self.iedbmethod = method
         cmd = os.path.join(path,'src/predict_binding.py')
         cmd = cmd+' %s %s %s %s' %(method,allele,length,seqfile)
@@ -1169,10 +1222,11 @@ class IEDBMHCIIPredictor(Predictor):
         self.data = df
         return df
 
-    def predict(self, sequence=None, peptides=None, length=15, overlap=None,
+    def predict(self, peptides=None, sequence=None, length=15, overlap=None,
                    allele='HLA-DRB1*01:01', method='IEDB_recommended', name=''):
-        """Use iedb MHCII python module to get predictions.
-           Requires that the IEDB MHC-II tools are installed locally
+        """Use IEDB MHC-II python module to get predictions. Requires that the IEDB MHC-II
+        tools are installed locally. sequence argument must be provided since cmd line
+        only accepts whole sequence to be fragmented.
         """
 
         self.iedbmethod = method
@@ -1186,7 +1240,7 @@ class IEDBMHCIIPredictor(Predictor):
         cmd = os.path.join(path,'mhc_II_binding.py')
         cmd = cmd+' %s %s %s' %(method,allele,seqfile)
         #print (cmd)
-        #print (allele)
+
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         except:
@@ -1216,11 +1270,11 @@ class TEpitopePredictor(Predictor):
         self.operator = '>'
         self.rankascending = 0
 
-    def predict(self, sequence=None, peptides=None, length=9, overlap=1,
+    def predict(self, peptides=None, length=9, overlap=1,
                     allele='HLA-DRB1*0101', name='',
                     pseudosequence=None, **kwargs):
 
-        self.sequence = sequence
+        #self.sequence = sequence
         allele = allele.replace(':','')
         if not allele in self.pssms:
             #print 'computing virtual matrix for %s' %allele
@@ -1231,7 +1285,7 @@ class TEpitopePredictor(Predictor):
         else:
             m = self.pssms[allele]
         m = m.transpose().to_dict()
-        result = tepitope.getScores(m, sequence, peptides, length, overlap=overlap)
+        result = tepitope.getScores(m, peptides=peptides)
         df = self.prepareData(result, name, allele)
         self.data = df
         #print(df[:5])
@@ -1340,18 +1394,15 @@ class MHCFlurryPredictor(Predictor):
         self.operator = '<'
         self.scorekey = 'score'
         self.rankascending = 1
+        self._checkModels()
         return
 
-    def predict(self, sequence=None, peptides=None, length=11, overlap=1,
+    def predict(self, peptides=None, length=11, overlap=1,
                       allele='HLA-A0101', name='', **kwargs):
         """Uses mhcflurry python classes for prediction"""
 
-        self.sequence = sequence
         from mhcflurry import Class1AffinityPredictor
         predictor = Class1AffinityPredictor.load()
-        if peptides == None:
-            peptides, s = peptutils.create_fragments(seq=sequence,
-                                                    length=length, overlap=overlap)
         df = predictor.predict_to_dataframe(peptides=peptides, allele=allele)
         #print (df[:5])
         df = self.prepareData(df, name, allele)
@@ -1375,3 +1426,69 @@ class MHCFlurryPredictor(Predictor):
     def getAlleles(self):
         import mhcflurry
         return mhcflurry.Class1AffinityPredictor.supported_alleles
+
+    def _checkModels(self):
+        try:
+            import mhcflurry
+            mhcflurry.class1_affinity_predictor.get_default_class1_models_dir()
+        except:
+            print ('first use. downloading class-I models')
+            subprocess.check_output('mhcflurry-downloads fetch models_class1', shell=True)
+            return True
+        return False
+
+class MHCNuggetsPredictor(Predictor):
+    """
+    Predictor using MHCNuggets for MHC-I predictions. Requires you to
+    install the package locally from https://github.com/KarchinLab/mhcnuggets
+    see https://www.biorxiv.org/content/early/2017/07/27/154757
+    """
+
+    def __init__(self, data=None):
+        Predictor.__init__(self, data=data)
+        self.name = 'mhcnuggets'
+        self.cutoff = 500
+        self.operator = '<'
+        self.scorekey = 'ic50'
+        self.rankascending = 1
+        return
+
+    def predict(self, peptides=None, length=11, overlap=1,
+                      allele='HLA-A0101', name='', **kwargs):
+        """Uses cmd line call to mhcnuggets."""
+
+        path = '/local/mhcnuggets'
+        tempf = self.writeSeqs(peptides)
+        a = allele.translate(None, '*:')
+        cmd = 'python {p}/scripts/predict.py -m lstm -w {p}/saves/kim2014/mhcnuggets_lstm/{a}.h5 \
+                  -p {t}'.format(p=path,t=tempf,a=a)
+        #print (cmd)
+        from subprocess import Popen, PIPE
+        try:
+            p = Popen(cmd, stdout=PIPE, shell=True)
+            temp,error = p.communicate()
+            #print (temp)
+        except OSError as e:
+            print (e)
+            return
+
+        df = self.prepareData(temp, name, allele)
+        return df
+
+    def prepareData(self, rows, name, allele):
+        """Get result into dataframe"""
+
+        df = pd.read_csv(io.BytesIO(rows),sep="\s",skiprows=2,names=['peptide','ic50'],engine='python')
+        #print (rows)
+        df['name'] = name
+        df['allele'] = allele
+        self.getRanking(df)
+        self.data = df
+        return df
+
+    def writeSeqs(self, peptides):
+        tempf = tempfile.mktemp()+'.txt'
+        f = open(tempf,'w')
+        for p in peptides:
+            f.write("%s\n" % p)
+        return tempf

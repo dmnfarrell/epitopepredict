@@ -90,14 +90,14 @@ def scorePeptide(seq, pssm):
         #print f, sc
     return scores
 
-def getScores(pssm, sequence=None, peptide=None, length=11, overlap=1):
+def getScores(pssm, sequence=None, peptides=None, length=11, overlap=1):
     """Score multiple fragments of a sequence in seperate fragments"""
 
-    if peptide == None:
-        peptide, s = peptutils.create_fragments(seq=sequence, length=length, overlap=overlap)
+    if peptides is None:
+        peptides, s = peptutils.create_fragments(seq=sequence, length=length, overlap=overlap)
     scores=[]
     pos=0
-    for p in peptide:
+    for p in peptides:
         sc = scorePeptide(p, pssm) #get best 9-mer core
         sc = sorted(sc, key=itemgetter(2),reverse=True)
         core,i,best = sc[0]

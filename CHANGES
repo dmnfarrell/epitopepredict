@@ -3,6 +3,15 @@ CHANGES
 =======
 
 ------
+0.3.0
+------
+
+renamed some predictor class methods
+can run predictpeptides in parallel
+added mhcnuggets predictor
+changed all class methods to use underscore convention
+
+------
 0.2.0
 ------
 
