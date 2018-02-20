@@ -355,22 +355,22 @@ def epitope_conservation(peptides, alnrows=None, proteinseq=None, blastresult=No
     return c
 
 def _region_query(P, eps, D):
-	neighbourPts = []
+	neighbour_pts = []
 	for point in D:
 		if abs(P - point)<eps:
-			neighbourPts.append(point)
-	return neighbourPts
+			neighbour_pts.append(point)
+	return neighbour_pts
 
-def _expand_cluster(P, neighbourPts, C, c_n, eps, MinPts, D, visited):
+def _expand_cluster(P, neighbour_pts, C, c_n, eps, min_pts, D, visited):
 
     flatten = lambda l: [i for sublist in l for i in sublist]
     C[c_n].append(P)
-    for point in neighbourPts:
+    for point in neighbour_pts:
         if point not in visited:
             visited.append(point)
-            neighbourPts_2 = _region_query(point, eps, D)
-            if len(neighbourPts_2) >= MinPts:
-                neighbourPts += neighbourPts_2
+            neighbour_pts_2 = _region_query(point, eps, D)
+            if len(neighbour_pts_2) >= min_pts:
+                neighbour_pts += neighbour_pts_2
         #print (point,C)
         if point not in flatten(C):
             C[c_n].append(point)
@@ -387,13 +387,13 @@ def _dbscan(D, eps=5, minsize=2):
     c_n = -1
     for point in D:
         visited.append(point)
-        neighbourPts = _region_query(point, eps, D)
-        if len(neighbourPts) < minsize:
+        neighbour_pts = _region_query(point, eps, D)
+        if len(neighbour_pts) < minsize:
             noise.append(point)
         else:
             C.append([])
             c_n+=1
-            _expand_cluster(point, neighbourPts, C, c_n,eps, minsize, D, visited)
+            _expand_cluster(point, neighbour_pts, C, c_n,eps, minsize, D, visited)
 
     C = [i for i in C if len(i)>=minsize]
     #for cl in C:
@@ -682,7 +682,7 @@ def testrun(gname):
     f = os.path.join('test', names[0]+'.mpk')
     df = pd.read_msgpack(f)
     P.data=df
-    #b = P.getBinders(data=df)
+    #b = P.get_binders(data=df)
     #print b[:20]
     base.getScoreDistributions(method, path)
     return
@@ -710,7 +710,7 @@ def test_conservation(label,gname):
     '''method='tepitope'
     P = base.getPredictor(method)
     P.predictSequences(df,seqkey='sequence')
-    b = P.getBinders()'''
+    b = P.get_binders()'''
     return
 
 def find_conserved_peptide(peptide, recs):

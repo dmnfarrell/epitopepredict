@@ -315,9 +315,9 @@ def plot_tracks(preds, name, n=1, cutoff=5, value='score',
             df = df[df.name==name]
         sckey = pred.scorekey
 
-        binders = pred.getBinders(name, cutoff=cutoff, value=value)
+        binders = pred.get_binders(name, cutoff=cutoff, value=value)
         #print (binders)
-        pb = pred.promiscuousBinders(binders=binders, n=n, value=value)
+        pb = pred.promiscuous_binders(binders=binders, n=n, value=value)
 
         if len(pb) == 0:
             continue

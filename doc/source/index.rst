@@ -1,6 +1,6 @@
 
 Welcome to the epitopepredict documentation.
-=======================================
+============================================
 
 Contents:
 
@@ -8,6 +8,7 @@ Contents:
    :maxdepth: 2
 
    description
+   cli
    examples
    modules
 

@@ -61,7 +61,7 @@ def distance_tree(filename=None, seqs=None, ref=None):
         aln = clustal_alignment(None, seqs)
         filename = 'temp.dnd'
     tree = Phylo.read(filename, 'newick')
-    leafList = tree.get_terminals()
+    leaf_list = tree.get_terminals()
     if ref != None:
         tree.root_with_outgroup(ref)
 
@@ -185,7 +185,7 @@ def convert_sequence_format(infile, outformat='embl'):
     print ("Converted %i records" %count)
     return
 
-def getCDS(df):
+def get_cds(df):
     """Get CDS with transaltions from genbank dataframe"""
 
     cds = df[df.type=='CDS']
@@ -264,7 +264,7 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
         for i in s:
             print (i,':',s[i])
     if cds == True:
-        df = getCDS(df)
+        df = get_cds(df)
         df['order'] = range(1,len(df)+1)
     #print (df)
     if len(df) == 0:

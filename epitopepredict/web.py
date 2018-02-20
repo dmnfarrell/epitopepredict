@@ -128,7 +128,7 @@ def create_sequence_html(preds, name='', classes='', **kwargs):
         df = P.data
         if df is None:
             continue
-        b = P.getBinders(**kwargs)
+        b = P.get_binders(**kwargs)
         l = base.get_length(df)
         seq = sequence_from_peptides(df)
         clr = colors[P.name]
@@ -158,9 +158,9 @@ def sequence_to_html_grid(preds, classes='', **kwargs):
         df = P.data
         if df is None:
             continue
-        b = P.getBinders(**kwargs)
+        b = P.get_binders(**kwargs)
         bdata[P.name] = b
-        #pb = P.promiscuousBinders(binders=b,**kwargs)
+        #pb = P.promiscuous_binders(binders=b,**kwargs)
         l = base.get_length(df)
         grps = b.groupby('allele')
         alleles = grps.groups
@@ -247,11 +247,11 @@ def get_binder_tables(preds, name=None, view='binders', **kwargs):
     drop=True
     import pylab as plt
     for P in preds:
-        df = P.getBinders(name=name, **kwargs)
+        df = P.get_binders(name=name, **kwargs)
         if df is None:
             continue
         if view == 'promiscuous':
-            df = P.promiscuousBinders(df, **kwargs)
+            df = P.promiscuous_binders(df, **kwargs)
         elif view == 'by allele':
             df = pd.pivot_table(P.data, index=['pos','peptide'],
                                 columns='allele', values=P.scorekey)

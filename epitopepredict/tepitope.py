@@ -30,7 +30,7 @@ tepitopedir = os.path.join(path,'tepitope')
 home = os.path.expanduser("~")
 datadir = os.path.join(path, 'mhcdata')
 expdatadir = os.path.join(datadir, 'expdata')
-AAcodes3 = {'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
+aa_codes3 = {'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
         'D':'ASP', 'N':'ASN', 'H':'HIS', 'W':'TRP', 'F':'PHE', 'Y':'TYR', \
         'R':'ARG', 'K':'LYS', 'S':'SER', 'T':'THR', 'M':'MET', 'A':'ALA', \
         'G':'GLY', 'P':'PRO', 'C':'CYS'}
@@ -38,14 +38,14 @@ blosum62 = pd.read_csv(os.path.join(datadir, 'blosum62.csv'),index_col=0)
 blosum50 = pd.read_csv(os.path.join(datadir, 'blosum50.csv'),index_col=0)
 alpha = 10
 
-def getPocketPositions():
+def get_pocket_positions():
     cr = csv.reader(open(os.path.join(tepitopedir, 'tepitope_pockets.txt')))
     d = {}
     for r in cr:
         d[int(r[0])] = [int(i) for i in r[1:]]
     return d
 
-def generatePSSM(expdata):
+def generate_pssm(expdata):
     """Create pssm for known binding data given a set
        of n-mers and binding score"""
 
@@ -62,7 +62,7 @@ def getPSSMs():
         pssms[name] = pssm
     return pssms
 
-def getPSSMScore(seq, pssm):
+def get_pssm_score(seq, pssm):
     """Get sequence score for a given pssm"""
 
     total=0
@@ -78,19 +78,19 @@ def getPSSMScore(seq, pssm):
         total = -10
     return total
 
-def scorePeptide(seq, pssm):
+def score_peptide(seq, pssm):
     """Score a single sequence in 9-mer frames"""
 
     nmers, s = peptutils.create_fragments(seq=seq, length=9)
     scores=[]
     for f in nmers:
-        sc = getPSSMScore(f, pssm)
+        sc = get_pssm_score(f, pssm)
         pos = nmers.index(f)
         scores.append((f,pos,sc))
         #print f, sc
     return scores
 
-def getScores(pssm, sequence=None, peptides=None, length=11, overlap=1):
+def get_scores(pssm, sequence=None, peptides=None, length=11, overlap=1):
     """Score multiple fragments of a sequence in seperate fragments"""
 
     if peptides is None:
@@ -98,7 +98,7 @@ def getScores(pssm, sequence=None, peptides=None, length=11, overlap=1):
     scores=[]
     pos=0
     for p in peptides:
-        sc = scorePeptide(p, pssm) #get best 9-mer core
+        sc = score_peptide(p, pssm) #get best 9-mer core
         sc = sorted(sc, key=itemgetter(2),reverse=True)
         core,i,best = sc[0]
         #print (p,core,pos,best)
@@ -106,7 +106,7 @@ def getScores(pssm, sequence=None, peptides=None, length=11, overlap=1):
         pos+=overlap
     return scores
 
-def getPseudoSequence(pp, query, method='tepitope'):
+def get_pseudo_sequence(pp, query, method='tepitope'):
     """Get non redundant pseudo-seq"""
 
     offset=28
@@ -122,7 +122,7 @@ def getPseudoSequence(pp, query, method='tepitope'):
         seq.append(s)
     return seq
 
-def getPocketsPseudoSequence(pp, query):
+def get_pockets_pseudo_sequence(pp, query):
     """Get pockets pseudo-seq from alignment and pocket residues"""
 
     offset=28 #seq numbering offset in IPD_MHC aligments
@@ -134,13 +134,13 @@ def getPocketsPseudoSequence(pp, query):
         seq.append(s)
     return seq
 
-def getAllelePocketSequences(allele):
+def get_allele_pocket_sequences(allele):
     """Convenience for getting an allele pocket aas"""
     alnindex = dict([(a.id,a) for a in drbaln])
     ref = alnindex[allele]
-    return getPocketsPseudoSequence(pp,ref)
+    return get_pockets_pseudo_sequence(pp,ref)
 
-def convertAlleleNames(seqfile):
+def convert_allele_names(seqfile):
     """Convert long IPD names to common form"""
 
     recs = list(SeqIO.parse(seqfile,'fasta'))
@@ -158,7 +158,7 @@ def convertAlleleNames(seqfile):
     SeqIO.write(new, filename, 'fasta')
     return filename
 
-def getAlignments(file1, file2):
+def get_alignments(file1, file2):
     """Align multiple sequences from 2 fasta files"""
 
     recs1 = list(SeqIO.parse(file1,'fasta'))
@@ -170,7 +170,7 @@ def getAlignments(file1, file2):
     aln = sequtils.muscleAlignment(alnfile)
     return aln
 
-def similarityScore(blosum, r, q):
+def similarity_score(blosum, r, q):
     """Similarity for pseudosequences using blosum matrix"""
 
     sim = sum([blosum[i][j] for i,j in zip(r,q) if (i!= '-' and j!='-')])
@@ -189,13 +189,13 @@ def pickpocket(ind, allele):
     ind=ind-1
     #get query pseudosequence
     query = alnindex[allele]
-    qp = getPocketsPseudoSequence(pp,query)[ind]
+    qp = get_pockets_pseudo_sequence(pp,query)[ind]
     #derive weight per libary allele using similarity measure
     S = {}
     for k in librarypssms.keys():
         ref = alnindex[k]
-        rp = getPocketsPseudoSequence(pp, ref)[ind]
-        sim = similarityScore(blosum62, rp, qp)
+        rp = get_pockets_pseudo_sequence(pp, ref)[ind]
+        sim = similarity_score(blosum62, rp, qp)
         S[k] = sim
         #print ind, qp, rp, ref.id, sim
 
@@ -204,7 +204,7 @@ def pickpocket(ind, allele):
     #print weights
     return weights
 
-def createVirtualPSSM(allele):
+def create_virtual_pssm(allele):
     """Create virtual matrix from pickpocket profile weights"""
 
     lpssms = librarypssms
@@ -235,14 +235,14 @@ def createVirtualPSSM(allele):
 def allelenumber(x):
     return int(x.split('*')[1])
 
-def getAlleles():
+def get_alleles():
     """Get all alleles covered"""
 
     df=pd.read_csv(os.path.join(tepitopedir ,'alleles.txt'))
     a= df['allele']
     return list(a)
 
-def getBolaAlleles():
+def get_bola_alleles():
     ref='HLA-DRB1*0101'
     ids = [2005, 1601, 3301, 4801, 4701, 6701, 3701, 2101,
            2002, 3001, 1901, 1902, 4901, 4101, 4802, 2003, 1602, 3801]
@@ -250,20 +250,20 @@ def getBolaAlleles():
     alleles.append(ref)
     return alleles
 
-def getSimilarities(allele, refalleles, alnindex, matrix=blosum62):
+def get_similarities(allele, refalleles, alnindex, matrix=blosum62):
     """Get distances between a query and set of ref pseudo-seqs"""
 
     query = alnindex[allele]
-    #qp = ''.join(getPocketsPseudoSequence(pp,query))
-    qp = ''.join(getPseudoSequence(pp,query))
+    #qp = ''.join(get_pockets_pseudo_sequence(pp,query))
+    qp = ''.join(get_pseudo_sequence(pp,query))
     sims = []
     #for k in librarypssms.keys():
     for k in refalleles:
         ref = alnindex[k]
-        #rp = ''.join(getPocketsPseudoSequence(pp, ref))
-        rp = ''.join(getPseudoSequence(pp, ref))
+        #rp = ''.join(get_pockets_pseudo_sequence(pp, ref))
+        rp = ''.join(get_pseudo_sequence(pp, ref))
         #print qp,rp
-        sim = similarityScore(matrix, rp, qp)
+        sim = similarity_score(matrix, rp, qp)
         sims.append((k,sim))
     return sims, qp
 
@@ -292,25 +292,25 @@ def plotheatmap(df):
     plt.tight_layout()
     return
 
-def compareTepitopeAlleles(alnindex):
+def compare_tepitope_alleles(alnindex):
     """Compare a set of alleles to Tepitope library HLAs"""
 
     t = pd.read_csv(os.path.join(tepitopedir, 'tepitope_alleles.csv'))
     alleles = t.name[:10]
     refalleles = librarypssms.keys()
-    df = compareAlleles(alleles, refalleles, alnindex, reduced=False)
+    df = compare_alleles(alleles, refalleles, alnindex, reduced=False)
     return df
 
-def compareAlleles(alleles1, alleles2, alnindex, reduced=True):
+def compare_alleles(alleles1, alleles2, alnindex, reduced=True):
     """Compare 2 sets of alleles for pseudo-seq distances"""
 
     data=[]
     pseqs = {}
     if reduced==True:
-        alleles1 = reduceAlleles(alleles1)
-        alleles2 = reduceAlleles(alleles2)
+        alleles1 = reduce_alleles(alleles1)
+        alleles2 = reduce_alleles(alleles2)
     for a in alleles2:
-        d,qp = getSimilarities(a,alleles1,alnindex)
+        d,qp = get_similarities(a,alleles1,alnindex)
         d = pd.DataFrame(d,columns=['ref',a])
         d.set_index('ref',inplace=True)
         data.append(d)
@@ -340,7 +340,7 @@ def compareAlleles(alleles1, alleles2, alnindex, reduced=True):
     found = list(df.index)
     #print found
     for r in refalleles:
-        pseqs[r] =  ''.join(getPseudoSequence(pp, alnindex[r]))
+        pseqs[r] =  ''.join(get_pseudo_sequence(pp, alnindex[r]))
         if r not in found:
             found.append(r)
     for i in sorted(pseqs):
@@ -359,10 +359,10 @@ def compare(file1, file2, alnindex, reduced=True):
     recs2 = list(SeqIO.parse(file2,'fasta'))
     alleles1 = [rec.id for rec in recs1]
     alleles2 = [rec.id for rec in recs2]
-    df = compareAlleles(alleles1, alleles2, alnindex, reduced)
+    df = compare_alleles(alleles1, alleles2, alnindex, reduced)
     return df
 
-def reduceAlleles(alleles):
+def reduce_alleles(alleles):
     """Reduce alleles to repr set based on names"""
     red={}
     for a in alleles:
@@ -380,7 +380,7 @@ def benchmark():
         peptide = exp[i]['Peptide']
         allele = exp[i]['Allele']
         if allele in pssms:
-            sc = getScores(m, peptide)
+            sc = get_scores(m, peptide)
             m = pssms[allele]
             m = m.transpose().to_dict()
             sc = sorted(sc, key=itemgetter(1),reverse=True)
@@ -394,12 +394,12 @@ def benchmark():
     seqs = exp['SEQ_SEQUENCE']
     aff = exp['COMP_IC50']
     for s,val in zip(seqs,aff):
-        sc = getScores(m, s)
+        sc = get_scores(m, s)
         sc = sorted(sc, key=itemgetter(1),reverse=True)
         #print s, sc[0],val
     return
 
-def compareRef(query1, query2, ref, alnindex):
+def compare_ref(query1, query2, ref, alnindex):
     """Compare different alleles distances to reference"""
 
     df1=compare(ref, query1, alnindex, reduced=False)
@@ -421,16 +421,16 @@ def test():
     #Genome.showAlignment(aln)
     aln = drbaln
     alnindex = dict([(a.id,a) for a in aln])
-    compareTepitopeAlleles(alnindex)
+    compare_tepitope_alleles(alnindex)
     #d1 = compare(ref1, ref2, alnindex)
     #x = d1.merge(d2,right_index=1,left_index=1)
     #print len(x)
-    #compareRef(hla,bola,ref,alnindex)
+    #compare_ref(hla,bola,ref,alnindex)
     plt.show()
     return
 
 #declare these as global for convenience
-pp = getPocketPositions()
+pp = get_pocket_positions()
 pseudores = sorted(set([j for i in pp.values() for j in i]))
 librarypssms = getPSSMs()
 #drb HLA + BOLA alignments

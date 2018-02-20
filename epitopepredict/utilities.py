@@ -59,7 +59,7 @@ def rmse(ar1, ar2):
     dif *= dif
     return np.sqrt(dif.sum()/len(ar1))
 
-def addDicts(a, b):
+def add_dicts(a, b):
     return dict((n, a.get(n, 0)+b.get(n, 0)) for n in set(a)|set(b))
 
 def copyfile(source, dest, newname=None):
@@ -92,17 +92,17 @@ def symmetrize(m, lower=True):
     else:
         return np.triu(m) + np.tril(m.T) - np.diag(np.diag(m))
 
-def getSymmetricDataFrame(m):
+def get_symmetric_data_frame(m):
     x = symmetrize(m)
     return pd.DataFrame(x, columns=m.columns,index=m.index)
 
-def findFilefromString(files, string):
+def find_filefrom_string(files, string):
     for f in files:
         if string in os.path.splitext(f)[0]:
             return f
     return ''
 
-def findFiles(path, ext='txt'):
+def find_files(path, ext='txt'):
     """List files in a dir of a specific type"""
     if not os.path.exists(path):
         print ('no such directory: %s' %path)
@@ -115,7 +115,7 @@ def findFiles(path, ext='txt'):
                 files.append(name)
     return files
 
-def findFolders(path):
+def find_folders(path):
     if not os.path.exists(path):
         print ('no such directory: %s' %path)
         return []
@@ -124,7 +124,7 @@ def findFolders(path):
         dirs.append(dirname)
     return dirs
 
-def reorderFilenames(files, order):
+def reorder_filenames(files, order):
     """reorder filenames by another list order(seqs)"""
     new = []
     for i in order:
@@ -137,7 +137,7 @@ def reorderFilenames(files, order):
             new.append('')
     return new
 
-def readIEDB(filename, key='Epitope ID'):
+def read_iedb(filename, key='Epitope ID'):
     """Load iedb peptidic csv file and return dataframe"""
     #cr = csv.reader(open(filename,'r'))
     cr = csv.DictReader(open(filename,'r'),quotechar='"')
@@ -148,7 +148,7 @@ def readIEDB(filename, key='Epitope ID'):
         D[k] = r
     return D
 
-def getSequencefromPDB(pdbfile, chain='C', index=0):
+def get_sequencefrom_pdb(pdbfile, chain='C', index=0):
     """Get AA sequence from PDB"""
     parser = PDB.PDBParser(QUIET=True)
     struct = parser.get_structure(pdbfile,pdbfile)
@@ -160,7 +160,7 @@ def getSequencefromPDB(pdbfile, chain='C', index=0):
         seq+=str(pep.get_sequence())
     return seq
 
-def filterIEDBFile(filename, field, search):
+def filter_iedb_file(filename, field, search):
     """Return filtered iedb data"""
     X = pd.read_csv(filename)
     cols = ['PubMed ID','Author','Journal','Year','T Cell ID','MHC Allele Name',
@@ -170,7 +170,7 @@ def filterIEDBFile(filename, field, search):
     y.to_csv('filtered.csv',cols=cols)
     return y
 
-def searchPubmed(term, max_count=100):
+def search_pubmed(term, max_count=100):
 
     from Bio import Entrez
     from Bio import Medline

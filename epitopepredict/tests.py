@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function
 import sys, os
 import pandas as pd
 import unittest
-from . import base, analysis, sequtils
+from . import base, analysis, sequtils, peptutils
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
@@ -21,6 +21,8 @@ class PredictorTests(unittest.TestCase):
     """Basic tests for predictor"""
 
     def setUp(self):
+        self.m2alleles = base.get_preset_alleles('mhc2_supertypes')
+        self.peptides = peptutils.create_random_sequences(50)
         self.genbankfile = os.path.join(testdir, 'zaire-ebolavirus.gb')
         self.fastafile = os.path.join(testdir, 'zaire-ebolavirus.faa')
         self.df = sequtils.genbank_to_dataframe(self.genbankfile, cds=True)
@@ -36,12 +38,12 @@ class PredictorTests(unittest.TestCase):
         P = base.get_predictor('tepitope')
         alleles = ["HLA-DRB1*0101", "HLA-DRB1*0305"]
         print (P)
-        P.predictProteins(df, length=11, alleles=alleles,
+        P.predict_proteins(df, length=11, alleles=alleles,
                           path=self.testdir)
-        P.getBinders(data=P.data)
+        P.get_binders(data=P.data)
         return
 
-    def test_netmhciipan(self):
+    '''def test_netmhciipan(self):
         """netMHCIIpan test"""
 
         #requires netmHCIIpan is installed
@@ -53,7 +55,7 @@ class PredictorTests(unittest.TestCase):
         P.predictProteins(df, length=11, alleles=alleles, names=names,
                           path=self.testdir)
         P.getBinders(data=P.data)
-        return
+        return'''
 
     def test_iedbmhc1(self):
         """IEDB MHCI test"""
@@ -68,14 +70,14 @@ class PredictorTests(unittest.TestCase):
         alleles = ["HLA-A*02:02", "HLA-A*01:01"]
         for m in P.methods:
             if m == 'comblib_sidney2008': continue
-            print (m)
-            P.predictProteins(df, length=8, alleles=alleles,
+            print (P.name, m)
+            P.predict_proteins(df, length=8, alleles=alleles,
                                     method=m)
-            b = P.getBinders(data=P.data, cutoff=5, cutoff_method='rank')
+            b = P.get_binders(data=P.data, cutoff=5, cutoff_method='rank')
             print ('%s binders' %len(b))
         return
 
-    def test_iedbmhc2(self):
+    '''def test_iedbmhc2(self):
         """IEDB MHCII test"""
 
         df = self.df
@@ -94,7 +96,7 @@ class PredictorTests(unittest.TestCase):
             b = P.getBinders(data=P.data, cutoff=5)
             #print (P.data.score)
             print ('%s binders' %len(b))
-        return
+        return'''
 
     '''def test_bcell(self):
         """IEDB BCell test"""
@@ -106,13 +108,25 @@ class PredictorTests(unittest.TestCase):
         P.predictProteins(df, names=names, path=self.testdir)
         return'''
 
+    def test_peptide_prediction(self):
+
+        m2alleles = base.get_preset_alleles('mhc2_supertypes')
+        P = base.get_predictor('tepitope')
+        x = P.predict_peptides(self.peptides, alleles=self.m2alleles)
+        return
+
+    def test_multiproc(self):
+        P = base.get_predictor('tepitope')
+        x = P.predict_peptides(self.peptides, alleles=self.m2alleles, cpus=2)
+        return
+
     def test_fasta(self):
         """Test fasta predictions"""
 
         df = sequtils.fasta_to_dataframe(self.fastafile)
         alleles = ["HLA-DRB1*0101"]
         P = base.get_predictor('tepitope')
-        P.predictProteins(df, length=11, alleles=alleles, path=self.testdir)
+        P.predict_proteins(df, length=11, alleles=alleles, path=self.testdir)
         return
 
     def test_load(self):
@@ -121,20 +135,6 @@ class PredictorTests(unittest.TestCase):
         infile = os.path.join(self.testdir, 'ZEBOVgp1.csv')
         P = base.get_predictor('iedbmhc1')
         P.load(infile)
-        return
-
-    def test_save(self):
-        """Test saving"""
-
-        return
-
-    def test_analysis(self):
-        """Test analysis methods"""
-
-        #get binders for an entire set of saved results
-        #b = analysis.getAllBinders(path, method='tepitope', n=3)
-        #find clusters of binders in these results
-        #cl = analysis.findClusters(b, method, dist=9, minsize=3)
         return
 
     def test_features(self):

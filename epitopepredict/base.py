@@ -72,7 +72,7 @@ def predict_proteins_worker(P, recs, kwargs):
     return df
 
 def predict_peptides_worker(P, recs, kwargs):
-    df = P._predictPeptides(recs, **kwargs)
+    df = P._predict_peptides(recs, **kwargs)
     return df
 
 def get_preset_alleles(name):
@@ -82,7 +82,7 @@ def get_preset_alleles(name):
 def first(x):
     return x.iloc[0]
 
-def getIEDBRequest(seq, alleles='HLA-DRB1*01:01', method='consensus3'):
+def get_iedb_request(seq, alleles='HLA-DRB1*01:01', method='consensus3'):
     import requests
     url = 'http://tools.iedb.org/tools_api/mhcii/'
     values = {'method' : method,
@@ -240,7 +240,7 @@ def get_standard_mhc1(name):
     mhc = '-'.join(temp[0:-1])
     return mhc
 
-def getDRBList(a):
+def get_drb_list(a):
     """Get DRB list in standard format"""
 
     s = pd.Series(a)
@@ -270,8 +270,8 @@ def compare_predictors(p1, p2, by='allele', cutoff=5, n=2):
 
     import pylab as plt
     import seaborn as sns
-    a = p1.promiscuousBinders(n=n, cutoff=cutoff)
-    b = p2.promiscuousBinders(n=n, cutoff=cutoff)
+    a = p1.promiscuous_binders(n=n, cutoff=cutoff)
+    b = p2.promiscuous_binders(n=n, cutoff=cutoff)
     f = utilities.venndiagram([a.peptide, b.peptide],[p1.name,p2.name],colors=('y','b'))
     f.suptitle('common\npromiscuous binders n=%s' %n)
     plt.tight_layout()
@@ -280,8 +280,8 @@ def compare_predictors(p1, p2, by='allele', cutoff=5, n=2):
         if not 'score' in p.data.columns:
             p.data['score'] = p.data[p.scorekey]
 
-    #b1 = p1.getBinders(perc=perc)
-    #b2 = p2.getBinders(perc=perc)
+    #b1 = p1.get_binders(perc=perc)
+    #b2 = p2.get_binders(perc=perc)
     #o = analysis.getOverlaps(b1,b2)
     #merge data for plotting score correlation
     df = pd.merge(p1.data, p2.data, on=['peptide','allele','name','pos'])
@@ -379,7 +379,7 @@ class Predictor(object):
            Should return a pandas DataFrame"""
         return
 
-    def prepareData(self, result, name, allele):
+    def prepare_data(self, result, name, allele):
         """Put raw prediction data into DataFrame and rank,
            override for custom processing. Can be overriden for
            custom data."""
@@ -387,10 +387,10 @@ class Predictor(object):
         df = pd.DataFrame(result, columns=['peptide','core','pos','score'])
         df['name'] = name
         df['allele'] = allele
-        self.getRanking(df)
+        self.get_ranking(df)
         return df
 
-    def getRanking(self, df):
+    def get_ranking(self, df):
         """Add a ranking column according to scorekey"""
 
         s=self.scorekey
@@ -409,7 +409,7 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def getBinders(self, name=None, cutoff=5, cutoff_method='default', data=None, **kwargs):
+    def get_binders(self, name=None, cutoff=5, cutoff_method='default', data=None, **kwargs):
         """
         Get the top scoring binders. If using scores cutoffs are derived
         from the available prediction data stored in the object. For
@@ -472,15 +472,15 @@ class Predictor(object):
                 res = data[data[self.scorekey] <= cutoff]
             return res
 
-    def promiscuousBinders(self, binders=None, name=None, cutoff=5,
+    def promiscuous_binders(self, binders=None, name=None, cutoff=5,
                            cutoff_method='default', n=1, unique_core=True, **kwargs):
         """
         Use params for getbinders if no binders provided?
         Args:
             binders: can provide a precalculated list of binders
             name: specific protein, optional
-            value: to pass to getBinders
-            cutoff: percentile cutoff for getBinders
+            value: to pass to get_binders
+            cutoff: percentile cutoff for get_binders
             n: min number of alleles
             unique_core: removes peptides with duplicate cores and picks the most
             promiscuous and highest ranked, used for mhc-II predictions
@@ -490,7 +490,7 @@ class Predictor(object):
 
         n=int(n)
         if binders is None:
-            binders = self.getBinders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
+            binders = self.get_binders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
         if binders is None:
             print('no binders found, check that prediction data is present')
             return
@@ -519,7 +519,7 @@ class Predictor(object):
         s = s[s.alleles>=n]
         return s
 
-    def rankedBinders(self, names=None, how='median', cutoff=None):
+    def ranked_binders(self, names=None, how='median', cutoff=None):
         """
         Get the median/mean rank of each binder over all alleles.
         Args:
@@ -544,11 +544,11 @@ class Predictor(object):
             b = b[b['rank'] < cutoff]
         return b
 
-    def getUniqueCores(self, binders=False):
+    def get_unique_cores(self, binders=False):
         """Get only unique cores"""
 
         if binders == True:
-            df = self.getBinders()
+            df = self.get_binders()
         else:
             df = self.data
         grouped = df.groupby('core')
@@ -564,11 +564,11 @@ class Predictor(object):
         df['pos'] = range(len(seqs))
         return df
 
-    '''def _predictPeptides(self, sequences, alleles=[], **kwargs):
+    '''def _predict_peptides(self, sequences, alleles=[], **kwargs):
         """
         Predict a set of arbitary peptide sequences in a list, dict or dataframe.
         These are treated as individual peptides and not split into n-mers. This is
-        usually called wrapped by predictPeptides.
+        usually called wrapped by predict_peptides.
         """
 
         results=[]
@@ -602,11 +602,11 @@ class Predictor(object):
         self.data = data
         return data'''
 
-    def _predictPeptides(self, peptides, alleles=[], **kwargs):
+    def _predict_peptides(self, peptides, alleles=[], **kwargs):
         """
         Predict a set of arbitary peptide sequences in a list or dataframe.
         These are treated as individual peptides and not split into n-mers. This is
-        usually called wrapped by predictPeptides. If the predict method for the class
+        usually called wrapped by predict_peptides. If the predict method for the class
         can only accept protein sequences this needs to be overriden.
         """
 
@@ -627,20 +627,20 @@ class Predictor(object):
         self.data = data
         return data
 
-    def predictPeptides(self, peptides, cpus=1, **kwargs):
+    def predict_peptides(self, peptides, cpus=1, **kwargs):
         """Predict a set of individual peptides without splitting them.
-        This is a wrapper for _predictPeptides to allow multiprocessing.
+        This is a wrapper for _predict_peptides to allow multiprocessing.
         """
 
         if cpus == 1:
-            data = self._predictPeptides(peptides,  **kwargs)
+            data = self._predict_peptides(peptides,  **kwargs)
         else:
             data = self._run_multiprocess(peptides,
                                    worker=predict_peptides_worker, cpus=cpus, **kwargs)
         if data is None:
             print ('empty result returned')
             return
-        data = data.groupby('allele').apply(self.getRanking)
+        data = data.groupby('allele').apply(self.get_ranking)
         data = data.reset_index(drop=True)
         self.data = data
         return data
@@ -654,7 +654,7 @@ class Predictor(object):
             recs = pd.DataFrame(zip(idx,recs), columns=['locus_tag','translation'])
         return recs
 
-    def predictProteins(self, recs, cpus=1, alleles=[], path=None, verbose=False, **kwargs):
+    def predict_proteins(self, recs, cpus=1, alleles=[], path=None, verbose=False, **kwargs):
         """
         Get predictions for a set of proteins over multiple alleles that allows
         running in parallel using the cpus parameter.
@@ -670,7 +670,7 @@ class Predictor(object):
         if verbose == True:
             self.print_heading()
         if cpus == 1:
-            results = self._predictSequences(recs, alleles=alleles, **kwargs)
+            results = self._predict_sequences(recs, alleles=alleles, **kwargs)
         else:
             results = self._run_multiprocess(recs, alleles=alleles, cpus=cpus, **kwargs )
 
@@ -684,7 +684,7 @@ class Predictor(object):
         self.cleanup()
         return results
 
-    def _predictSequences(self, recs, path=None, overwrite=True, alleles=[], length=11, overlap=1,
+    def _predict_sequences(self, recs, path=None, overwrite=True, alleles=[], length=11, overlap=1,
                           key='locus_tag', seqkey='translation', names=None, verbose=False,
                           method=None):
         """
@@ -895,7 +895,7 @@ class Predictor(object):
     def allele_summary(self, cutoff=5):
         """Allele based summary"""
 
-        b = self.getBinders(cutoff=cutoff)
+        b = self.get_binders(cutoff=cutoff)
         s = b.groupby('allele').agg({'peptide':np.size,self.scorekey:[np.median,np.mean]})
         s.columns = s.columns.get_level_values(1)
         return s
@@ -920,7 +920,7 @@ class Predictor(object):
         p=p.sort('mean',ascending=self.rankascending)
         return p
 
-    def getNames(self):
+    def get_names(self):
         grp = self.data.groupby('name')
         return sorted(dict(list(grp)).keys())
 
@@ -940,12 +940,12 @@ class Predictor(object):
         plot = plotting.plot_tracks([self], name=name, **kwargs)
         return plot
 
-    def getAlleles(self):
+    def get_alleles(self):
         """Get available alleles - override"""
         return []
 
     def check_alleles(self, alleles):
-        a = self.getAlleles()
+        a = self.get_alleles()
         found = list((set(a) & set(alleles)))
         if len(found) == 0:
             return
@@ -972,7 +972,7 @@ class NetMHCIIPanPredictor(Predictor):
         self.operator = '<'
         self.rankascending = 1
 
-    def readResult(self, res):
+    def read_result(self, res):
         """Read raw results from netMHCIIpan output"""
 
         data=[]
@@ -986,7 +986,7 @@ class NetMHCIIPanPredictor(Predictor):
             data.append(dict(zip(self.colnames,row)))
         return data
 
-    def prepareData(self, df, name):
+    def prepare_data(self, df, name):
         """Prepare netmhciipan results as a dataframe"""
 
         #df = df.convert_objects(convert_numeric=True)
@@ -996,11 +996,11 @@ class NetMHCIIPanPredictor(Predictor):
         df = df.drop(['Pos','Identity','Rank'],1)
         df = df.dropna()
         df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
-        self.getRanking(df)
+        self.get_ranking(df)
         self.data = df
         return
 
-    def runSequence(self, seq, length, allele, name='temp', overlap=1):
+    def run_sequence(self, seq, length, allele, name='temp', overlap=1):
         """Run netmhciipan for a single sequence"""
 
         tempfile = os.path.join(self.temppath, name+'.fa')
@@ -1009,7 +1009,7 @@ class NetMHCIIPanPredictor(Predictor):
         #print cmd
         temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         #print (temp)
-        rows = self.readResult(temp)
+        rows = self.read_result(temp)
         df = pd.DataFrame(rows)
         return df
 
@@ -1028,17 +1028,17 @@ class NetMHCIIPanPredictor(Predictor):
         if peptides != None:
             res = pd.DataFrame()
             for p in peptides:
-                temp = self.runSequence(p, len(p), allele)
+                temp = self.run_sequence(p, len(p), allele)
                 res = res.append(temp,ignore_index=True)
         else:
-            res = self.runSequence(sequence, length, allele, name, overlap)
+            res = self.run_sequence(sequence, length, allele, name, overlap)
         if len(res)==0:
             return res
-        self.prepareData(res, name)
+        self.prepare_data(res, name)
         #print (self.data[self.data.columns[:7]][:5])
         return self.data
 
-    def getAlleles(self):
+    def get_alleles(self):
         """Get available alleles"""
 
         cmd = 'netMHCIIpan -list'
@@ -1120,10 +1120,10 @@ class IEDBMHCIPredictor(Predictor):
             print (e)
             return
         #print (temp)
-        df = self.prepareData(temp, name)
+        df = self.prepare_data(temp, name)
         return df
 
-    def prepareData(self, rows, name):
+    def prepare_data(self, rows, name):
         """Prepare data from results"""
 
         try:
@@ -1150,12 +1150,12 @@ class IEDBMHCIPredictor(Predictor):
             df['ic50'] = df.filter(regex="ic50").mean(1)
         if not 'score' in df.columns:
             df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
-        self.getRanking(df)
+        self.get_ranking(df)
         self.data = df
         #print (df[:10])
         return df
 
-    def getAlleles(self):
+    def get_alleles(self):
         """Get available alleles from model_list file and
             convert to standard names"""
 
@@ -1168,7 +1168,7 @@ class IEDBMHCIPredictor(Predictor):
             alleles = pd.read_csv(os.path.join(datadir, 'iedb_mhc1_alleles.csv')).allele.values
         return alleles
 
-    def getAlleleData(self):
+    def get_allele_data(self):
         if not os.path.exists(iedbmhc1path):
             print ('iedb tools not found')
             return
@@ -1194,7 +1194,7 @@ class IEDBMHCIIPredictor(Predictor):
         self.iedbmethod = 'IEDB_recommended'
         return
 
-    def prepareData(self, rows, name):
+    def prepare_data(self, rows, name):
         """Read data from raw output"""
 
         if len(rows) == 0:
@@ -1220,7 +1220,7 @@ class IEDBMHCIIPredictor(Predictor):
             if not 'score' in df.columns:
                 df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
 
-        self.getRanking(df)
+        self.get_ranking(df)
         self.data = df
         return df
 
@@ -1248,10 +1248,10 @@ class IEDBMHCIIPredictor(Predictor):
         except:
             print ('allele %s not available?' %allele)
             return
-        data = self.prepareData(temp, name)
+        data = self.prepare_data(temp, name)
         return data
 
-    def getAlleles(self):
+    def get_alleles(self):
         if not os.path.exists(iedbmhc2path):
             return
         c = os.path.join(iedbmhc2path,'mhc_II_binding.py')
@@ -1280,21 +1280,21 @@ class TEpitopePredictor(Predictor):
         allele = allele.replace(':','')
         if not allele in self.pssms:
             #print 'computing virtual matrix for %s' %allele
-            m = tepitope.createVirtualPSSM(allele)
+            m = tepitope.create_virtual_pssm(allele)
             if m is None:
                 print ('no such allele', allele)
                 return pd.DataFrame()
         else:
             m = self.pssms[allele]
         m = m.transpose().to_dict()
-        result = tepitope.getScores(m, peptides=peptides)
-        df = self.prepareData(result, name, allele)
+        result = tepitope.get_scores(m, peptides=peptides)
+        df = self.prepare_data(result, name, allele)
         self.data = df
         #print(df[:5])
         return df
 
-    def getAlleles(self):
-        return tepitope.getAlleles()
+    def get_alleles(self):
+        return tepitope.get_alleles()
 
 class IEDBBCellPredictor(Predictor):
     """Using IEDB tools methods, requires iedb bcell tools.
@@ -1341,11 +1341,11 @@ class IEDBBCellPredictor(Predictor):
 
         threshold = round(results[1][0], 3)
         temp=results[0]
-        self.prepareData(temp, name)
+        self.prepare_data(temp, name)
         os.chdir(currpath)
         return self.data
 
-    def prepareData(self, temp, name):
+    def prepare_data(self, temp, name):
 
         df = pd.read_csv(temp,sep=",")
         if len(df)==0:
@@ -1358,12 +1358,12 @@ class IEDBBCellPredictor(Predictor):
         #print (df)
         return
 
-    def predictProteins(self, recs, names=None, save=False,
+    def predict_proteins(self, recs, names=None, save=False,
                         label='', path='', **kwargs):
         """Get predictions for a set of proteins - no alleles so we override
         the base method for this too. """
 
-        recs = sequtils.getCDS(recs)
+        recs = sequtils.get_cds(recs)
         if names != None:
             recs = recs[recs.locus_tag.isin(names)]
         proteins = list(recs.iterrows())
@@ -1396,7 +1396,7 @@ class MHCFlurryPredictor(Predictor):
         self.operator = '<'
         self.scorekey = 'score'
         self.rankascending = 1
-        self._checkModels()
+        self._check_models()
         return
 
     def predict(self, peptides=None, length=11, overlap=1,
@@ -1407,11 +1407,11 @@ class MHCFlurryPredictor(Predictor):
         predictor = Class1AffinityPredictor.load()
         df = predictor.predict_to_dataframe(peptides=peptides, allele=allele)
         #print (df[:5])
-        df = self.prepareData(df, name, allele)
+        df = self.prepare_data(df, name, allele)
         self.data = df
         return df
 
-    def prepareData(self, df, name, allele):
+    def prepare_data(self, df, name, allele):
         """Post process dataframe to alter some column names"""
 
         df = df.rename(columns={'Allele':'allele','Peptide':'peptide'})
@@ -1419,17 +1419,17 @@ class MHCFlurryPredictor(Predictor):
         df['pos'] = df.index
         #df['score'] = df['prediction'].apply( lambda x: 1-math.log(x, 50000) )
         df['score'] = df.prediction
-        self.getRanking(df)
+        self.get_ranking(df)
         return df
 
     def convert_allele_name(self, r):
         return r[:5]+'*'+r[5:7]+':'+r[7:]
 
-    def getAlleles(self):
+    def get_alleles(self):
         import mhcflurry
         return mhcflurry.Class1AffinityPredictor.supported_alleles
 
-    def _checkModels(self):
+    def _check_models(self):
         try:
             import mhcflurry
             mhcflurry.class1_affinity_predictor.get_default_class1_models_dir()
@@ -1460,7 +1460,7 @@ class MHCNuggetsPredictor(Predictor):
         """Uses cmd line call to mhcnuggets."""
 
         path = '/local/mhcnuggets'
-        tempf = self.writeSeqs(peptides)
+        tempf = self.write_seqs(peptides)
         a = allele.translate(None, '*:')
         cmd = 'python {p}/scripts/predict.py -m lstm -w {p}/saves/kim2014/mhcnuggets_lstm/{a}.h5 \
                   -p {t}'.format(p=path,t=tempf,a=a)
@@ -1474,21 +1474,21 @@ class MHCNuggetsPredictor(Predictor):
             print (e)
             return
 
-        df = self.prepareData(temp, name, allele)
+        df = self.prepare_data(temp, name, allele)
         return df
 
-    def prepareData(self, rows, name, allele):
+    def prepare_data(self, rows, name, allele):
         """Get result into dataframe"""
 
         df = pd.read_csv(io.BytesIO(rows),sep="\s",skiprows=2,names=['peptide','ic50'],engine='python')
         #print (rows)
         df['name'] = name
         df['allele'] = allele
-        self.getRanking(df)
+        self.get_ranking(df)
         self.data = df
         return df
 
-    def writeSeqs(self, peptides):
+    def write_seqs(self, peptides):
         tempf = tempfile.mktemp()+'.txt'
         f = open(tempf,'w')
         for p in peptides:

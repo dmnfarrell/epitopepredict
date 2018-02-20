@@ -83,7 +83,7 @@ class WorkFlow(object):
                 if iedb_checks(method) == False:
                     continue
 
-            P.predictProteins(self.sequences, length=length, alleles=a, names=self.names,
+            P.predict_proteins(self.sequences, length=length, alleles=a, names=self.names,
                               path=savepath, overwrite=self.overwrite, verbose=self.verbose,
                               method=method, cpus=self.cpus)
             #load results into predictor
@@ -114,12 +114,12 @@ class WorkFlow(object):
             cutoff = self.cutoff
             cutoff_method = self.cutoff_method
             n = self.n
-            b = P.getBinders(cutoff=cutoff, cutoff_method=cutoff_method)
+            b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
             print ('%s/%s binders' %(len(b), len(P.data)))
             if len(b) == 0:
                 print ('no binders found, check your cutoff value')
                 return
-            pb = P.promiscuousBinders(binders=b, n=int(n), cutoff=cutoff, cutoff_method=cutoff_method)
+            pb = P.promiscuous_binders(binders=b, n=int(n), cutoff=cutoff, cutoff_method=cutoff_method)
             print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
             pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)))
             if self.verbose == True and len(pb)>0:
