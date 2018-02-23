@@ -12,7 +12,6 @@ import csv, glob, pickle, operator
 import time, re
 from collections import OrderedDict
 import numpy as np
-import pylab as plt
 import pandas as pd
 from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq

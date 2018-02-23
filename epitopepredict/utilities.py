@@ -11,8 +11,6 @@ import os, math, csv, string
 import shutil
 import numpy as np
 import pandas as pd
-import matplotlib
-import pylab as plt
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio import PDB

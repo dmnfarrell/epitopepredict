@@ -14,9 +14,6 @@ import re
 import time, random
 from collections import OrderedDict
 from operator import itemgetter
-#import matplotlib
-#matplotlib.use('agg')
-import pylab as plt
 import numpy as np
 import pandas as pd
 import subprocess

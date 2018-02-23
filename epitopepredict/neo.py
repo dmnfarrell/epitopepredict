@@ -189,7 +189,7 @@ def predict_variants(vcf_file, length=9, alleles=[], path='', verbose=False,
     res = seqs.merge(pred,on='peptide')
     print (len(pred), len(res))
     #x = self_similarity(pred, proteome="human_proteome")
-    res.to_csv(os.path.join(path, 'my_results.csv'))
+    res.to_csv(os.path.join(path, 'results_%s.csv' %predictor))
     return res
 
 def show_predictors():

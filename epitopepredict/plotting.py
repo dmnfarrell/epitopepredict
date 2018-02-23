@@ -9,8 +9,9 @@
 from __future__ import absolute_import, print_function
 import sys, os, math
 from collections import OrderedDict
+import matplotlib 
+matplotlib.use('agg')
 import pylab as plt
-import matplotlib as mpl
 import numpy as np
 import pandas as pd
 from . import base

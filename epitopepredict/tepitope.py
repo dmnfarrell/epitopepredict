@@ -11,7 +11,6 @@ import os, string, csv, glob
 import time
 from operator import itemgetter
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
@@ -266,31 +265,6 @@ def get_similarities(allele, refalleles, alnindex, matrix=blosum62):
         sim = similarity_score(matrix, rp, qp)
         sims.append((k,sim))
     return sims, qp
-
-def plothists(df1, df2, bins=25):
-
-    f=plt.figure()
-    ax=f.add_subplot(111)
-    ax.hist(df1.nearest, bins, alpha=0.5, normed=True)
-    ax.hist(df2.nearest, bins, alpha=0.5, normed=True)
-    plt.tight_layout()
-    return ax
-
-def plotheatmap(df):
-
-    fig=plt.figure()
-    ax=fig.add_subplot(111)
-    hm=ax.pcolor(df,cmap='RdBu')
-    fig.colorbar(hm, ax=ax)
-    ax.set_xticks(np.arange(0.5, len(df.columns)))
-    ax.set_yticks(np.arange(0.5, len(df.index)))
-    ax.set_xticklabels(df.columns, minor=False, fontsize=10,rotation=75)
-    ax.set_yticklabels(df.index, minor=False,fontsize=10)
-    hm.set_clim(0,1)
-    #from matplotlib.patches import Rectangle
-    #ax.add_patch(Rectangle((0, 0), 9,ax.set_ylim()[1]-1,fill=0,lw=2,edgecolor='black',alpha=0.8))
-    plt.tight_layout()
-    return
 
 def compare_tepitope_alleles(alnindex):
     """Compare a set of alleles to Tepitope library HLAs"""
