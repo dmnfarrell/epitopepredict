@@ -10,6 +10,8 @@ Contents:
    description
    cli
    examples
+   neoepitope
+   nomenclature
    modules
 
 Indices and tables

@@ -28,7 +28,8 @@ setup(
                       'future'],
     entry_points = {
         'console_scripts': [
-            'epitopepredict=epitopepredict.app:main']
+            'epitopepredict=epitopepredict.app:main',
+            'neopredict=epitopepredict.neo:main']
             },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',

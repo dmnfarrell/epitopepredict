@@ -33,8 +33,7 @@ home = os.path.expanduser("~")
 path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'mhcdata')
 predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets','iedbbcell']
-iedbmethods = ['arbpython','comblib','consensus3','IEDB_recommended',
-               'NetMHCIIpan','nn_align','smm_align','tepitope']
+iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'netmhcpan', 'smmpmbec']
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
             'output_format': 'ascii', 'sort_output': 'position_in_sequence',
             'sequence_format': 'auto', 'allele': 'HLA-DRB1*01:01', 'length':'11',
@@ -90,7 +89,6 @@ def get_iedb_request(seq, alleles='HLA-DRB1*01:01', method='consensus3'):
               'allele' : alleles }
     r=requests.post(url,data=values)
     df=pd.read_csv(io.StringIO(r.content),sep='\t')
-    #df=df.drop(['nn_align_core','nn_align_ic50','nn_align_rank'])
     return df
 
 def get_overlapping(index, s, length=9, cutoff=25):
@@ -112,6 +110,8 @@ def get_predictor(name='tepitope', **kwargs):
         return NetMHCIIPanPredictor(**kwargs)
     elif name == 'iedbmhc1':
         return IEDBMHCIPredictor(**kwargs)
+    elif name in iedbmhc1_methods:
+        return IEDBMHCIPredictor(method=name, **kwargs)
     elif name == 'iedbmhc2':
         return IEDBMHCIIPredictor(**kwargs)
     elif name == 'iedbbcell':
@@ -635,13 +635,14 @@ class Predictor(object):
         if cpus == 1:
             data = self._predict_peptides(peptides,  **kwargs)
         else:
-            data = self._run_multiprocess(peptides,
-                                   worker=predict_peptides_worker, cpus=cpus, **kwargs)
+            data = self._run_multiprocess(peptides, worker=predict_peptides_worker,
+                                          cpus=cpus, **kwargs)
         if data is None:
             print ('empty result returned')
             return
-        data = data.groupby('allele').apply(self.get_ranking)
         data = data.reset_index(drop=True)
+        data = data.groupby('allele').apply(self.get_ranking)
+        #data = data.reset_index(drop=True)
         self.data = data
         return data
 
@@ -654,7 +655,12 @@ class Predictor(object):
             recs = pd.DataFrame(zip(idx,recs), columns=['locus_tag','translation'])
         return recs
 
-    def predict_proteins(self, recs, cpus=1, alleles=[], path=None, verbose=False, **kwargs):
+    def predict_proteins(self, args, **kwargs):
+        """alias to predict_sequences"""
+        results = self.predict_sequences(args, **kwargs)
+        return results
+
+    def predict_sequences(self, recs, cpus=1, alleles=[], path=None, verbose=False, **kwargs):
         """
         Get predictions for a set of proteins over multiple alleles that allows
         running in parallel using the cpus parameter.
@@ -1062,7 +1068,7 @@ class NetMHCIIPanPredictor(Predictor):
 class IEDBMHCIPredictor(Predictor):
     """Using IEDB tools method, requires iedb-mhc1 tools"""
 
-    def __init__(self, data=None):
+    def __init__(self, data=None, method='IEDB_recommended'):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc1'
         self.methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008',
@@ -1071,7 +1077,7 @@ class IEDBMHCIPredictor(Predictor):
         self.cutoff = 500
         self.operator = '<'
         self.rankascending = 1
-        self.iedbmethod = 'IEDB_recommended'
+        self.method = method
         return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
@@ -1102,11 +1108,12 @@ class IEDBMHCIPredictor(Predictor):
         if not os.path.exists(path):
             print ('IEDB MHC-I tools not found, set the iedbmhc1path variable')
             return
-        if method == None: method = 'IEDB_recommended'
+        if method == None:
+            method = self.method
         if method not in self.methods:
             print ('available methods are %s' %self.methods)
             return
-        self.iedbmethod = method
+        self.method = method
         cmd = os.path.join(path,'src/predict_binding.py')
         cmd = cmd+' %s %s %s %s' %(method,allele,length,seqfile)
         if show_cmd == True:
@@ -1145,8 +1152,8 @@ class IEDBMHCIPredictor(Predictor):
         df['core'] = df.peptide
         df['name'] = name
         if 'method' not in df.columns:
-            df['method'] = self.iedbmethod
-        if self.iedbmethod in ['IEDB_recommended','consensus']:
+            df['method'] = self.method
+        if self.method in ['IEDB_recommended','consensus']:
             df['ic50'] = df.filter(regex="ic50").mean(1)
         if not 'score' in df.columns:
             df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
@@ -1191,7 +1198,7 @@ class IEDBMHCIIPredictor(Predictor):
         self.rankascending = 0
         self.methods = ['comblib','consensus3','IEDB_recommended',
                         'NetMHCIIpan','nn_align','smm_align','tepitope']
-        self.iedbmethod = 'IEDB_recommended'
+        self.method = 'IEDB_recommended'
         return
 
     def prepare_data(self, rows, name):
@@ -1212,7 +1219,7 @@ class IEDBMHCIIPredictor(Predictor):
         df['core'] = df[df.filter(regex="core").columns[0]]
         df['name'] = name
 
-        if self.iedbmethod == 'IEDB_recommended':
+        if self.method == 'IEDB_recommended':
             df['score'] = df.percentile_rank
         else:
             if not 'ic50' in df.columns:
@@ -1231,7 +1238,7 @@ class IEDBMHCIIPredictor(Predictor):
         only accepts whole sequence to be fragmented.
         """
 
-        self.iedbmethod = method
+        self.method = method
         tempfile = os.path.join(self.temppath, name+'.fa')
         seqfile = write_fasta(sequence, id=name, filename=tempfile)
         path = iedbmhc2path
@@ -1309,13 +1316,13 @@ class IEDBBCellPredictor(Predictor):
         self.cutoff = 0.9
         self.operator = '>'
         self.rankascending = 0
-        self.iedbmethod = 'Bepipred'
+        self.method = 'Bepipred'
         self.path = iedbbcellpath
 
     def predict(self, sequence=None, peptides=None, window=None, name=''):
         """Uses code from iedb predict_binding.py """
 
-        value = self.iedbmethod
+        value = self.method
         currpath=os.getcwd()
         os.chdir(self.path)
         sys.path.append(self.path)
@@ -1358,7 +1365,7 @@ class IEDBBCellPredictor(Predictor):
         #print (df)
         return
 
-    def predict_proteins(self, recs, names=None, save=False,
+    def predict_sequences(self, recs, names=None, save=False,
                         label='', path='', **kwargs):
         """Get predictions for a set of proteins - no alleles so we override
         the base method for this too. """

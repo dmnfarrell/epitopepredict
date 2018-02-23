@@ -57,6 +57,8 @@ baseoptions['iedbtools'] = {'iedbmhc1_path':'', 'iedbmhc2_path':'',
                             'iedb_mhc1_method':'IEDB_recommended',
                             'iedb_mhc2_method':'IEDB_recommended'}
 
+baseoptions['neopredict'] = {'vcf_file':''}
+
 def write_default_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
