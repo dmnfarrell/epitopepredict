@@ -11,7 +11,7 @@ import sys, os
 import shutil
 import pandas as pd
 from collections import OrderedDict
-from epitopepredict import base, config, analysis, sequtils, plotting, tests
+from epitopepredict import base, config, analysis, sequtils, plotting, neo
 
 defaultpath = os.getcwd()
 
@@ -251,6 +251,8 @@ def main():
                         default=False, help="Do test predictions")
     parser.add_option("-a", "--analysis", dest="analysis",
                         help="Analysis path", metavar="FILE")
+    parser.add_option("-n", "--neoepitope", dest="neoepitope", action="store_true",
+                        default=False, help="Neo-epitope pipeline")
     parser.add_option("-s", "--server", dest="server",  action="store_true",
                         default=False, help="Run web app")
     parser.add_option("-x", "--port", dest="port", default=8888,
@@ -280,6 +282,15 @@ def main():
     elif opts.analysis is not None:
         W = WorkFlow()
         W.analysis(opts.analysis)
+    elif opts.neoepitope == True:
+        if opts.test == True:
+            neo.test_run()
+        else:
+            from neo import NeoEpitopeWorkFlow
+            W = NeoEpitopeWorkFlow()
+            st = W.setup()
+            if st == True:
+                W.run()
     elif opts.server == True:
         #from epitopepredict.server import webapp
         #webapp.run(port=5000, debug=True)

@@ -6,7 +6,7 @@ with open('epitopepredict/description.txt') as f:
 
 setup(
     name = 'epitopepredict',
-    version = '0.2.0',
+    version = '0.3.0',
     description = 'Python package for epitope prediction',
     long_description = long_description,
     url='https://github.com/dmnfarrell/epitopepredict',
@@ -28,8 +28,7 @@ setup(
                       'future'],
     entry_points = {
         'console_scripts': [
-            'epitopepredict=epitopepredict.app:main',
-            'neopredict=epitopepredict.neo:main']
+            'epitopepredict=epitopepredict.app:main']
             },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',

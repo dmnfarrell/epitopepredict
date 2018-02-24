@@ -25,6 +25,8 @@ class NeoEpitopeWorkFlow(object):
     def setup(self):
         """Setup main parameters"""
 
+        if check_imports() == False:
+            return
         pd.set_option('display.width', 120)
         base.iedbmhc1path = self.iedbmhc1_path
         base.iedbmhc2path = self.iedbmhc2_path
@@ -72,6 +74,11 @@ def get_variant_class(v):
         return 'indel'
 
 def get_variant_effect(variant, verbose=False):
+    """Get priority variant effects from a set of variants loaded with
+    varcode. Omits silent and noncoding effects.
+    Returns:
+        varcode variant effect object
+    """
 
     import varcode
     v = variant
@@ -196,16 +203,13 @@ def show_predictors():
     for p in base.predictors:
         print(p)
 
-    def analysis(self):
-        """Do analysis"""
-
-        return
-
 def check_imports():
     try:
         import varcode
     except:
-        print ('please run pip install varcode')
+        print ('varcode required. please run pip install varcode')
+        return False
+    return True
 
 def print_help():
     print ("""use -h to get options""")
@@ -213,7 +217,7 @@ def print_help():
 def test_run():
     """Test run for sample vcf file"""
 
-    print ('running test')
+    print ('running neoepitope workflow test')
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
     options['base']['mhc2_alleles'] = 'human_common_mhc2'
@@ -226,42 +230,3 @@ def test_run():
     W = NeoEpitopeWorkFlow(options)
     st = W.setup()
     W.run()
-
-def main():
-    "Run the application"
-
-    import sys, os
-    from optparse import OptionParser
-    parser = OptionParser()
-    parser.add_option("-c", "--config", dest="config",
-                        help="Configuration file", metavar="FILE")
-    parser.add_option("-r", "--run", dest="run",  action="store_true",
-                        default=False, help="Run the pipeline")
-    parser.add_option("-t", "--test", dest="test",  action="store_true",
-                        default=False, help="Do test predictions")
-    parser.add_option("-v", "--version", dest="version", action="store_true",
-                        help="Get version")
-
-    opts, remainder = parser.parse_args()
-
-    if opts.config != None:
-        cp = config.parse_config(opts.config)
-        options = config.get_options(cp)
-        options = config.check_options(options)
-    else:
-        print ('no config file')
-    if opts.test == True:
-        test_run()
-    elif opts.run == True:
-        W = WorkFlow(options)
-        st = W.setup()
-        if st == True:
-            W.run()
-    elif opts.version == True:
-        from . import __version__
-        print ('epitopepredict version %s' %__version__)
-    else:
-        print_help()
-
-if __name__ == '__main__':
-    main()

@@ -18,18 +18,22 @@ The program currently accepts vcf or maf files that have been output from a vari
 Usage
 -----
 
-The package provides a command line tool called `neopredict` which you can run in the same way as the regular epitopepredict command. This also uses a text confguration file to provide the inputs and settings. Running the tool is then as simple as calling this command::
+The pipeline is run via the same command line tool using `epitopepredict`. This also uses the same text confguration file to provide the inputs and settings. Settings specific to neoepitope prediction are in the [neoepitope] section. These are explained below. Running the tool is then as simple as calling this command::
 
-    neopredict -c <yourfilename>.conf -r
+    epitopepredict -c <yourfilename>.conf -n
 
 You can also test the tool installing by running::
 
-    neopredict -t
+    epitopepredict -n -t
 
-Inputs
-------
+Configuration and Inputs
+------------------------
 
-neopredict accepts a vcf or maf file which has been created from a variant calling program.
+neopredict accepts a vcf or maf file which has been created from a variant calling program. This file and all other options are specified in the [neoepitope] of the configuration file::
+
+    [neoepitope]
+    vcf_file =
+    maf_file =
 
 References
 ----------
