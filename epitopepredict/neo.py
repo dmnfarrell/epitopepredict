@@ -7,7 +7,7 @@
 """
 
 from __future__ import absolute_import, print_function
-import sys, os
+import sys, os, subprocess
 import shutil
 import pandas as pd
 from collections import OrderedDict
@@ -27,6 +27,7 @@ class NeoEpitopeWorkFlow(object):
 
         if check_imports() == False:
             return
+        check_ensembl()
         pd.set_option('display.width', 120)
         base.iedbmhc1path = self.iedbmhc1_path
         base.iedbmhc2path = self.iedbmhc2_path
@@ -210,6 +211,23 @@ def check_imports():
         print ('varcode required. please run pip install varcode')
         return False
     return True
+
+def check_ensembl():
+    """Check pyensembl ref genome cached"""
+
+    #check if running inside a snap package
+    if os.environ.has_key('SNAP_USER_COMMON'):
+	print ('running inside snap')
+        spath = os.environ['SNAP_USER_COMMON']
+	print ('checking for ref human genome')
+        os.environ['PYENSEMBL_CACHE_DIR'] = spath
+	print (spath)
+        #subprocess.check_output('pyensembl install --release 75 --species homo_sapiens', shell=True)
+
+        from pyensembl import Genome
+        data = Genome('GRCh38', 'ensembl87')
+        print ('ensembl genome files cached in %s' %data.cache_directory_path)
+    return
 
 def print_help():
     print ("""use -h to get options""")
