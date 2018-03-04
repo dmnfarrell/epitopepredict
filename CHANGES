@@ -7,9 +7,12 @@ CHANGES
 ------
 
 renamed some predictor class methods
-can run predictpeptides in parallel
-added mhcnuggets predictor
+can run predict_peptides in parallel
+added mhcnuggets predictor class
 changed all class methods to use underscore convention
+added sphinx documentation
+added neo module for neo-epitope prediction pipeline
+snap package now builds with some predictors built in
 
 ------
 0.2.0

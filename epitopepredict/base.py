@@ -1460,25 +1460,30 @@ class MHCNuggetsPredictor(Predictor):
         self.operator = '<'
         self.scorekey = 'ic50'
         self.rankascending = 1
+        #path should be set in future we will use API to call..
+        self.path = ''
         return
 
     def predict(self, peptides=None, length=11, overlap=1,
-                      allele='HLA-A0101', name='', **kwargs):
+                      allele='HLA-A0101', name='', show_cmd=False, **kwargs):
         """Uses cmd line call to mhcnuggets."""
 
-        path = '/local/mhcnuggets'
+        path = self.path
         tempf = self.write_seqs(peptides)
         a = allele.translate(None, '*:')
-        cmd = 'python {p}/scripts/predict.py -m lstm -w {p}/saves/kim2014/mhcnuggets_lstm/{a}.h5 \
-                  -p {t}'.format(p=path,t=tempf,a=a)
-        #print (cmd)
+        #print (a)
+        #should replace cmd line call in future with API
+        cmd = 'python {p}/predict.py -m lstm -w {p}/mhcnuggets_lstm/{a}.h5 -p {t}'\
+              .format(p=path,t=tempf,a=a)
+        if show_cmd == True:
+            print (cmd)
         from subprocess import Popen, PIPE
         try:
-            p = Popen(cmd, stdout=PIPE, shell=True)
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
             temp,error = p.communicate()
             #print (temp)
         except OSError as e:
-            print (e)
+            #print (e)
             return
 
         df = self.prepare_data(temp, name, allele)

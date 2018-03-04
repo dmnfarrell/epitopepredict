@@ -13,21 +13,20 @@ It is now known that tumors elicit adaptive immune responses and that the antige
 Method
 ------
 
-The program currently accepts vcf or maf files that have been output from a variant calling program. This file is processed using the `varcode` python library for variant effect prediction. The resulting mutated sequence regions are broken up into peptides which are then filtered for similarity to the self proteome. MHC binding predictions are then performed on the remainder.
+The program currently accepts vcf or maf files that have been output from a variant calling program. In future this step will be added so that the user can provide raw reads. The vcf/maf file is processed using the `varcode` python library for variant effect prediction to estimate potential mutated coding sequence. The resulting mutated sequence regions are broken up into peptides which are then filtered for similarity to the self proteome. MHC binding predictions are then performed on the remainder.
 
-Usage
------
+Usage and Configuration
+------------------------
 
-The pipeline is run via the same command line tool using `epitopepredict`. This also uses the same text confguration file to provide the inputs and settings. Settings specific to neoepitope prediction are in the [neoepitope] section. These are explained below. Running the tool is then as simple as calling this command::
+The pipeline is run via the same command line tool using `epitopepredict`. This uses the same text confguration file to provide the inputs and settings. Settings specific to neoepitope prediction are in the [neoepitope] section. These are explained below. Running the tool is then as simple as calling this command::
 
     epitopepredict -c <yourfilename>.conf -n
 
-You can also test the tool installing by running::
+You can test the neoepitope pipeline after installing by running::
 
     epitopepredict -n -t
 
-Configuration and Inputs
-------------------------
+This will check that the human reference genome is available. (Note for users running the snap package: these files will be placed in your home directory usually under */home/user/snap/epitopepredict/x1/.cache/pyensembl/*.  If you uninstall the package you can also delete this folder to clear space).
 
 neopredict accepts a vcf or maf file which has been created from a variant calling program. This file and all other options are specified in the [neoepitope] of the configuration file::
 

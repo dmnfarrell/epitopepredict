@@ -14,7 +14,9 @@ icon: gui/icon.png
 apps:
   epitopepredict:
     command: bin/epitopepredict
-    plugs: [home,network-bind] 
+    plugs: [home,network-bind]
+    environment:
+      PYENSEMBL_CACHE_DIR: $SNAP_USER_COMMON
 parts:
   epitopepredict:
     plugin: python

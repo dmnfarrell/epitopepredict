@@ -30,7 +30,7 @@ You can install as a snap which will usually be the latest version and will incl
 Prediction algorithms
 ---------------------
 
-There are now multiple MHC binding prediction algorithms available freely online. Often the problem is determining how to use them and which alleles they support. The 'state of the art' algorithms are probably those based on neural networks such as netMHC class I and II routines. These are also packaged in the IEDB suite of tools. These programs can be installed freely on your system. Some of the algorithms below are included in the snap package so you don't have to install them separately.
+There are now multiple MHC binding prediction algorithms available freely online. Often the problem is determining how to use them and which alleles they support. The 'state of the art' algorithms are probably those based on neural networks such as netMHC class I and II routines. These are packaged in the IEDB suite of tools. These programs can be installed freely on your system. Some of the algorithms below are included in the snap package so you don't have to install them separately.
 
 **Supported algorithms**
 
@@ -43,11 +43,24 @@ There are now multiple MHC binding prediction algorithms available freely online
 +---------------------+-------------------------------------------------------------+---------------+
 | IEDB MHC-I and II   | http://tools.immuneepitope.org/mhci/download/               | no            |
 +---------------------+-------------------------------------------------------------+---------------+
-|  mhcflurry          | MHC-I predictor https://github.com/openvax/mhcflurry        | yes           |
+| mhcflurry           | MHC-I predictor https://github.com/openvax/mhcflurry        | yes           |
 +---------------------+-------------------------------------------------------------+---------------+
-|  mhcnuggets         | MHC-I predictor https://github.com/KarchinLab/mhcnuggets    | yes           |
+| mhcnuggets          | MHC-I predictor https://github.com/KarchinLab/mhcnuggets    | yes           |
 +---------------------+-------------------------------------------------------------+---------------+
 
+Installing IEDB MHC tools
+-------------------------
+
+The distributions 'IEDB_MHC*.tar.gz' contain a collection of peptide binding prediction tools for Major Histocompatibility Complex (MHC) class I and II molecules. The collection is a mixture of pythons scripts and linux 32-bit environment specific binaries. Linux environment is required. Under ubuntu (if not using the snap package) you should also install tcsh and gawk::
+
+    sudo apt install tcsh gawk
+
+Download from http://tools.iedb.org/mhci/download/. Unpack the tar.gz files. Run the 'configure' script to set up path variables for trained models. e.g. For MHC-I tools::
+```
+  $ tar -zxvf IEDB_MHC_I-*.*.*.tar.gz
+  $ cd mhc_i
+  $ ./configure.py
+```
 
 Submit Bugs
 ===========

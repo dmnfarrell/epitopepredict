@@ -169,6 +169,7 @@ def get_mutant_sequences(vcf_file=None, maf_file=None, reference=None, peptides=
     elif maf_file is not None:
         variants = varcode.load_maf(maf_file)
     print ('%s variants read' %len(variants))
+    #print (variants.)
     ecount = 0
     for v in variants:
         eff = get_variant_effect(v, verbose=verbose)
@@ -212,21 +213,28 @@ def check_imports():
         return False
     return True
 
+def fetch_ensembl_release(path=None, release='75'):
+    """get pyensembl genome files"""
+
+    from pyensembl import Genome,EnsemblRelease
+    if path is not None:
+        os.environ['PYENSEMBL_CACHE_DIR'] = path
+    #this call should download the files
+    genome = EnsemblRelease(release, species='human')
+    print ('pyensembl genome files cached in %s' %genome.cache_directory_path)
+    genome.download()
+    genome.index()
+
 def check_ensembl():
-    """Check pyensembl ref genome cached"""
+    """Check pyensembl ref genome cached. Needed for running in snap"""
 
-    #check if running inside a snap package
+    #check if running inside a snap package so we can download
+    #the genome files for pyensembl
     if os.environ.has_key('SNAP_USER_COMMON'):
-	print ('running inside snap')
+        print ('running inside snap')
         spath = os.environ['SNAP_USER_COMMON']
-	print ('checking for ref human genome')
-        os.environ['PYENSEMBL_CACHE_DIR'] = spath
-	print (spath)
-        #subprocess.check_output('pyensembl install --release 75 --species homo_sapiens', shell=True)
-
-        from pyensembl import Genome
-        data = Genome('GRCh38', 'ensembl87')
-        print ('ensembl genome files cached in %s' %data.cache_directory_path)
+        print ('checking for ref human genome')
+        fetch_ensembl_release()
     return
 
 def print_help():

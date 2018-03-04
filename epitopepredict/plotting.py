@@ -9,7 +9,7 @@
 from __future__ import absolute_import, print_function
 import sys, os, math
 from collections import OrderedDict
-import matplotlib 
+import matplotlib
 matplotlib.use('agg')
 import pylab as plt
 import numpy as np

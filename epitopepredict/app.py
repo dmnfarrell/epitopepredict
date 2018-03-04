@@ -65,7 +65,7 @@ class WorkFlow(object):
             savepath = os.path.join(self.path, p)
             if self.overwrite == True and os.path.exists(savepath):
                 shutil.rmtree(savepath)
-            if p in ['iedbmhc1','mhcflurry']:
+            if p in ['iedbmhc1','mhcflurry','mhcnuggets']:
                 a = self.mhc1_alleles
                 length = self.mhc1_length
                 check_mhc1_length(length)
@@ -220,12 +220,14 @@ def list_alleles():
     return
 
 def test_run():
-    """Test run for a HIV sample file"""
+    """Test run for a sample file"""
 
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
     options['base']['sequence_file'] = os.path.join(path, 'testing','HIV-1.fa')
+    options['base']['mhc1_alleles'] = 'HLA-A*23:01'
     options['base']['mhc2_alleles'] = 'human_common_mhc2'
+    options['base']['predictors'] = 'tepitope,mhcflurry'
     options['base']['path'] = 'hiv1_test'
     options['base']['verbose'] = True
     options = config.check_options(options)
