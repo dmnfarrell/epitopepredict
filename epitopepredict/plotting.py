@@ -49,9 +49,10 @@ def get_seq_from_binders(P, name=None):
     seqlen = P.data.pos.max()+l
     return seqlen
 
-def get_bokeh_colors(palette='Set1', n=6):
+def get_bokeh_colors(palette='Set1'):
 
     from bokeh.palettes import brewer
+    n = len(base.predictors)
     pal = brewer[palette][n]
     i=0
     clrs={}
@@ -130,9 +131,9 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
             df = df[df.name==name]
         sckey = pred.scorekey
 
-        binders = pred.getBinders(name, cutoff=cutoff, cutoff_method=cutoff_method)
+        binders = pred.get_binders(name, cutoff=cutoff, cutoff_method=cutoff_method)
         #print (cutoff, n)
-        pb = pred.promiscuousBinders(n=n, cutoff=cutoff, cutoff_method=cutoff_method)
+        pb = pred.promiscuous_binders(n=n, cutoff=cutoff, cutoff_method=cutoff_method)
         if len(pb) == 0:
             continue
         l = base.get_length(pb)

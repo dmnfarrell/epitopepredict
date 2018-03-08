@@ -105,11 +105,11 @@ class ConfigForm(Form):
     ps2.insert(0, ('',''))
     mhc2_presets = SelectField('MHC-II presets', choices=ps2, default='')
     p1 = base.get_predictor('iedbmhc1')
-    x = [(i,i) for i in p1.getAlleles()]
+    x = [(i,i) for i in p1.get_alleles()]
     mhc1_alleles = SelectMultipleField('MHC-I alleles', choices=x,
                                       render_kw={"class": "combobox"})
     p2 = base.get_predictor('tepitope')
-    x = [(i,i) for i in p2.getAlleles()]
+    x = [(i,i) for i in p2.get_alleles()]
     #drballeles = base.getDRBList(mhc2alleles)
     #dqpalleles = base.getDQPList(mhc2alleles)
     mhc2_alleles = SelectMultipleField('MHC-II alleles', choices=x,

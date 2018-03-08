@@ -9,6 +9,7 @@ Contents:
 
    description
    cli
+   webapp
    examples
    neoepitope
    nomenclature

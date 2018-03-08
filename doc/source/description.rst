@@ -56,11 +56,11 @@ The distributions 'IEDB_MHC*.tar.gz' contain a collection of peptide binding pre
     sudo apt install tcsh gawk
 
 Download from http://tools.iedb.org/mhci/download/. Unpack the tar.gz files. Run the 'configure' script to set up path variables for trained models. e.g. For MHC-I tools::
-```
-  $ tar -zxvf IEDB_MHC_I-*.*.*.tar.gz
-  $ cd mhc_i
-  $ ./configure.py
-```
+
+    tar -zxvf IEDB_MHC_I-*.*.*.tar.gz
+    cd mhc_i
+    ./configure.py
+
 
 Submit Bugs
 ===========
