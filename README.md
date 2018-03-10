@@ -1,24 +1,14 @@
 ### Background
 <img align="right" src=https://raw.githubusercontent.com/dmnfarrell/epitopepredict/master/img/logo.png width=150px>
 
-**epitopepredict** provides a standardized programmatic interface and command line tool for executing several epitope prediction methods. Currently this largely consists of interfaces to several MHC binding prediction, the results of which can then be processed and visualized in a consistent manner. Many MHC binding predictors have been developed but usually not in an open source manner. The Tepitope module implements the TEPITOPEPan method is provided as a 'built in' method. netMHCIIpan must be downloaded separately from the website and installed on your system. The process is quite simple. The same applies for the IEDB tools. Both of these tools are free for academic use. It is hoped that other epitope predictors will be integrated.
+**epitopepredict** provides a standardized programmatic interface and command line tool for executing multiple epitope prediction methods. Currently this largely consists of interfaces to several MHC binding prediction, the results of which can then be processed and visualized in a consistent manner. The Tepitope module implements the TEPITOPEPan method is provided as a 'built in' method. The IEDB tools and netMHCIIpan and mhcflurry are also supported. All of these tools are free for academic use. This software runs on most linux systems. Users are recommended to use the snap package for convenience. This software is under active development particularly with a view to improve the command line and web tools. 
 
-### Supported methods:
-
-* TEPITOPEPan 
-* NetMHCIIpan
-* IEDB MHCI tools
-* IEDB BCell tools
-
-### Dependencies
-
-* pandas
-* biopython
+Documentation is at http://epitopepredict.readthedocs.io
 
 ### Installation
 
 `pip install epitopepredict`
 
-see [wiki](https://github.com/dmnfarrell/epitopepredict/wiki/Installation) for more details.
+or for snap package
 
-To use netMHCIIpan you need in install and added the path of the executable to your PATH. If you get the following error: `bash: /local/bin/netMHCIIpan: /bin/tcsh: bad interpreter:`, it means you are missing tcsh and should install it with your package manager.
+`snap install epitopepredict`
