@@ -153,7 +153,7 @@ class GlobalViewHandler(RequestHandler):
                 if P.data is None: continue
                 seqs = web.get_sequences(P)
                 #tables = web.sequences_to_html_table(seqs, classes="seqtable")
-                pb = P.promiscuousBinders(**defaultargs)
+                pb = P.promiscuous_binders(**defaultargs)
                 #print (pb)
                 #cl = analysis.find_clusters(b, min_binders=2)
                 x = pb.groupby('name').agg({'peptide':np.size,

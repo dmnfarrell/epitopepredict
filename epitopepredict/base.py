@@ -67,7 +67,7 @@ testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHAS
 presets_dir = os.path.join(path, 'presets')
 
 def predict_proteins_worker(P, recs, kwargs):
-    df = P._predictSequences(recs, **kwargs)
+    df = P._predict_sequences(recs, **kwargs)
     return df
 
 def predict_peptides_worker(P, recs, kwargs):
@@ -676,9 +676,9 @@ class Predictor(object):
         if verbose == True:
             self.print_heading()
         if cpus == 1:
-            results = self._predict_sequences(recs, alleles=alleles, **kwargs)
+            results = self._predict_sequences(recs, alleles=alleles, path=path, **kwargs)
         else:
-            results = self._run_multiprocess(recs, alleles=alleles, cpus=cpus, **kwargs )
+            results = self._run_multiprocess(recs, alleles=alleles, path=path, cpus=cpus, **kwargs )
 
         print ('predictions done for %s sequences in %s alleles' %(len(recs),len(alleles)))
         if path is None:

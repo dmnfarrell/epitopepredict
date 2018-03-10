@@ -13,6 +13,7 @@ Contents:
    examples
    neoepitope
    nomenclature
+   formats
    modules
 
 Indices and tables

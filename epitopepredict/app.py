@@ -55,7 +55,7 @@ class WorkFlow(object):
         return True
 
     def run(self):
-        """Run workflow"""
+        """Run prediction workflow"""
 
         preds = []
         if self.names == None:
@@ -102,6 +102,7 @@ class WorkFlow(object):
         self.analysis()
         if self.plots == True:
             self.plot_results()
+        print ('these results can be viewed in the web app under the path %s' %self.path)
         return
 
     def analysis(self):
@@ -224,11 +225,11 @@ def test_run():
 
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
-    options['base']['sequence_file'] = os.path.join(path, 'testing','HIV-1.fa')
-    options['base']['mhc1_alleles'] = 'HLA-A*23:01'
+    options['base']['sequence_file'] = os.path.join(path, 'testing','zaire-ebolavirus.faa')
+    options['base']['mhc1_alleles'] = 'HLA-A*02:01,HLA-A*23:01'
     options['base']['mhc2_alleles'] = 'human_common_mhc2'
     options['base']['predictors'] = 'tepitope,mhcflurry'
-    options['base']['path'] = 'hiv1_test'
+    options['base']['path'] = 'zaire_test'
     options['base']['verbose'] = True
     options = config.check_options(options)
     W = WorkFlow(options)
@@ -300,7 +301,6 @@ def main():
         epitopepredict.tornado_serve.main(opts.port)
     elif opts.test == True:
         test_run()
-        print ('these test predictions can be viewed in the web app')
     elif opts.version == True:
         from . import __version__
         print ('epitopepredict version %s' %__version__)

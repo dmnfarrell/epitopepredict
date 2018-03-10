@@ -7,15 +7,23 @@ The results from each method can then be processed and visualized in a consisten
 Installation
 ============
 
-This software has been tested on Linux which is highly recommended. Windows is not supported. If you use windows you can simply install a linux virtual machine and run from there. You can then run the command line interface or use in python. Install on pip using::
+This software should be run on a Linux operating system. Ubuntu is recommended but most major distributions will be fine. Windows is not supported. macOS (OS X) may work but has not been tested. If you use windows or a mac you can simply install a linux virtual machine and run from there. You can then run the command line interface or use in python. Install with pip using::
 
-    pip install epitopepredict
+    sudo pip install epitopepredict
 
 **Snap package**
 
-You can install as a snap which will usually be the latest version and will include everything needed. This option is recommended for it's convenience. Snaps are ubuntu based but supported on most major linux distributions. Install snapd with your package manager and then run::
+You can install as a snap on linux which will usually be the latest version and will include everything needed. This option is **recommended** for its convenience and because it can be updated regularly. Snaps are ubuntu based but supported on most major linux distributions. Install snapd_ with your package manager and then run::
 
     sudo snap install epitopepredict
+
+.. _snapd: https://docs.snapcraft.io/core/install
+
+Or you can just go to https://snapcraft.io/epitopepredict and press install.
+
+Updating the snap is simply done using::
+
+    sudo snap refresh epitopepredict
 
 **Python dependencies**
 
@@ -45,7 +53,7 @@ There are now multiple MHC binding prediction algorithms available freely online
 +---------------------+-------------------------------------------------------------+---------------+
 | mhcflurry           | MHC-I predictor https://github.com/openvax/mhcflurry        | yes           |
 +---------------------+-------------------------------------------------------------+---------------+
-| mhcnuggets          | MHC-I predictor https://github.com/KarchinLab/mhcnuggets    | yes           |
+| mhcnuggets          | MHC-I predictor https://github.com/KarchinLab/mhcnuggets    | not yet       |
 +---------------------+-------------------------------------------------------------+---------------+
 
 Installing IEDB MHC tools
