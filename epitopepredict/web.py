@@ -8,6 +8,7 @@
 
 from __future__ import absolute_import, print_function
 import sys,os,glob
+from collections import OrderedDict
 import pandas as pd
 import numpy as np
 from . import base, plotting, sequtils, analysis
@@ -261,8 +262,11 @@ def get_binder_tables(preds, name=None, view='binders', **kwargs):
     return data
 
 def dataframes_to_html(data, classes=''):
+    """Convert dictionary of dataframes to html tables"""
 
-    tables = {}
+    if type(data) is pd.DataFrame:
+        data = {'data':data}
+    tables = OrderedDict()
     for k in data:
         df = data[k]
         s = df.style\
@@ -285,7 +289,7 @@ def column_to_url(df, field, path):
     if len(df) == 0:
         return df
     df[field] = df.apply(lambda x:
-                '<a href=%s>%s</a>' %(path+x[field],x[field]),1)
+                '<a href=%s target="_blank">%s</a>' %(path+x[field],x[field]),1)
     return df
 
 def tabbed_html(items):

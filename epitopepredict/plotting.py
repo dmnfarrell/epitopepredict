@@ -61,6 +61,16 @@ def get_bokeh_colors(palette='Set1'):
         i+=1
     return clrs
 
+def bokeh_test():
+    from bokeh.models import ColumnDataSource
+    from bokeh.plotting import figure
+    data = {'x_values': [1, 2, 3, 4, 5],
+            'y_values': [6, 7, 2, 3, 6]}
+    source = ColumnDataSource(data=data)
+    p = figure()
+    p.circle(x='x_values', y='y_values', source=source)
+    return p
+
 def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',
                 width=None, height=None, x_range=None, tools=True,
                 palette='Set1',
@@ -166,11 +176,12 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
             h+=1
         i+=1
 
-    source = ColumnDataSource(data=dict(x=x,y=y,allele=allele,peptide=peptide,
-                                    predictor=predictor,position=position,score=score))
-    plot.rect('x','y', width=widths, height=0.8,
-         legend='predictor',
-         color=clrs,line_color='gray',alpha=0.7,source=source)
+    data = dict(x=x,y=y,allele=allele,peptide=peptide,width=widths,color=clrs,
+                predictor=predictor,position=position,score=score)
+    source = ColumnDataSource(data=data)
+    plot.rect(x='x',y='y', source=source, width='width', height=0.8,
+             legend='predictor',
+             color='color',line_color='gray',alpha=0.7)
 
     hover = plot.select(dict(type=HoverTool))
     hover.tooltips = OrderedDict([
@@ -273,6 +284,46 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
     plot.toolbar_location = "right"
     plot.legend.location = "top_right"
     plot.legend.orientation = "horizontal"
+    return plot
+
+def bokeh_pie_chart(df, title=''):
+    """Bokeh pie chart"""
+    
+    from bokeh.plotting import figure
+    from bokeh.models import HoverTool,ColumnDataSource
+    from math import pi
+
+    s = df.cumsum()/df.sum()
+    print (s)
+    cats = s.index
+    p=[0]+list(s)
+    print (p)
+    starts = [1/2*pi-(i*2*pi) for i in p[:-1]]
+    ends = [1/2*pi-(i*2*pi) for i in p[1:]]
+
+    from bokeh.palettes import brewer
+    n = len(s)
+    pal = brewer['Set2'][n]
+    source = ColumnDataSource(
+                dict(x=[0 for x in s], y=[0 for x in s],
+                  radius = [0.7 for x in s],
+                  category= cats,
+                  starts=starts,
+                  ends=ends,
+                  colors=pal,
+                  counts = df
+                  ))
+    plot = figure(title=title, plot_width=500)#, tools='hover')
+    plot.wedge(x='x', y='y', radius='radius', direction="clock", fill_color='colors', color='black',
+                start_angle='starts', end_angle='ends', legend='category', source=source)
+    plot.axis.visible = False
+    plot.ygrid.visible = False
+    plot.xgrid.visible = False
+    #hover = plot.select(dict(type=HoverTool))
+    #hover.tooltips = [
+    #    ('category', '@category'),
+    #    ('percents','@counts')
+    #]
     return plot
 
 def plot_tracks(preds, name, n=1, cutoff=5, value='score',
@@ -718,3 +769,4 @@ def get_seqdepot_annotation(genome, key='pfam27'):
         x = seqdepot_to_coords(result, key)
         annot[n] = x
     return annot
+

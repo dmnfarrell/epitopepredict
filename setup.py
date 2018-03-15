@@ -22,7 +22,7 @@ setup(
     install_requires=['numpy>=1.10',
                       'pandas>=0.20',
                       'biopython>=1.5',
-                      'bokeh==0.12.9',
+                      'bokeh==0.12.14',
                       'wtforms>=2.1',
                       'wtforms_tornado',
                       'future'],

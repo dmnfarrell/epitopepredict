@@ -34,6 +34,7 @@ path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(path, 'mhcdata')
 predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets','iedbbcell']
 iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'netmhcpan', 'smmpmbec']
+mhc1_predictors = ['iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
             'output_format': 'ascii', 'sort_output': 'position_in_sequence',
             'sequence_format': 'auto', 'allele': 'HLA-DRB1*01:01', 'length':'11',
@@ -627,7 +628,7 @@ class Predictor(object):
         self.data = data
         return data
 
-    def predict_peptides(self, peptides, cpus=1, **kwargs):
+    def predict_peptides(self, peptides, cpus=1, path=None, **kwargs):
         """Predict a set of individual peptides without splitting them.
         This is a wrapper for _predict_peptides to allow multiprocessing.
         """
@@ -644,6 +645,9 @@ class Predictor(object):
         data = data.groupby('allele').apply(self.get_ranking)
         #data = data.reset_index(drop=True)
         self.data = data
+        if path is not None:
+            print (self.name)
+            data.to_csv(os.path.join(path, 'binders_%s.csv' %self.name))
         return data
 
     def _convert_to_dataframe(self, recs):

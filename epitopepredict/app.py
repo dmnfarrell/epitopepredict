@@ -258,8 +258,8 @@ def main():
                         default=False, help="Neo-epitope pipeline")
     parser.add_option("-s", "--server", dest="server",  action="store_true",
                         default=False, help="Run web app")
-    parser.add_option("-x", "--port", dest="port", default=8888,
-                        help="Port for web app, default 8888")
+    parser.add_option("-x", "--port", dest="port", default=8000,
+                        help="Port for web app, default 8000")
     parser.add_option("-v", "--version", dest="version", action="store_true",
                         help="Get version")
 

@@ -57,9 +57,9 @@ class NeoEpitopeWorkFlow(object):
     def run(self):
         """Run workflow"""
 
-        peps = predict_variants(vcf_file=self.vcf_file, alleles=self.mhc2_alleles[:4], length=11,
-                                predictor=self.predictors[0],
-                                path=self.path, verbose=self.verbose, cpus=1)
+        predict_variants(vcf_file=self.vcf_file, maf_file=self.maf_file, mhc1_alleles=self.mhc1_alleles,
+                         mhc2_alleles=self.mhc2_alleles, length=11,
+                         predictors=self.predictors, path=self.path, verbose=self.verbose, cpus=1)
 
         #peps = self_similarity(peps, proteome="human_proteome")
         return
@@ -182,24 +182,35 @@ def get_mutant_sequences(vcf_file=None, maf_file=None, reference=None, peptides=
     print (res.variant_class.value_counts())
     return res
 
-def predict_variants(vcf_file, length=9, alleles=[], path='', verbose=False,
-                     predictor='smm', max_variants=None, cpus=1,
+def predict_variants(vcf_file, maf_file=None, length=9, mhc1_alleles=[], mhc2_alleles=[], path='', verbose=False,
+                     predictors=['tepitope'], max_variants=None, cpus=1,
                      predictor_kwargs={}):
-    """predict variants pipeline"""
+    """
+    Predict binding scores for mutated peptides from supplied variants.
+    """
 
     if not os.path.exists(path):
         os.mkdir(path)
-    seqs = get_mutant_sequences(vcf_file, length=length, verbose=verbose, max_variants=max_variants)
-    seqs.to_csv(os.path.join(path,'variant_sequences.csv'))
-    P = base.get_predictor(predictor)
-    print ('predicting mhc binding for %s peptides with %s' %(len(seqs), P.name))
-    pred = P.predict_peptides(seqs.peptide, alleles=alleles, cpus=cpus, **predictor_kwargs)
-    pred = pred.drop(['pos','name'],1)
-    res = seqs.merge(pred,on='peptide')
-    print (len(pred), len(res))
-    #x = self_similarity(pred, proteome="human_proteome")
-    res.to_csv(os.path.join(path, 'results_%s.csv' %predictor))
-    return res
+    vseqs = get_mutant_sequences(vcf_file, length=length, verbose=verbose, max_variants=max_variants)
+    vseqs.to_csv(os.path.join(path,'variant_sequences.csv'), index=False)
+    v = vseqs.groupby('name').agg(base.first).reset_index().drop('peptide',1)
+    if verbose == True:
+        print (v)
+    v.to_csv(os.path.join(path,'variants.csv'), index=False)
+    for predictor in predictors:
+        P = base.get_predictor(predictor)
+        print ('predicting mhc binding for %s peptides with %s' %(len(vseqs), P.name))
+        if predictor in base.mhc1_predictors:
+            alleles = mhc1_alleles
+        else:
+            alleles = mhc2_alleles
+        b = P.predict_peptides(vseqs.peptide, alleles=alleles, cpus=cpus, path=path, **predictor_kwargs)
+        b = b.drop(['pos','name'],1)
+        res = vseqs.merge(b, on='peptide')
+        print (len(b), len(res))
+        #x = self_similarity(pred, proteome="human_proteome")
+        res.to_csv(os.path.join(path, 'results_%s.csv' %predictor))
+    return
 
 def show_predictors():
     for p in base.predictors:
@@ -240,12 +251,20 @@ def check_ensembl():
 def print_help():
     print ("""use -h to get options""")
 
+def plot_variant_summary(data):
+    from bokeh.plotting import figure
+    from bokeh.charts import Donut
+    d = Donut(df, label=['abbr', 'medal'], values='medal_count',
+          text_font_size='8pt', hover_text='medal_count')
+    return d
+
 def test_run():
     """Test run for sample vcf file"""
 
     print ('running neoepitope workflow test')
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
+    options['base']['predictors'] = 'tepitope,mhcflurry'
     options['base']['mhc2_alleles'] = 'human_common_mhc2'
     options['base']['path'] = 'neo_test'
     #options['base']['mhc2_length'] = 11

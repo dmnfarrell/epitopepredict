@@ -104,7 +104,7 @@ div.floatright {
     float:right;
     margin: 2px;
     padding: 2px;
-    width: 40%;
+    width: 38%;
 }
 .floatright h5 {
     font-size:14px;
@@ -200,10 +200,10 @@ div.floatright {
 	font-size: 11px;
 	border-width: 0px 0px 0px 0px;
 	margin: 1px;
-    padding: 2px;
+    padding: 2px 3px;
 }
 .sortable th{
-    background-color:  #E0ECF8;
+    background-color:  #ECF0F1;
     border-width: 0px 0px 0px 0px;
     width: 30px;
 }
@@ -314,7 +314,7 @@ select {
 .tabs {
   position: relative;
   min-height: 450px;
-  min-width: 500px;
+  min-width: 480px;
   width: 100%;
   clear: both;
   margin: 35px 0 25px;
@@ -325,8 +325,9 @@ select {
 
 }
 .tab label {
-  background: #eee;
-  padding: 10px;
+  font-size: 13px;
+  background: #E0EBF1;
+  padding: 6px;
   border: 1px solid #ccc;
   margin-left: -1px;
   position: relative;

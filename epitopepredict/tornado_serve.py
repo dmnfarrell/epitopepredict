@@ -7,11 +7,15 @@
 """
 
 import sys,os,glob
-from StringIO import StringIO
+from collections import OrderedDict
+try:
+    from StringIO import StringIO
+except:
+    from io import StringIO
 import pprint
 import pandas as pd
 import numpy as np
-from epitopepredict import base, web, analysis, config
+from epitopepredict import base, web, analysis, plotting, config
 
 import tornado.ioloop
 import tornado.web
@@ -42,7 +46,7 @@ def get_args(args):
                    'n':2,'kind':'tracks','view':'binders'}
     for k in defaults:
         if k in args:
-            defaults[k] = args[k][0]
+            defaults[k] = args[k][0].decode("utf-8")
     return defaults
 
 def str_to_html(s):
@@ -83,7 +87,7 @@ class ControlsForm(Form):
     kinds = [(i,i) for i in plotkinds]
     kind = SelectField('plot kind', choices=kinds)
     views = [(i,i) for i in views]
-    view = SelectField('view', choices=views)
+    view = SelectField('table view', choices=views)
     cached = BooleanField('use cached')
 
 class ConfigForm(Form):
@@ -118,6 +122,13 @@ class ConfigForm(Form):
     iedbmhc1_path = TextField('iedb MHC-I tools path')
     iedbmhc2_path = TextField('iedb MHC-II tools path')
 
+class NeoForm(Form):
+    path = TextField('output path', default='results', validators=[DataRequired()],
+                     render_kw={"class": "textbox"})
+    #views = ['all','promiscuous','by protein']
+    #view = SelectField('table view', choices=views)
+    predictor = SelectField('predictor', choices=[])
+
 class MainHandler(RequestHandler):
     """Handler for main results page"""
     def get(self):
@@ -135,7 +146,7 @@ class GlobalViewHandler(RequestHandler):
                        'view':'promiscuous','n':2,'cached':1}
         for k in defaultargs:
             if k in args:
-                defaultargs[k] = args[k][0]
+                defaultargs[k] = args[k][0].decode("utf-8")
         path = defaultargs['path'].strip()
         view = defaultargs['view']
         usecached = defaultargs['cached']
@@ -253,7 +264,10 @@ class SequenceViewHandler(RequestHandler):
 
         import urllib
         s = '<a href=/download?'
-        s += urllib.urlencode(args)
+        try:
+            s += urllib.parse.urlencode(args)
+        except:
+            s += urllib.urlencode(args)
         s += '>%s<a>' %link
         return s
 
@@ -316,6 +330,71 @@ class MakeConfigHandler(RequestHandler):
             errors += dict_to_html(form.errors)
         self.render('makeconfig.html', form=form, path=path, conftext=conftext, errors=errors)
 
+class NeoEpitopeHandler(RequestHandler):
+    "Handler for showing neoepitope results"
+
+    def get(self):
+        args = self.request.arguments
+        form = NeoForm()
+        #print (type(args['path'][0]))
+        if 'path' in args:
+            path = args['path'][0].decode('utf-8')
+        else:
+            path = ''
+        pred = None
+        if 'predictor' in args:
+            pred = args['predictor'][0].decode('utf-8')
+
+        if not os.path.exists(path):
+            msg = help_msg()
+            self.render('neoepitope.html', form=form, status=0, name='', msg=msg, path=path)
+            return
+
+        preds = []
+        for p in base.predictors:
+            f = os.path.join(path, 'results_%s.csv' %p)
+            if os.path.exists(f):
+                preds.append(p)
+        if pred is None:
+            pred = preds[0]
+
+        #get results data
+        data = OrderedDict()
+        variants = pd.read_csv(os.path.join(path, 'variants.csv'))
+        web.column_to_url(variants, 'name',
+                          'http://cancer.sanger.ac.uk/cosmic/gene/analysis?ln=')
+        web.column_to_url(variants, 'transcript_id',
+                                            'https://www.ensembl.org/id/')
+        data['variants'] = variants
+
+        fname = os.path.join(path, 'results_%s.csv' %pred)
+        b = pd.read_csv(fname,index_col=0)
+        data['binders'] = b
+
+        P = base.get_predictor(pred)
+        P.data = b
+        pb = P.promiscuous_binders(n=1)
+        data['promiscuous'] = pb
+
+        tables = web.dataframes_to_html(data, classes='tinytable sortable')
+        tables = web.tabbed_html(tables)
+
+        p = b.variant_class.value_counts()
+        pie = plotting.bokeh_pie_chart(p, title='variant classes')
+        plots = [pie,pie]
+
+        if len(plots) > 0:
+            grid = gridplot(plots, ncols=1, nrows=2, merge_tools=True, sizing_mode='scale_width',
+                            toolbar_options=dict(logo=None))
+            script, div = components(grid)
+        else:
+            script = ''; div = ''
+
+        form.path.data = path
+        form.predictor.data = preds
+        print (preds)
+        self.render('neoepitope.html', status=1, path=path, links='', form=form,
+                    script=script, div=div, tables=tables)
 
 settings = dict(
         template_path=os.path.join(os.path.dirname(__file__), "templates"),
@@ -324,7 +403,7 @@ settings = dict(
         xsrf_cookies=True,
         debug=True)
 
-def main(port=8888):
+def main(port=8000):
     #bokeh_app = Application(FunctionHandler(IndexHandler.modify_doc))
     #bokeh_server = Server({'/main': bokeh_app},
     #                      io_loop=io_loop,
@@ -335,14 +414,15 @@ def main(port=8888):
                  (r"/sequence", SequenceViewHandler),
                  (r"/global", GlobalViewHandler),
                  (r"/makeconfig", MakeConfigHandler),
-                 (r"/download", DownloadHandler)
+                 (r"/download", DownloadHandler),
+                 (r"/neoepitope", NeoEpitopeHandler)
                  ]
     app = tornado.web.Application(handlers, **settings)
-    #app.listen(8888)
+    #app.listen(8000)
     http_server = tornado.httpserver.HTTPServer(app)
     http_server.listen(port)
     io_loop = tornado.ioloop.IOLoop.current()
-    #io_loop.add_callback(view, "http://localhost:8888/")
+    #io_loop.add_callback(view, "http://localhost:8000/")
     view("http://localhost:%s/" %port)
     io_loop.start()
 
