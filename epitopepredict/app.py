@@ -289,8 +289,7 @@ def main():
         if opts.test == True:
             neo.test_run()
         else:
-            from neo import NeoEpitopeWorkFlow
-            W = NeoEpitopeWorkFlow()
+            W = neo.NeoEpitopeWorkFlow(options)
             st = W.setup()
             if st == True:
                 W.run()

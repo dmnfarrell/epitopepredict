@@ -2,6 +2,7 @@ body {
     font-family: arial;
   }
 a {text-decoration:none; white-space:nowrap}
+a {color: #004d80}
 a:hover {text-decoration:underline}
 a.button {text-decoration:none}
 h1,h2,h3,h4,h5,h6 {margin:0.2em 0 0.25em 0; display:block;
@@ -191,6 +192,7 @@ div.floatright {
 	font-size:11px;
 }
 .sortable table{
+    table-layout: fixed;
     border-collapse: collapse;
     border-spacing: 0;
 	height:100%;
@@ -201,11 +203,14 @@ div.floatright {
 	border-width: 0px 0px 0px 0px;
 	margin: 1px;
     padding: 2px 3px;
+    width: 100%;
 }
 .sortable th{
     background-color:  #ECF0F1;
     border-width: 0px 0px 0px 0px;
-    width: 30px;
+    max-width: 300px;
+    min-width: 40px;
+    word-wrap: break-word;
 }
 .sortable tr:nth-child(even){ background-color:#F7F7F7; }
 

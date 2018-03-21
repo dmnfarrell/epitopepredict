@@ -497,22 +497,32 @@ class Predictor(object):
             return
         if 'core' not in binders.columns :
             binders['core'] = binders.peptide
-        grps = binders.groupby(['peptide','pos','name'])
+
         if self.operator == '<':
             func = min
             skname = 'min'
         else:
             func = max
             skname = 'max'
-        s = grps.agg({'allele':pd.Series.count,
-                      'core': first, self.scorekey:[func,np.mean],
-                      'rank': np.median})
+
+        s = binders.groupby(['name','pos','peptide']).agg({'allele': np.size,
+                                    'core': first, self.scorekey:[func,np.mean],
+                                    'rank': np.median})
+        #print (s)
         s.columns = s.columns.get_level_values(1)
-        s.rename(columns={skname: self.scorekey, 'count': 'alleles','median':'median_rank',
+        s.rename(columns={skname: self.scorekey, 'size': 'alleles','median':'median_rank',
                          'first':'core'}, inplace=True)
         s = s.reset_index()
-        s = s.sort_values(['alleles','median_rank'],ascending=[False,True])
 
+        #retain other non-standard cols
+        x = binders.drop_duplicates(['name','peptide','allele'])
+
+        s = s.merge(x, on=['name','peptide','pos'], how='inner', suffixes=('', '_y'))
+        cols = s.columns[~s.columns.str.contains('_y')]
+        s = s[cols]
+        s = s.drop('allele',1)
+
+        s = s.sort_values(['alleles','median_rank'],ascending=[False,True])
         #if we just want unique cores, drop duplicates takes most promiscuous in each group
         #since we have sorted by alleles and median rank
         if unique_core == True:
@@ -647,7 +657,7 @@ class Predictor(object):
         self.data = data
         if path is not None:
             print (self.name)
-            data.to_csv(os.path.join(path, 'binders_%s.csv' %self.name))
+            data.to_csv(os.path.join(path, 'results_%s.csv' %self.name))
         return data
 
     def _convert_to_dataframe(self, recs):
@@ -1287,7 +1297,8 @@ class TEpitopePredictor(Predictor):
                     allele='HLA-DRB1*0101', name='',
                     pseudosequence=None, **kwargs):
 
-        #self.sequence = sequence
+        if length not in [9,11]:
+            print ('you should use 9 or 11 n-mers for best results')
         allele = allele.replace(':','')
         if not allele in self.pssms:
             #print 'computing virtual matrix for %s' %allele

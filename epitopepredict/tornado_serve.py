@@ -41,9 +41,8 @@ def help_msg():
     msg += '<a href="%s"> see help page</a>' %wikipage
     return msg
 
-def get_args(args):
-    defaults = {'path':'','name':'','cutoff':5,'cutoff_method':'rank', 'pred':'tepitope',
-                   'n':2,'kind':'tracks','view':'binders'}
+def get_args(args, defaults={'path':'','name':'','cutoff':5,'cutoff_method':'rank', 'pred':'tepitope',
+                   'n':2,'kind':'tracks','view':'binders'}):
     for k in defaults:
         if k in args:
             defaults[k] = args[k][0].decode("utf-8")
@@ -123,11 +122,13 @@ class ConfigForm(Form):
     iedbmhc2_path = TextField('iedb MHC-II tools path')
 
 class NeoForm(Form):
-    path = TextField('output path', default='results', validators=[DataRequired()],
+    path = TextField('output path', default='', validators=[DataRequired()],
                      render_kw={"class": "textbox"})
     #views = ['all','promiscuous','by protein']
-    #view = SelectField('table view', choices=views)
-    predictor = SelectField('predictor', choices=[])
+    sample = SelectField('sample', choices=[])
+    views = ['final','combined','all binders']
+    views = [(i,i) for i in views]
+    view = SelectField('view', choices=views)
 
 class MainHandler(RequestHandler):
     """Handler for main results page"""
@@ -336,65 +337,100 @@ class NeoEpitopeHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         form = NeoForm()
-        #print (type(args['path'][0]))
-        if 'path' in args:
-            path = args['path'][0].decode('utf-8')
-        else:
-            path = ''
-        pred = None
-        if 'predictor' in args:
-            pred = args['predictor'][0].decode('utf-8')
-
+        args = get_args(args, defaults={'path':'','view':'final','sample':None})
+        path = args['path']
+        view = args['view']
+        sample = args['sample']
         if not os.path.exists(path):
-            msg = help_msg()
-            self.render('neoepitope.html', form=form, status=0, name='', msg=msg, path=path)
+            self.no_data_render(form, msg='no such path')
             return
 
-        preds = []
-        for p in base.predictors:
-            f = os.path.join(path, 'results_%s.csv' %p)
-            if os.path.exists(f):
-                preds.append(p)
-        if pred is None:
-            pred = preds[0]
+        labels = pd.read_csv(os.path.join(path, 'sample_labels.csv'),index_col=0)
+        samples = list(labels.index)
+        if sample == None:
+            sample = samples[0]
 
+        print (view)
         #get results data
         data = OrderedDict()
-        variants = pd.read_csv(os.path.join(path, 'variants.csv'))
-        web.column_to_url(variants, 'name',
-                          'http://cancer.sanger.ac.uk/cosmic/gene/analysis?ln=')
-        web.column_to_url(variants, 'transcript_id',
-                                            'https://www.ensembl.org/id/')
-        data['variants'] = variants
 
-        fname = os.path.join(path, 'results_%s.csv' %pred)
-        b = pd.read_csv(fname,index_col=0)
-        data['binders'] = b
+        #get all results
+        if sample == 'all':
+            data['summary'] = labels
+            res=[]
+            for sample in samples:
+                fname = os.path.join(path, 'binders_%s_%s.csv' %(sample,p))
+                b = pd.read_csv(fname,index_col=0)
+                res.append(b)
 
-        P = base.get_predictor(pred)
-        P.data = b
-        pb = P.promiscuous_binders(n=1)
-        data['promiscuous'] = pb
+            res = pd.concat(res).reset_index()
+            x = pd.pivot_table(res, index=['name','peptide'], columns=['label'], values='score')
+            data['all results'] = x
+        else:
+            #get table for variants
+            variant_file = os.path.join(path, 'variant_effects_%s.csv' %sample)
+            if not os.path.exists(variant_file):
+                self.no_data_render(form, msg='no such file %s' %variant_file)
+                return
+            variants = pd.read_csv(variant_file, index_col=0)
+            #data['variants'] = variants
 
-        tables = web.dataframes_to_html(data, classes='tinytable sortable')
+            preds = []
+            for p in base.predictors:
+                f = os.path.join(path, 'results_%s_%s.csv' %(sample,p))
+                if os.path.exists(f):
+                    preds.append(p)
+
+            for p in preds:
+                binder_file = fname = os.path.join(path, 'binders_%s_%s.csv' %(sample,p))
+                if not os.path.exists(binder_file):
+                    resfile = os.path.join(path, 'results_%s_%s.csv' %(sample,p))
+                    res = pd.read_csv(resfile,index_col=0)
+                    #get binders here if new cutoff used
+                else:
+                    pb = pd.read_csv(binder_file)
+
+                #top genes with most peptides?
+                t = pb['name'].value_counts()[:20]
+                print (t)
+                bar1 = plotting.bokeh_vbar(t, title='top genes with peptide binders', color='firebrick')
+                self.add_links(pb)
+                data[p] = pb
+
+        tables = web.dataframes_to_html(data, classes='sortable')
         tables = web.tabbed_html(tables)
 
-        p = b.variant_class.value_counts()
-        pie = plotting.bokeh_pie_chart(p, title='variant classes')
-        plots = [pie,pie]
+        x = variants.variant_class.value_counts()
+        pie = plotting.bokeh_pie_chart(x, title='variant classes', height=150)
+        #test = plotting.bokeh_test(height=200)
+        v=variants
+        x=v.chr.value_counts().sort_index()
+        bar2 = plotting.bokeh_vbar(x, title='variants per chromosome')
+        plots = [pie,bar2,bar1]
 
         if len(plots) > 0:
-            grid = gridplot(plots, ncols=1, nrows=2, merge_tools=True, sizing_mode='scale_width',
+            grid = gridplot(plots, ncols=1, nrows=3, merge_tools=True, sizing_mode='scale_width',
                             toolbar_options=dict(logo=None))
             script, div = components(grid)
         else:
             script = ''; div = ''
 
         form.path.data = path
-        form.predictor.data = preds
-        print (preds)
+        #samples.append('all')
+        form.sample.choices = [(i,i) for i in samples]
+        form.sample.data = sample
         self.render('neoepitope.html', status=1, path=path, links='', form=form,
                     script=script, div=div, tables=tables)
+
+    def no_data_render(self, form, msg):
+        self.render('neoepitope.html', form=form, status=0, name='', msg=msg, path='')
+        return
+
+    def add_links(self, df):
+        web.column_to_url(df, 'name',
+                          'http://cancer.sanger.ac.uk/cosmic/gene/analysis?ln=')
+        web.column_to_url(df, 'transcript_id',
+                          'https://www.ensembl.org/id/')
 
 settings = dict(
         template_path=os.path.join(os.path.dirname(__file__), "templates"),

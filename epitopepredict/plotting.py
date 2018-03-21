@@ -61,13 +61,13 @@ def get_bokeh_colors(palette='Set1'):
         i+=1
     return clrs
 
-def bokeh_test():
+def bokeh_test(height=400):
     from bokeh.models import ColumnDataSource
     from bokeh.plotting import figure
     data = {'x_values': [1, 2, 3, 4, 5],
             'y_values': [6, 7, 2, 3, 6]}
     source = ColumnDataSource(data=data)
-    p = figure()
+    p = figure(plot_height=height)
     p.circle(x='x_values', y='y_values', source=source)
     return p
 
@@ -286,34 +286,46 @@ def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=1
     plot.legend.orientation = "horizontal"
     return plot
 
-def bokeh_pie_chart(df, title=''):
+def bokeh_vbar(x, height=200, title='', color='navy'):
+
+    from bokeh.plotting import figure
+    from bokeh.models import ColumnDataSource
+
+    source = ColumnDataSource(data={'chr':list(x.index),'x':range(len(x)),'y':x.values})
+    plot = figure(title=title, x_range = list(x.index), plot_height=height, tools='save,reset')
+    plot.vbar(x='chr',top='y', width=.8, bottom=0,source=source, color=color)
+    plot.ygrid.grid_line_color = None
+    plot.xgrid.grid_line_color = None
+    plot.xaxis.major_label_orientation = np.pi/4
+    return plot
+
+def bokeh_pie_chart(df, title='', width=400, height=400):
     """Bokeh pie chart"""
-    
+
     from bokeh.plotting import figure
     from bokeh.models import HoverTool,ColumnDataSource
     from math import pi
 
     s = df.cumsum()/df.sum()
-    print (s)
     cats = s.index
     p=[0]+list(s)
-    print (p)
+    #print (p)
     starts = [1/2*pi-(i*2*pi) for i in p[:-1]]
     ends = [1/2*pi-(i*2*pi) for i in p[1:]]
 
     from bokeh.palettes import brewer
     n = len(s)
-    pal = brewer['Set2'][n]
+    pal = brewer['Set2'][6]
     source = ColumnDataSource(
                 dict(x=[0 for x in s], y=[0 for x in s],
-                  radius = [0.7 for x in s],
+                  radius = [0.3 for x in s],
                   category= cats,
                   starts=starts,
                   ends=ends,
                   colors=pal,
                   counts = df
                   ))
-    plot = figure(title=title, plot_width=500)#, tools='hover')
+    plot = figure(title=title, plot_width=width, plot_height=height, tools='save,reset')
     plot.wedge(x='x', y='y', radius='radius', direction="clock", fill_color='colors', color='black',
                 start_angle='starts', end_angle='ends', legend='category', source=source)
     plot.axis.visible = False
@@ -769,4 +781,3 @@ def get_seqdepot_annotation(genome, key='pfam27'):
         x = seqdepot_to_coords(result, key)
         annot[n] = x
     return annot
-

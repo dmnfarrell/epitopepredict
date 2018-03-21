@@ -9,6 +9,7 @@
 from __future__ import absolute_import, print_function
 import sys, os, subprocess
 import shutil
+import pickle
 import pandas as pd
 from collections import OrderedDict
 from epitopepredict import base, config, analysis, sequtils, peptutils
@@ -32,6 +33,7 @@ class NeoEpitopeWorkFlow(object):
         base.iedbmhc1path = self.iedbmhc1_path
         base.iedbmhc2path = self.iedbmhc2_path
 
+        self.vcf_files = self.vcf_files.split(',')
         self.mhc1_alleles = self.mhc1_alleles.split(',')
         self.mhc2_alleles = self.mhc2_alleles.split(',')
         if len(self.mhc1_alleles)==0 and len(self.mhc2_alleles)==0:
@@ -54,14 +56,87 @@ class NeoEpitopeWorkFlow(object):
             os.mkdir(self.path)
         return True
 
+    def get_file_labels(self, files):
+        l=OrderedDict()
+        for f in files:
+            if not os.path.exists(f):
+                print ('no such file %s' %f)
+                continue
+            label = os.path.splitext(os.path.basename(f))[0]
+            l[label] = {'filename':f}
+        return l
+
     def run(self):
-        """Run workflow"""
+        """Run workflow for multiple samples and prediction methods."""
 
-        predict_variants(vcf_file=self.vcf_file, maf_file=self.maf_file, mhc1_alleles=self.mhc1_alleles,
-                         mhc2_alleles=self.mhc2_alleles, length=11,
-                         predictors=self.predictors, path=self.path, verbose=self.verbose, cpus=1)
+        print ('running neoepitope predictions')
+        path = self.path
+        overwrite = self.overwrite
+        files = self.vcf_files
+        labels = self.get_file_labels(files)
 
-        #peps = self_similarity(peps, proteome="human_proteome")
+        for f in labels:
+            infile = labels[f]['filename']
+            #file to save variants to, if present we can skip
+            eff_csv = os.path.join(path, 'variant_effects_%s.csv' %f)
+            eff_obj = os.path.join(path, 'variant_effects_%s.pickle' %f)
+            if not os.path.exists(eff_obj) or overwrite == True:
+                #get variant effects for each file and then iterate over predictors
+                variants = load_variants(vcf_file=infile)
+                labels[f]['variants'] = len(variants)
+                print ('getting variant effects')
+                effects = get_variant_effects(variants, self.verbose)
+                #serialize variant effects
+                effects_to_pickle(effects, eff_obj)
+            else:
+                #else reload from last run
+                effects = pickle.load(open(eff_obj,'r'))
+            #save as table
+            edf = effects_to_dataframe(effects)
+            edf['sample'] = f
+            edf.to_csv(eff_csv)
+
+            for predictor in self.predictors:
+                outfile = os.path.join(path, 'results_%s_%s.csv' %(f,predictor))
+                if os.path.exists(outfile) and overwrite == False:
+                    continue
+                if predictor in base.mhc1_predictors:
+                    alleles = self.mhc1_alleles
+                    length = self.mhc1_length
+                else:
+                    alleles = self.mhc2_alleles
+                    length = self.mhc2_length
+                seqs = get_mutant_sequences(effects=effects, length=length, verbose=self.verbose)
+
+                res = predict_variants(seqs, alleles=alleles, length=length,
+                                 predictor=predictor, path=self.path, verbose=self.verbose, cpus=1)
+                res['label'] = f
+                res.to_csv(outfile, index=False)
+
+                #gets promiscuous binders based on the cutoff
+                P=base.get_predictor(predictor)
+                P.data = res
+                pb = P.promiscuous_binders(n=1)
+                pb['label'] = f
+                print (pb)
+                pb.to_csv(os.path.join(path, 'binders_%s_%s.csv' %(f,predictor)), index=False)
+
+                #peps = self_similarity(res, proteome="human_proteome")
+
+        #combine results for multiple samples
+        pd.DataFrame(labels).T.to_csv(os.path.join(path, 'sample_labels.csv'))
+        print ('finished, results saved to %s' %path)
+        return
+
+    def combine_results(self, labels):
+        """Put peptides from multiple files in one table"""
+
+        res=[]
+        for i,r in labels:
+            df=pd.read_csv('results_%s_tepitope.csv' %r.filename)
+            res.append(df)
+        res=pd.concat(res)
+        pd.pivot_table(res, index=['peptide'], columns=['label'], values='score')
         return
 
 def get_variant_class(v):
@@ -99,11 +174,10 @@ def get_variant_effect(variant, verbose=False):
     else:
         return
     mut = eff.mutant_protein_sequence
-    if type(eff) is varcode.effects.effect_classes.FrameShift:
-        print (eff, eff.shifted_sequence)
+    #if type(eff) is varcode.effects.effect_classes.FrameShift:
+    #    print (eff, eff.shifted_sequence)
     if mut is None:
         return
-    #print mut
     vloc = eff.aa_mutation_start_offset
     if vloc is None or len(v.coding_genes) == 0:
         return
@@ -113,7 +187,47 @@ def get_variant_effect(variant, verbose=False):
         #print eff.to_dict()['variant'].to_dict()
     return eff
 
-def get_mutated_peptides(eff, length=11, peptides=True):
+def get_variant_effects(variants, verbose=False):
+    """Get priority effects from a list of variants.
+    Returns:
+        list of varcode variant effect objects"""
+
+    effects=[]
+    for v in variants:
+        eff = get_variant_effect(v, verbose=verbose)
+        effects.append(eff)
+    print ('%s effects' %len(effects))
+    return effects
+
+def effects_to_pickle(effects, filename):
+    """serialize variant effects collections"""
+    pickle.dump(effects, open(filename, "wb"), protocol=2)
+    return
+
+def effects_to_dataframe(effects):
+    x=[]
+    for eff in effects:
+        if eff is None:
+            continue
+        d=OrderedDict()
+        d['gene_name'] = eff.gene_name
+        d['transcript_id'] = eff.transcript_id
+        #orig = eff.original_protein_sequence
+        #mut = eff.mutant_protein_sequence
+        vloc = eff.aa_mutation_start_offset
+        d['aa_change'] = eff.short_description
+        d['mutation'] = eff.variant.short_description
+        d['variant_class'] = get_variant_class(eff.variant)
+        x.append(d)
+    df = pd.DataFrame(x)
+    df['chr'] = df.apply(lambda x: x.mutation.split(' ')[0],1)
+    return df
+
+def peptides_from_effect(eff, length=11, peptides=True):
+    """Get mutated peptides from an effect object.
+    Returns:
+        dataframe with peptides and variant info
+    """
 
     import varcode
     pad = length-1
@@ -151,8 +265,8 @@ def get_mutated_peptides(eff, length=11, peptides=True):
     df['variant_class'] = get_variant_class(eff.variant)
     return df
 
-def get_mutant_sequences(vcf_file=None, maf_file=None, reference=None, peptides=True,
-                         length=11, verbose=False, max_variants=None):
+def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=True,
+                         length=11, verbose=False):
     """
     Get mutant proteins or peptide fragments from vcf or maf file.
     Args:
@@ -162,55 +276,50 @@ def get_mutant_sequences(vcf_file=None, maf_file=None, reference=None, peptides=
     """
 
     res = []
+    if variants is not None:
+        effects = get_variant_effects(variants, verbose)
+    if effects is None:
+        print ('no variant information')
+        return
 
+    for eff in effects:
+        peps = peptides_from_effect(eff, length=length, peptides=peptides)
+        res.append(peps)
+    res = pd.concat(res).reset_index(drop=True)
+    print ('%s sequences/peptides from %s effects' %(len(res),len(effects)))
+    return res
+
+def load_variants(vcf_file=None, maf_file=None, max_variants=None):
     import varcode
     if vcf_file is not None:
         variants = varcode.load_vcf(vcf_file, allow_extended_nucleotides=True, max_variants=max_variants)
+        f=vcf_file
     elif maf_file is not None:
         variants = varcode.load_maf(maf_file)
-    print ('%s variants read' %len(variants))
-    #print (variants.)
-    ecount = 0
-    for v in variants:
-        eff = get_variant_effect(v, verbose=verbose)
-        peps = get_mutated_peptides(eff, length=length, peptides=peptides)
-        res.append(peps)
+        f=maf_file
+    print ('%s variants read from %s' %(len(variants),f))
+    return variants
 
-    #res = pd.DataFrame(peptides, columns=['protein','peptide'])
-    res = pd.concat(res).reset_index(drop=True)
-    print ('%s sequences/peptides from %s variants' %(len(res),len(variants)))
-    print (res.variant_class.value_counts())
-    return res
-
-def predict_variants(vcf_file, maf_file=None, length=9, mhc1_alleles=[], mhc2_alleles=[], path='', verbose=False,
-                     predictors=['tepitope'], max_variants=None, cpus=1,
-                     predictor_kwargs={}):
+def predict_variants(data, length=9,  predictor='tepitope', alleles=[],
+                     path='', verbose=False, cpus=1, predictor_kwargs={}):
     """
     Predict binding scores for mutated peptides from supplied variants.
+    Args:
+        data: pandas dataframe with peptide sequences derived from get_mutant_sequences
     """
 
     if not os.path.exists(path):
         os.mkdir(path)
-    vseqs = get_mutant_sequences(vcf_file, length=length, verbose=verbose, max_variants=max_variants)
-    vseqs.to_csv(os.path.join(path,'variant_sequences.csv'), index=False)
-    v = vseqs.groupby('name').agg(base.first).reset_index().drop('peptide',1)
-    if verbose == True:
-        print (v)
-    v.to_csv(os.path.join(path,'variants.csv'), index=False)
-    for predictor in predictors:
-        P = base.get_predictor(predictor)
-        print ('predicting mhc binding for %s peptides with %s' %(len(vseqs), P.name))
-        if predictor in base.mhc1_predictors:
-            alleles = mhc1_alleles
-        else:
-            alleles = mhc2_alleles
-        b = P.predict_peptides(vseqs.peptide, alleles=alleles, cpus=cpus, path=path, **predictor_kwargs)
-        b = b.drop(['pos','name'],1)
-        res = vseqs.merge(b, on='peptide')
-        print (len(b), len(res))
-        #x = self_similarity(pred, proteome="human_proteome")
-        res.to_csv(os.path.join(path, 'results_%s.csv' %predictor))
-    return
+    df=data
+    P = base.get_predictor(predictor)
+    print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
+    peps = P.predict_peptides(df.peptide, alleles=alleles, cpus=cpus, **predictor_kwargs)
+    peps = peps.drop(['pos','name'],1)
+
+    res = df.merge(peps, on='peptide')
+    #print (len(b), len(res))
+    #x = self_similarity(pred, proteome="human_proteome")
+    return res
 
 def show_predictors():
     for p in base.predictors:
@@ -261,15 +370,16 @@ def plot_variant_summary(data):
 def test_run():
     """Test run for sample vcf file"""
 
-    print ('running neoepitope workflow test')
+    print ('neoepitope workflow test')
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
     options['base']['predictors'] = 'tepitope,mhcflurry'
-    options['base']['mhc2_alleles'] = 'human_common_mhc2'
+    options['base']['mhc1_alleles'] = 'HLA-A*01:01,HLA-A*02:01,HLA-A*03:01'
+    options['base']['mhc2_alleles'] = 'HLA-DRB1*01:01,HLA-DRB1*04:01,HLA-DRB1*08:01,HLA-DRB1*09:01,HLA-DRB1*11:01'
     options['base']['path'] = 'neo_test'
-    #options['base']['mhc2_length'] = 11
+    options['base']['mhc2_length'] = 11
     #options['base']['verbose'] = True
-    options['neopredict']['vcf_file'] = os.path.join(path, 'testing','input.vcf')
+    options['neopredict']['vcf_files'] = os.path.join(path, 'testing','input.vcf')
     options = config.check_options(options)
     #print (options)
     W = NeoEpitopeWorkFlow(options)

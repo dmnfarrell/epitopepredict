@@ -28,11 +28,13 @@ You can test the neoepitope pipeline after installing by running::
 
 This will check that the human reference genome is available. (Note for users running the snap package: these files will be placed in your home directory usually under */home/user/snap/epitopepredict/x1/.cache/pyensembl/*.  If you uninstall the package you can also delete this folder to clear space).
 
-neopredict accepts a vcf or maf file which has been created from a variant calling program. This file and all other options are specified in the [neoepitope] of the configuration file::
+neopredict accepts one or more vcf or maf files which have been created from a variant calling program. If more than one file, they should be comma separated. These file names specified in the [neoepitope] of the configuration file::
 
     [neoepitope]
-    vcf_file =
-    maf_file =
+    vcf_files =
+    maf_files =
+
+The remaining options not in this section are in the other sections covered in the command line interface section of the docs. For example you can specify the prediction algorithm, alleles and length of peptides in those sections.
 
 References
 ----------

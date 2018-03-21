@@ -99,6 +99,7 @@ def get_scores(pssm, sequence=None, peptides=None, length=11, overlap=1):
     for p in peptides:
         sc = score_peptide(p, pssm) #get best 9-mer core
         sc = sorted(sc, key=itemgetter(2),reverse=True)
+        #print (sc)
         core,i,best = sc[0]
         #print (p,core,pos,best)
         scores.append((p,core,pos,best))
