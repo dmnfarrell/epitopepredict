@@ -76,6 +76,7 @@ class NeoEpitopeWorkFlow(object):
         labels = self.get_file_labels(files)
 
         for f in labels:
+            print (f)
             infile = labels[f]['filename']
             #file to save variants to, if present we can skip
             eff_csv = os.path.join(path, 'variant_effects_%s.csv' %f)
@@ -92,9 +93,9 @@ class NeoEpitopeWorkFlow(object):
                 #else reload from last run
                 effects = pickle.load(open(eff_obj,'r'))
             #save as table
-            edf = effects_to_dataframe(effects)
-            edf['sample'] = f
-            edf.to_csv(eff_csv)
+            eff_data = effects_to_dataframe(effects)
+            eff_data['sample'] = f
+            eff_data.to_csv(eff_csv)
 
             for predictor in self.predictors:
                 outfile = os.path.join(path, 'results_%s_%s.csv' %(f,predictor))
@@ -114,11 +115,11 @@ class NeoEpitopeWorkFlow(object):
                 res.to_csv(outfile, index=False)
 
                 #gets promiscuous binders based on the cutoff
-                P=base.get_predictor(predictor)
+                P = base.get_predictor(predictor)
                 P.data = res
-                pb = P.promiscuous_binders(n=1)
-                pb['label'] = f
-                print (pb)
+                pb = P.promiscuous_binders(n=1, keep_columns=True)
+                #pb['label'] = f
+                print (pb[:20])
                 pb.to_csv(os.path.join(path, 'binders_%s_%s.csv' %(f,predictor)), index=False)
 
                 #peps = self_similarity(res, proteome="human_proteome")
@@ -212,12 +213,14 @@ def effects_to_dataframe(effects):
         d=OrderedDict()
         d['gene_name'] = eff.gene_name
         d['transcript_id'] = eff.transcript_id
-        #orig = eff.original_protein_sequence
-        #mut = eff.mutant_protein_sequence
+        wt = eff.original_protein_sequence
+        mut = eff.mutant_protein_sequence
         vloc = eff.aa_mutation_start_offset
         d['aa_change'] = eff.short_description
         d['mutation'] = eff.variant.short_description
         d['variant_class'] = get_variant_class(eff.variant)
+        #d['wt_sequence'] = wt
+        #d['mut_sequence'] = mut
         x.append(d)
     df = pd.DataFrame(x)
     df['chr'] = df.apply(lambda x: x.mutation.split(' ')[0],1)
@@ -266,7 +269,7 @@ def peptides_from_effect(eff, length=11, peptides=True):
     return df
 
 def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=True,
-                         length=11, verbose=False):
+                         drop_duplicates=True, length=11, verbose=False):
     """
     Get mutant proteins or peptide fragments from vcf or maf file.
     Args:
@@ -286,6 +289,8 @@ def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=T
         peps = peptides_from_effect(eff, length=length, peptides=peptides)
         res.append(peps)
     res = pd.concat(res).reset_index(drop=True)
+    if drop_duplicates == True:
+        res = res.drop_duplicates('peptide')
     print ('%s sequences/peptides from %s effects' %(len(res),len(effects)))
     return res
 

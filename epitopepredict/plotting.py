@@ -299,7 +299,7 @@ def bokeh_vbar(x, height=200, title='', color='navy'):
     plot.xaxis.major_label_orientation = np.pi/4
     return plot
 
-def bokeh_pie_chart(df, title='', width=400, height=400):
+def bokeh_pie_chart(df, title='', radius=.5, width=400, height=400, palette='Spectral'):
     """Bokeh pie chart"""
 
     from bokeh.plotting import figure
@@ -315,10 +315,10 @@ def bokeh_pie_chart(df, title='', width=400, height=400):
 
     from bokeh.palettes import brewer
     n = len(s)
-    pal = brewer['Set2'][6]
+    pal = brewer[palette][6]
     source = ColumnDataSource(
                 dict(x=[0 for x in s], y=[0 for x in s],
-                  radius = [0.3 for x in s],
+                  radius = [radius for x in s],
                   category= cats,
                   starts=starts,
                   ends=ends,

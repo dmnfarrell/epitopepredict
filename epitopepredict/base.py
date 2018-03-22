@@ -474,7 +474,8 @@ class Predictor(object):
             return res
 
     def promiscuous_binders(self, binders=None, name=None, cutoff=5,
-                           cutoff_method='default', n=1, unique_core=True, **kwargs):
+                           cutoff_method='default', n=1, unique_core=True,
+                           keep_columns=False, **kwargs):
         """
         Use params for getbinders if no binders provided?
         Args:
@@ -497,7 +498,6 @@ class Predictor(object):
             return
         if 'core' not in binders.columns :
             binders['core'] = binders.peptide
-
         if self.operator == '<':
             func = min
             skname = 'min'
@@ -505,22 +505,21 @@ class Predictor(object):
             func = max
             skname = 'max'
 
-        s = binders.groupby(['name','pos','peptide']).agg({'allele': np.size,
-                                    'core': first, self.scorekey:[func,np.mean],
-                                    'rank': np.median})
-        #print (s)
+        s = binders.groupby(['peptide','pos','name']).agg({'allele': pd.Series.count,
+                            'core': first, self.scorekey:[func,np.mean],
+                            'rank': np.median})
         s.columns = s.columns.get_level_values(1)
-        s.rename(columns={skname: self.scorekey, 'size': 'alleles','median':'median_rank',
+        s.rename(columns={skname: self.scorekey, 'count': 'alleles','median':'median_rank',
                          'first':'core'}, inplace=True)
         s = s.reset_index()
 
         #retain other non-standard cols
-        x = binders.drop_duplicates(['name','peptide','allele'])
-
-        s = s.merge(x, on=['name','peptide','pos'], how='inner', suffixes=('', '_y'))
-        cols = s.columns[~s.columns.str.contains('_y')]
-        s = s[cols]
-        s = s.drop('allele',1)
+        if keep_columns == True:
+            x = binders.drop_duplicates(['name','peptide','allele'])
+            s = s.merge(x, on=['name','peptide','pos'], how='inner', suffixes=('', '_y'))
+            cols = s.columns[~s.columns.str.contains('_y')]
+            s = s[cols]
+            s = s.drop('allele',1)
 
         s = s.sort_values(['alleles','median_rank'],ascending=[False,True])
         #if we just want unique cores, drop duplicates takes most promiscuous in each group
@@ -1297,8 +1296,8 @@ class TEpitopePredictor(Predictor):
                     allele='HLA-DRB1*0101', name='',
                     pseudosequence=None, **kwargs):
 
-        if length not in [9,11]:
-            print ('you should use 9 or 11 n-mers for best results')
+        #if length not in [9,11]:
+            #print ('you should use 9 or 11 n-mers for best results')
         allele = allele.replace(':','')
         if not allele in self.pssms:
             #print 'computing virtual matrix for %s' %allele

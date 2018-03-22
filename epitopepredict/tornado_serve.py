@@ -122,11 +122,11 @@ class ConfigForm(Form):
     iedbmhc2_path = TextField('iedb MHC-II tools path')
 
 class NeoForm(Form):
-    path = TextField('output path', default='', validators=[DataRequired()],
+    path = TextField('path', default='', validators=[DataRequired()],
                      render_kw={"class": "textbox"})
     #views = ['all','promiscuous','by protein']
     sample = SelectField('sample', choices=[])
-    views = ['final','combined','all binders']
+    views = ['final','combined']
     views = [(i,i) for i in views]
     view = SelectField('view', choices=views)
 
@@ -353,19 +353,31 @@ class NeoEpitopeHandler(RequestHandler):
         print (view)
         #get results data
         data = OrderedDict()
+        plots = []
 
-        #get all results
+        preds = []
+        s=sample
         if sample == 'all':
-            data['summary'] = labels
-            res=[]
-            for sample in samples:
-                fname = os.path.join(path, 'binders_%s_%s.csv' %(sample,p))
-                b = pd.read_csv(fname,index_col=0)
-                res.append(b)
+            s=samples[0]
+        for p in base.predictors:
+            f = os.path.join(path, 'results_%s_%s.csv' %(s,p))
+            if os.path.exists(f):
+                preds.append(p)
 
-            res = pd.concat(res).reset_index()
-            x = pd.pivot_table(res, index=['name','peptide'], columns=['label'], values='score')
-            data['all results'] = x
+        if sample == 'all':
+            #get all results together
+            for p in preds:
+                data['summary'] = labels
+                res=[]
+                for sample in samples:
+                    fname = os.path.join(path, 'binders_%s_%s.csv' %(sample,p))
+                    b = pd.read_csv(fname,index_col=0)
+                    res.append(b)
+
+                res = pd.concat(res).reset_index()
+                x = pd.pivot_table(res, index=['name','peptide'], columns=['label'], values='score')
+                data[p] = x
+
         else:
             #get table for variants
             variant_file = os.path.join(path, 'variant_effects_%s.csv' %sample)
@@ -375,12 +387,6 @@ class NeoEpitopeHandler(RequestHandler):
             variants = pd.read_csv(variant_file, index_col=0)
             #data['variants'] = variants
 
-            preds = []
-            for p in base.predictors:
-                f = os.path.join(path, 'results_%s_%s.csv' %(sample,p))
-                if os.path.exists(f):
-                    preds.append(p)
-
             for p in preds:
                 binder_file = fname = os.path.join(path, 'binders_%s_%s.csv' %(sample,p))
                 if not os.path.exists(binder_file):
@@ -389,24 +395,28 @@ class NeoEpitopeHandler(RequestHandler):
                     #get binders here if new cutoff used
                 else:
                     pb = pd.read_csv(binder_file)
+                    pb = pb.drop('label',1)
 
                 #top genes with most peptides?
                 t = pb['name'].value_counts()[:20]
-                print (t)
-                bar1 = plotting.bokeh_vbar(t, title='top genes with peptide binders', color='firebrick')
+                bar = plotting.bokeh_vbar(t, title='top genes with peptide binders: %s' %p, color='#41b6c4')
+                plots.append(bar)
                 self.add_links(pb)
-                data[p] = pb
+
+                #limit table size!
+                data[p] = pb[:1000]
+
+            x = variants.variant_class.value_counts()
+            pie = plotting.bokeh_pie_chart(x, radius=.25, title='variant classes', height=150)
+            plots.append(pie)
+            #test = plotting.bokeh_test(height=200)
+            v=variants
+            x=v.chr.value_counts().sort_index()
+            bar2 = plotting.bokeh_vbar(x, title='variants per chromosome', color='#225ea8')
+            plots.append(bar2)
 
         tables = web.dataframes_to_html(data, classes='sortable')
         tables = web.tabbed_html(tables)
-
-        x = variants.variant_class.value_counts()
-        pie = plotting.bokeh_pie_chart(x, title='variant classes', height=150)
-        #test = plotting.bokeh_test(height=200)
-        v=variants
-        x=v.chr.value_counts().sort_index()
-        bar2 = plotting.bokeh_vbar(x, title='variants per chromosome')
-        plots = [pie,bar2,bar1]
 
         if len(plots) > 0:
             grid = gridplot(plots, ncols=1, nrows=3, merge_tools=True, sizing_mode='scale_width',
@@ -416,7 +426,7 @@ class NeoEpitopeHandler(RequestHandler):
             script = ''; div = ''
 
         form.path.data = path
-        #samples.append('all')
+        samples.append('all')
         form.sample.choices = [(i,i) for i in samples]
         form.sample.data = sample
         self.render('neoepitope.html', status=1, path=path, links='', form=form,
