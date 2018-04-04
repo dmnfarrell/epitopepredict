@@ -276,7 +276,7 @@ def compare_tepitope_alleles(alnindex):
     df = compare_alleles(alleles, refalleles, alnindex, reduced=False)
     return df
 
-def compare_alleles(alleles1, alleles2, alnindex, reduced=True):
+def compare_alleles(alleles1, alleles2, alnindex, reduced=True, cutoff=.25):
     """Compare 2 sets of alleles for pseudo-seq distances"""
 
     data=[]
@@ -287,42 +287,36 @@ def compare_alleles(alleles1, alleles2, alnindex, reduced=True):
     for a in alleles2:
         d,qp = get_similarities(a,alleles1,alnindex)
         d = pd.DataFrame(d,columns=['ref',a])
+        #print (d)
         d.set_index('ref',inplace=True)
         data.append(d)
         pseqs[a]=qp
 
-    df = pd.concat(data,axis=2)
+    df = pd.concat(data,axis=1)
     df = df.apply(lambda x: 1-x)
     df = df.transpose()
     df = df.sort_index()
     df['mean'] = df.mean(axis=1).round(2)
     df['nearest'] = df.min(axis=1).round(2)
-    df.sort(['nearest'], inplace=True)
-    bins=np.linspace(0, 0.7, 30)
-    df.hist(column=['nearest'],bins=bins,grid=0,color='gray')
-    df.to_csv('allele_similarities.csv')
-    #plt.suptitle('bola-drb3 pseudo-sequence distances')
-    #plt.savefig('allele_sims_hist.png')
-    #plt.show()
-    #plt.clf()
+    df.sort_values(['mean'], inplace=True)
+    bins = np.linspace(0, 0.7, 30)
+
     print
     print ('most similar alleles:')
-    h = df[df['nearest']<0.25]
-    print (h[['nearest','mean']].sort())
+    h = df[df['nearest']<cutoff]
+    #print (h)
     h = h.drop(['mean','nearest'],axis=1)
-    h = h.reindex_axis(h.mean().order().index, axis=1)
-    plotheatmap(h)
-    found = list(df.index)
-    #print found
+    h = h.reindex(h.mean().sort_values().index, axis=1)
+
+    '''found = list(df.index)
+    print (found)
     for r in refalleles:
         pseqs[r] =  ''.join(get_pseudo_sequence(pp, alnindex[r]))
         if r not in found:
             found.append(r)
     for i in sorted(pseqs):
-        print ('%-15s' %i, pseqs[i])
-    #distanceTree(seqs=[SeqRecord(Seq(pseqs[i]),i) for i in found], ref=refalleles[0])
-    #ETETree(seqs=[SeqRecord(Seq(pseqs[i]),i) for i in found],
-    #        ref=refalleles[0],metric=dict(df['nearest']))
+        print ('%-15s' %i, pseqs[i])'''
+
     return h
 
 def compare(file1, file2, alnindex, reduced=True):
