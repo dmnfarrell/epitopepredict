@@ -41,14 +41,14 @@ baseoptions['base'] = {'predictors': 'tepitope',
                 'mhc2_length': 15,
                 'n': 2, #number of alleles
                 'cutoff_method': 'default',
-                'cutoff': 4, #percentile cutoff
+                'cutoffs': 4, #percentile cutoff
                 'sequence_file':'', #genbank/fasta file
+                'peptide_file':'', #plain text list of peptides
                 'path': 'results',
                 'overwrite': 'no',
                 'verbose':'no',
-                'names': '', #subset of protein names from genome file
+                'names': '', #subset of protein names 
                 'overwrite': 'no',
-                'plots': 'no', #whether to save plots
                 'genome_analysis': 'no',
                 'cpus': 1,
                 'fasta_header_sep': ' '}

@@ -33,9 +33,21 @@ aa_codes3 = {'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
         'D':'ASP', 'N':'ASN', 'H':'HIS', 'W':'TRP', 'F':'PHE', 'Y':'TYR', \
         'R':'ARG', 'K':'LYS', 'S':'SER', 'T':'THR', 'M':'MET', 'A':'ALA', \
         'G':'GLY', 'P':'PRO', 'C':'CYS'}
-blosum62 = pd.read_csv(os.path.join(datadir, 'blosum62.csv'),index_col=0)
-blosum50 = pd.read_csv(os.path.join(datadir, 'blosum50.csv'),index_col=0)
+
+#blosum50 = pd.read_csv(os.path.join(datadir, 'blosum50.csv'),index_col=0)
+sim_matrices = ['blosum50','blosum62','pmbec']
 alpha = 10
+#pseudo_residues = sorted(set([j for i in pp.values() for j in i]))
+pseudo_residues = [9,11,13,14,26,28,30,47,56,57,60,67,70,71,74,77,78,81,85,86,89]
+
+def get_matrix(name):
+    if name not in sim_matrices:
+        print ('no such matrix')
+        return
+    m = pd.read_csv(os.path.join(datadir, '%s.csv' %name),index_col=0)
+    return m
+
+blosum62 = get_matrix('blosum62')
 
 def get_pocket_positions():
     cr = csv.reader(open(os.path.join(tepitopedir, 'tepitope_pockets.txt')))
@@ -51,6 +63,8 @@ def generate_pssm(expdata):
     return
 
 def getPSSMs():
+    """Get tepitope pssm data"""
+
     path = os.path.join(tepitopedir, 'pssm')
     pssms = {}
     for f in glob.glob(os.path.join(path,'*.csv')):
@@ -112,7 +126,7 @@ def get_pseudo_sequence(pp, query, method='tepitope'):
     offset=28
     seq = []
     if method == 'tepitope':
-        res = pseudores
+        res = pseudo_residues
     elif method == 'netmhciipan':
         res = [9,11,13,14,26,28,30,47,56,57,60,67,70,71,74,77,78,81,85,86,89]
     for i in res:
@@ -136,6 +150,7 @@ def get_pockets_pseudo_sequence(pp, query):
 
 def get_allele_pocket_sequences(allele):
     """Convenience for getting an allele pocket aas"""
+
     alnindex = dict([(a.id,a) for a in drbaln])
     ref = alnindex[allele]
     return get_pockets_pseudo_sequence(pp,ref)
@@ -182,6 +197,7 @@ def similarity_score(blosum, r, q):
 def pickpocket(ind, allele):
     """Derive weights for a query allele using pickpocket method"""
 
+    pp = get_pocket_positions()
     alnindex = dict([(a.id,a) for a in drbaln])
     if allele not in alnindex:
         #print ('no such allele')
@@ -250,7 +266,7 @@ def get_bola_alleles():
     alleles.append(ref)
     return alleles
 
-def get_similarities(allele, refalleles, alnindex, matrix=blosum62):
+def get_similarities(allele, refalleles, alnindex, matrix):
     """Get distances between a query and set of ref pseudo-seqs"""
 
     query = alnindex[allele]
@@ -262,7 +278,7 @@ def get_similarities(allele, refalleles, alnindex, matrix=blosum62):
         ref = alnindex[k]
         #rp = ''.join(get_pockets_pseudo_sequence(pp, ref))
         rp = ''.join(get_pseudo_sequence(pp, ref))
-        #print qp,rp
+        #print (qp,rp)
         sim = similarity_score(matrix, rp, qp)
         sims.append((k,sim))
     return sims, qp
@@ -276,16 +292,19 @@ def compare_tepitope_alleles(alnindex):
     df = compare_alleles(alleles, refalleles, alnindex, reduced=False)
     return df
 
-def compare_alleles(alleles1, alleles2, alnindex, reduced=True, cutoff=.25):
+def compare_alleles(alleles1, alleles2, alnindex, reduced=True, cutoff=.25,
+                    matrix=None, matrix_name='blosum62'):
     """Compare 2 sets of alleles for pseudo-seq distances"""
 
+    matrix = get_matrix(matrix_name)
+    #print (matrix)
     data=[]
     pseqs = {}
     if reduced==True:
         alleles1 = reduce_alleles(alleles1)
         alleles2 = reduce_alleles(alleles2)
     for a in alleles2:
-        d,qp = get_similarities(a,alleles1,alnindex)
+        d,qp = get_similarities(a,alleles1,alnindex, matrix=matrix)
         d = pd.DataFrame(d,columns=['ref',a])
         #print (d)
         d.set_index('ref',inplace=True)
@@ -302,7 +321,7 @@ def compare_alleles(alleles1, alleles2, alnindex, reduced=True, cutoff=.25):
     bins = np.linspace(0, 0.7, 30)
 
     print
-    print ('most similar alleles:')
+    #print ('most similar alleles:')
     h = df[df['nearest']<cutoff]
     #print (h)
     h = h.drop(['mean','nearest'],axis=1)
@@ -398,9 +417,7 @@ def test():
     plt.show()
     return
 
-#declare these as global for convenience
 pp = get_pocket_positions()
-pseudores = sorted(set([j for i in pp.values() for j in i]))
 librarypssms = getPSSMs()
 #drb HLA + BOLA alignments
 drbaln = AlignIO.read(os.path.join(tepitopedir,'bola_hla.drb.txt'), "fasta")

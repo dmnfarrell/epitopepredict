@@ -28,9 +28,15 @@ class WorkFlow(object):
         pd.set_option('display.width', 120)
         base.iedbmhc1path = self.iedbmhc1_path
         base.iedbmhc2path = self.iedbmhc2_path
-        self.sequences = get_sequences(self.sequence_file, header_sep=self.fasta_header_sep)
-        if len(self.sequences) == 0:
-            print ('no sequences found')
+        self.sequences = None
+        self.peptides = None
+        if self.sequence_file is not '':
+            self.sequences = get_sequences(self.sequence_file, header_sep=self.fasta_header_sep)
+        elif self.peptide_file is not '':
+            self.peptides = get_peptides(self.peptide_file)
+            print ('input is %s peptides' %len(self.peptides))
+        if self.sequences is None and self.peptides is None:
+            print ('no valid inputs found')
             return False
         self.mhc1_alleles = self.mhc1_alleles.split(',')
         self.mhc2_alleles = self.mhc2_alleles.split(',')
@@ -42,12 +48,16 @@ class WorkFlow(object):
                 print ('unknown predictor in config file. Use:')
                 show_predictors()
                 return False
+
         if self.mhc1_alleles[0] in base.mhc1_presets:
             self.mhc1_alleles = base.get_preset_alleles(self.mhc1_alleles[0])
-        elif self.mhc2_alleles[0] in base.mhc2_presets:
+        if self.mhc2_alleles[0] in base.mhc2_presets:
             self.mhc2_alleles = base.get_preset_alleles(self.mhc2_alleles[0])
 
-        self.cutoff = float(self.cutoff)
+        if type(self.cutoffs) is int:
+            self.cutoffs = [self.cutoffs]
+        else:
+            self.cutoffs = [float(i) for i in self.cutoffs.split(',')]
         self.names = self.names.split(',')
         if self.names == ['']: self.names=None
         if not os.path.exists(self.path) and self.path != '':
@@ -58,8 +68,8 @@ class WorkFlow(object):
         """Run prediction workflow"""
 
         preds = []
-        if self.names == None:
-            self.names = self.sequences.locus_tag
+        #if self.names == None:
+        #    self.names = self.sequences.locus_tag
         for p in self.predictors:
             P = base.get_predictor(p)
             savepath = os.path.join(self.path, p)
@@ -83,37 +93,48 @@ class WorkFlow(object):
                 if iedb_checks(method) == False:
                     continue
 
-            P.predict_proteins(self.sequences, length=length, alleles=a, names=self.names,
-                              path=savepath, overwrite=self.overwrite, verbose=self.verbose,
-                              method=method, cpus=self.cpus)
-            #load results into predictor
-            P.load(path=savepath)
+            if self.peptides is not None:
+                P.predict_peptides(self.peptides, length=length, alleles=a, names=self.names,
+                                path=self.path, overwrite=self.overwrite, verbose=self.verbose,
+                                method=method, cpus=self.cpus)
+                #P.load()
+            else:
+                print (savepath)
+                P.predict_proteins(self.sequences, length=length, alleles=a, names=self.names,
+                                path=savepath, overwrite=self.overwrite, verbose=self.verbose,
+                                method=method, cpus=self.cpus)
+                #load results into predictor - is this needed here?
+                P.load(path=savepath)
             if P.data is None:
                 print ('no results were found, did predictor run?')
                 return
             preds.append(P)
             #print (preds)
-            cutoff = self.cutoff
-            cutoff_method = self.cutoff_method
+            #cutoff = self.cutoff
+            #cutoff_method = self.cutoff_method
             n = self.n
             print ('-----------------------------')
 
         self.preds = preds
         self.analysis()
-        if self.plots == True:
-            self.plot_results()
-        print ('these results can be viewed in the web app under the path %s' %self.path)
+        #if self.plots == True:
+        #    self.plot_results()
+        print ('results saved in the folder %s' %self.path)
         return
 
     def analysis(self):
-        """Do analysis of predictions"""
+        """Do analysis of prediction results."""
 
         preds = self.preds
+        cutoffs = self.cutoffs
+        cutoff_method = self.cutoff_method
+        i=0
         for P in self.preds:
             print (P)
+            if len(P.data) == 0:
+                continue
             p = P.name
-            cutoff = self.cutoff
-            cutoff_method = self.cutoff_method
+            cutoff=self.cutoffs[i]
             n = self.n
             b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
             print ('%s/%s binders' %(len(b), len(P.data)))
@@ -122,14 +143,22 @@ class WorkFlow(object):
                 return
             pb = P.promiscuous_binders(binders=b, n=int(n), cutoff=cutoff, cutoff_method=cutoff_method)
             print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
-            pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)))
+            pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)), float_format='%g')
             if self.verbose == True and len(pb)>0:
                 print ('top promiscuous binders:')
                 print (pb[:10])
-            if self.genome_analysis == True:
+            if self.genome_analysis == True and self.sequences is not None:
                 cl = analysis.find_clusters(pb, genome=self.sequences)
                 cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
             print ('-----------------------------')
+            i+=1
+        return
+
+    def combine(self, df1, df2):
+        """Combine binders"""
+
+        df = df1.merge(df2, on=['peptide','name'])
+
         return
 
     def plot_results(self):
@@ -153,6 +182,13 @@ class WorkFlow(object):
             plt.close()
         print ('saved plots')
         return
+
+def get_peptides(filename):
+    with open(filename) as f:
+        p = f.readlines()
+    p = [x.strip() for x in p]
+    p = list(filter(None, p))
+    return p
 
 def get_sequences(filename, header_sep=None):
     """Determine file type and get sequences"""
@@ -214,7 +250,7 @@ def list_alleles():
         print (p)
         print ('-----------------------------')
         P = base.get_predictor(p)
-        x = P.getAlleles()
+        x = P.get_alleles()
         if type(x) is list:
             for i in x: print (i)
         print ()

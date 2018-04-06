@@ -30,8 +30,8 @@ from Bio.SeqRecord import SeqRecord
 from . import utilities, peptutils, sequtils, tepitope
 
 home = os.path.expanduser("~")
-path = os.path.dirname(os.path.abspath(__file__)) #path to module
-datadir = os.path.join(path, 'mhcdata')
+module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
+datadir = os.path.join(module_path, 'mhcdata')
 predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets','iedbbcell']
 iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'netmhcpan', 'smmpmbec']
 mhc1_predictors = ['iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
@@ -65,7 +65,7 @@ testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHAS
                'PKLRPILLPNKSGKKGNSADLTSPEKIQAIMTSLQDFKIVPIDPTKNIMGIEVPETLVHKLTGKKVTSKN'
                'GQPIIPVLLPKYIGLDPVAPGDLTMVITQDCDTCHSPASLPAVIEK')
 
-presets_dir = os.path.join(path, 'presets')
+presets_dir = os.path.join(module_path, 'presets')
 
 def predict_proteins_worker(P, recs, kwargs):
     df = P._predict_sequences(recs, **kwargs)
@@ -372,7 +372,7 @@ class Predictor(object):
             return '%s predictor' %self.name
         else:
             n = len(self.data.name.unique())
-            return '%s predictor with results in %s proteins' %(self.name, n)
+            return '%s predictor with results in %s sequences' %(self.name, n)
 
     def predict(self, sequence=None, peptides=None, length=9, overlap=1,
                     allele='', name=''):
@@ -574,44 +574,6 @@ class Predictor(object):
         df['pos'] = range(len(seqs))
         return df
 
-    '''def _predict_peptides(self, sequences, alleles=[], **kwargs):
-        """
-        Predict a set of arbitary peptide sequences in a list, dict or dataframe.
-        These are treated as individual peptides and not split into n-mers. This is
-        usually called wrapped by predict_peptides.
-        """
-
-        results=[]
-        #print (sequences)
-        if len(alleles)==0:
-            print ('no alleles specified')
-            return
-        if type(sequences) is list:
-            sequences = self.seqs_to_dataframe(sequences)
-        for i,row in sequences.iterrows():
-            name = row['name']
-            seq = row.peptide
-            if type(seq) is float or len(seq)<9:
-                print ('peptide too short or empty data passed')
-                print (row)
-                continue
-            res=[]
-            for a in alleles:
-                df = self.predict(sequence=seq, length=len(seq),
-                                    allele=a, name=name, **kwargs)
-                if df is None:
-                    continue
-                df['pos'] = row.pos
-                res.append(df)
-            res = pd.concat(res)
-            results.append(res)
-        data = pd.concat(results)
-        #rank is now just global over all sequences per allele
-        #data = data.groupby('allele').apply(self.getRanking)
-        #data = data.reset_index(drop=True)
-        self.data = data
-        return data'''
-
     def _predict_peptides(self, peptides, alleles=[], **kwargs):
         """
         Predict a set of arbitary peptide sequences in a list or dataframe.
@@ -647,16 +609,17 @@ class Predictor(object):
         else:
             data = self._run_multiprocess(peptides, worker=predict_peptides_worker,
                                           cpus=cpus, **kwargs)
-        if data is None:
+        if data is None or len(data) == 0:
             print ('empty result returned')
             return
+
         data = data.reset_index(drop=True)
         data = data.groupby('allele').apply(self.get_ranking)
         #data = data.reset_index(drop=True)
         self.data = data
         if path is not None:
-            print (self.name)
-            data.to_csv(os.path.join(path, 'results_%s.csv' %self.name))
+            #print (self.name)
+            data.to_csv(os.path.join(path, 'results_%s.csv' %self.name), float_format='%g')
         return data
 
     def _convert_to_dataframe(self, recs):
@@ -965,11 +928,9 @@ class Predictor(object):
 
     def check_alleles(self, alleles):
         a = self.get_alleles()
+        #print (a)
         found = list((set(a) & set(alleles)))
-        if len(found) == 0:
-            return
-        else:
-            return 1
+        return found
 
     def cleanup(self):
         """Remove temp files from predictions"""
@@ -1066,17 +1027,17 @@ class NetMHCIIPanPredictor(Predictor):
         except:
             print('netmhciipan not installed?')
             return []
-        alleles = temp.split('\n')[34:]
-        #print sorted(list(set([getStandardmhc1Name(i) for i in alleles])))
+        alleles = temp.split('\n')#[34:]
+        #alleles =  list(set([self.convert_allele_name(i) for i in alleles]))
         return alleles
 
-    def convert_allele_name(self, r):
+    def convert_allele_name(self, a):
         """Convert allele names to internally used form"""
 
-        if not r.startswith('HLA'):
-            return 'HLA-'+r.replace(':','')
+        if not a.startswith('HLA'):
+            return 'HLA-'+a.replace(':','')
         else:
-            return r.replace(':','')
+            return a.replace(':','')
 
 class IEDBMHCIPredictor(Predictor):
     """Using IEDB tools method, requires iedb-mhc1 tools"""
@@ -1094,7 +1055,7 @@ class IEDBMHCIPredictor(Predictor):
         return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
-                   allele='HLA-A*01:01', name='', method=None, show_cmd=False):
+                   allele='HLA-A*01:01', name='', method=None, show_cmd=False, **kwargs):
         """Use IEDB MHCI python module to get predictions.
            Requires that the IEDB MHC tools are installed locally
            Args:
@@ -1179,13 +1140,8 @@ class IEDBMHCIPredictor(Predictor):
         """Get available alleles from model_list file and
             convert to standard names"""
 
-        try:
-            afile = os.path.join(iedbmhc1path, 'data/MHCI_mhcibinding20130222/consensus/model_list.txt')
-            df = pd.read_csv(afile,sep='\t',names=['name','x'])
-            alleles = list(df['name'])
-            alleles = sorted(list(set([get_standard_mhc1(i) for i in alleles])))
-        except:
-            alleles = pd.read_csv(os.path.join(datadir, 'iedb_mhc1_alleles.csv')).allele.values
+        alleles = pd.read_csv(os.path.join(datadir, 'iedb_mhc1_alleles.csv')).allele.values
+        #alleles = sorted(list(set([get_standard_mhc1(i) for i in alleles])))
         return alleles
 
     def get_allele_data(self):
@@ -1244,16 +1200,27 @@ class IEDBMHCIIPredictor(Predictor):
         self.data = df
         return df
 
-    def predict(self, peptides=None, sequence=None, length=15, overlap=None,
-                   allele='HLA-DRB1*01:01', method='IEDB_recommended', name=''):
+    def predict(self, peptides=None, sequence=None, length=15, overlap=None, show_cmd=False,
+                   allele='HLA-DRB1*01:01', method='IEDB_recommended', name='', **kwargs):
         """Use IEDB MHC-II python module to get predictions. Requires that the IEDB MHC-II
         tools are installed locally. sequence argument must be provided since cmd line
         only accepts whole sequence to be fragmented.
         """
 
         self.method = method
-        tempfile = os.path.join(self.temppath, name+'.fa')
-        seqfile = write_fasta(sequence, id=name, filename=tempfile)
+        if sequence is not None:
+            tempf = os.path.join(self.temppath, name+'.fa')
+            seqfile = write_fasta(sequence, id=name, filename=tempf)
+        elif peptides is not None:
+            if type(peptides) is not pd.DataFrame:
+                peptides = self.seqs_to_dataframe(peptides)
+            #print (peptides[:3])
+            tempf = tempfile.mktemp()+'.txt'
+            seqfile = sequtils.dataframe_to_fasta(peptides, outfile=tempf, seqkey='peptide', idkey='name')
+            length = peptides.peptide.str.len().max()
+        else:
+            return
+
         path = iedbmhc2path
         if method == None: method = 'IEDB_recommended'
         if not os.path.exists(path):
@@ -1261,7 +1228,7 @@ class IEDBMHCIIPredictor(Predictor):
             return
         cmd = os.path.join(path,'mhc_II_binding.py')
         cmd = cmd+' %s %s %s' %(method,allele,seqfile)
-        #print (cmd)
+        print (cmd)
 
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
@@ -1273,7 +1240,7 @@ class IEDBMHCIIPredictor(Predictor):
 
     def get_alleles(self):
         if not os.path.exists(iedbmhc2path):
-            return
+            return []
         c = os.path.join(iedbmhc2path,'mhc_II_binding.py')
         for m in self.methods:
             cmd = c + ' %s mhc' %m
@@ -1317,13 +1284,19 @@ class TEpitopePredictor(Predictor):
     def get_alleles(self):
         return tepitope.get_alleles()
 
+    def check_alleles(self, alleles):
+        alleles = [i.replace(':','') for i in alleles]
+        a = self.get_alleles()
+        found = list((set(a) & set(alleles)))
+        return found
+
 class IEDBBCellPredictor(Predictor):
     """Using IEDB tools methods, requires iedb bcell tools.
        see http://tools.immuneepitope.org/bcell """
 
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
-        self.name = 'iedbmhc1'
+        self.name = 'iedbbcell'
         self.scorekey = 'Score'
         self.methods = ['Chou-Fasman', 'Emini', 'Karplus-Schulz',
                         'Kolaskar-Tongaonkar', 'Parker', 'Bepipred']
@@ -1447,8 +1420,11 @@ class MHCFlurryPredictor(Predictor):
         return r[:5]+'*'+r[5:7]+':'+r[7:]
 
     def get_alleles(self):
-        import mhcflurry
-        return mhcflurry.Class1AffinityPredictor.supported_alleles
+        with open(os.path.join(datadir,'mhcflurry_alleles.txt')) as f:
+            p = f.readlines()
+        p = [x.strip() for x in p]
+        p = list(filter(None, p))
+        return p
 
     def _check_models(self):
         try:
@@ -1475,7 +1451,7 @@ class MHCNuggetsPredictor(Predictor):
         self.scorekey = 'ic50'
         self.rankascending = 1
         #path should be set in future we will use API to call..
-        self.path = ''
+        self.path = None
         return
 
     def predict(self, peptides=None, length=11, overlap=1,
@@ -1483,21 +1459,24 @@ class MHCNuggetsPredictor(Predictor):
         """Uses cmd line call to mhcnuggets."""
 
         path = self.path
+        if path is None:
+            print('no path set for mhcnuggets')
+            return
         tempf = self.write_seqs(peptides)
-        a = allele.translate(None, '*:')
-        #print (a)
+        a = re.sub('[*:]', '', allele)
+        print (a)
         #should replace cmd line call in future with API
-        cmd = 'python {p}/predict.py -m lstm -w {p}/mhcnuggets_lstm/{a}.h5 -p {t}'\
+        cmd = 'python {p}/scripts/predict.py -m lstm -w {p}/mhcnuggets_lstm/{a}.h5 -p {t}'\
               .format(p=path,t=tempf,a=a)
-        if show_cmd == True:
-            print (cmd)
+        #if show_cmd == True:
+        print (cmd)
         from subprocess import Popen, PIPE
         try:
             p = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
             temp,error = p.communicate()
             #print (temp)
         except OSError as e:
-            #print (e)
+            print (e)
             return
 
         df = self.prepare_data(temp, name, allele)
