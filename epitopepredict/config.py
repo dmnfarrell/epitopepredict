@@ -32,6 +32,8 @@ except:
 
 path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')
+home = os.path.expanduser("~")
+config_path = os.path.join(home, '.epitopepredict')
 
 baseoptions = OrderedDict()
 baseoptions['base'] = {'predictors': 'tepitope',
@@ -47,7 +49,7 @@ baseoptions['base'] = {'predictors': 'tepitope',
                 'path': 'results',
                 'overwrite': 'no',
                 'verbose':'no',
-                'names': '', #subset of protein names 
+                'names': '', #subset of protein names
                 'overwrite': 'no',
                 'genome_analysis': 'no',
                 'cpus': 1,
@@ -59,7 +61,20 @@ baseoptions['iedbtools'] = {'iedbmhc1_path':'', 'iedbmhc2_path':'',
 
 baseoptions['neopredict'] = {'vcf_files':'','maf_files':''}
 
-def write_default_config(conffile='default.conf', defaults={}):
+def write_default_config():
+    """Write a default config to users .config folder. Used to add global settings."""
+
+    fname = os.path.join(config_path, 'default.conf')
+    if not os.path.exists(fname):
+        try:
+            #os.mkdir(config_path)
+            os.makedirs(config_path)
+        except:
+            pass
+        write_config(conffile=fname, defaults=baseoptions)
+    return fname
+
+def write_config(conffile='default.conf', defaults={}):
     """Write a default config file"""
 
     if not os.path.exists(conffile):
@@ -74,6 +89,7 @@ def create_config_parser_from_dict(data=None, sections=['base','iedbtools'], **k
 
     if data is None:
         data = baseoptions
+    print (data)
     cp = configparser.ConfigParser()
     for s in sections:
         cp.add_section(s)

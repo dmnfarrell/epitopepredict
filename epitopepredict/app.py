@@ -26,8 +26,8 @@ class WorkFlow(object):
         """Setup main parameters"""
 
         pd.set_option('display.width', 120)
-        base.iedbmhc1path = self.iedbmhc1_path
-        base.iedbmhc2path = self.iedbmhc2_path
+        #override base.defaults entries if provided in conf
+        set_defaults(self.__dict__)
         self.sequences = None
         self.peptides = None
         if self.sequence_file is not '':
@@ -68,8 +68,6 @@ class WorkFlow(object):
         """Run prediction workflow"""
 
         preds = []
-        #if self.names == None:
-        #    self.names = self.sequences.locus_tag
         for p in self.predictors:
             P = base.get_predictor(p)
             savepath = os.path.join(self.path, p)
@@ -94,12 +92,11 @@ class WorkFlow(object):
                     continue
 
             if self.peptides is not None:
-                P.predict_peptides(self.peptides, length=length, alleles=a, names=self.names,
+                P.predict_peptides(self.peptides, length=length, alleles=a,
                                 path=self.path, overwrite=self.overwrite, verbose=self.verbose,
                                 method=method, cpus=self.cpus)
-                #P.load()
             else:
-                print (savepath)
+                #print (savepath)
                 P.predict_proteins(self.sequences, length=length, alleles=a, names=self.names,
                                 path=savepath, overwrite=self.overwrite, verbose=self.verbose,
                                 method=method, cpus=self.cpus)
@@ -134,15 +131,17 @@ class WorkFlow(object):
             if len(P.data) == 0:
                 continue
             p = P.name
-            cutoff=self.cutoffs[i]
+            cutoff = cutoffs[i]
             n = self.n
             b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
             print ('%s/%s binders' %(len(b), len(P.data)))
             if len(b) == 0:
                 print ('no binders found, check your cutoff value')
                 return
-            pb = P.promiscuous_binders(binders=b, n=int(n), cutoff=cutoff, cutoff_method=cutoff_method)
-            print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
+
+            pb = P.promiscuous_binders(binders=b, n=n, cutoff=cutoff, cutoff_method=cutoff_method)
+
+            print ('found %s promiscuous binders at  cutoff=%s, n=%s' %(len(pb),cutoff,n))
             pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)), float_format='%g')
             if self.verbose == True and len(pb)>0:
                 print ('top promiscuous binders:')
@@ -201,6 +200,12 @@ def get_sequences(filename, header_sep=None):
         seqs = sequtils.genbank_to_dataframe(filename, cds=True)
     return seqs
 
+def set_defaults(d):
+    """Override default paths if provided in conf"""
+    for key in ['iedbmhc1_path','iedbmhc2_path']:
+        if key in d and d[key] != '':
+            base.defaults[key] = d[key]
+
 def iedb_checks(method):
     if check_iedbmhc1_path() == False:
         return False
@@ -214,12 +219,14 @@ def check_mhc1_length(l):
         return False
 
 def check_iedbmhc1_path():
-    if not os.path.exists(base.iedbmhc1path):
+    P = base.get_predictor('iedbmhc1')
+    if not os.path.exists(P.iedbmhc1_path):
         print ('IEDB MHC-I tools not found, check path')
         return False
 
 def check_iedbmhc2_path():
-    if not os.path.exists(base.iedbmhc2path):
+    P = base.get_predictor('iedbmhc2')
+    if not os.path.exists(P.iedbmhc2_path):
         print ('IEDB MHC-II tools not found, check path')
         return False
 
@@ -246,13 +253,17 @@ def print_help():
     print ("""use -h to get options""")
 
 def list_alleles():
+    n=7
     for p in base.predictors:
         print (p)
         print ('-----------------------------')
         P = base.get_predictor(p)
         x = P.get_alleles()
         if type(x) is list:
-            for i in x: print (i)
+            for i in range(0, len(x), n):
+                l=x[i:i+n]
+                print(', '.join(l))
+
         print ()
     return
 
@@ -308,7 +319,7 @@ def main():
     else:
         conffile = 'default.conf'
         if not os.path.exists(conffile):
-            config.write_default_config(conffile, defaults=config.baseoptions)
+            config.write_config(conffile, defaults=config.baseoptions)
     if opts.presets == True:
         show_preset_alleles()
     elif opts.list_alleles == True:
