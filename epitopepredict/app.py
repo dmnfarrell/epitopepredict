@@ -32,6 +32,7 @@ class WorkFlow(object):
         self.peptides = None
         if self.sequence_file is not '':
             self.sequences = get_sequences(self.sequence_file, header_sep=self.fasta_header_sep)
+            print ('input is %s protein sequences' %len(self.sequences))
         elif self.peptide_file is not '':
             self.peptides = get_peptides(self.peptide_file)
             print ('input is %s peptides' %len(self.peptides))
@@ -55,7 +56,7 @@ class WorkFlow(object):
             self.mhc2_alleles = base.get_preset_alleles(self.mhc2_alleles[0])
 
         if type(self.cutoffs) is int:
-            self.cutoffs = [self.cutoffs]
+            self.cutoffs = [self.cutoffs for p in self.predictors]
         else:
             self.cutoffs = [float(i) for i in self.cutoffs.split(',')]
         self.names = self.names.split(',')

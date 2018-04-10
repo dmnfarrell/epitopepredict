@@ -38,7 +38,8 @@ aa_codes3 = {'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
 sim_matrices = ['blosum50','blosum62','pmbec']
 alpha = 10
 #pseudo_residues = sorted(set([j for i in pp.values() for j in i]))
-pseudo_residues = [9,11,13,14,26,28,30,47,56,57,60,67,70,71,74,77,78,81,85,86,89]
+pseudo_residues = [9,11,13,26,28,30,37,47,57,60,61,67,70,71,74,77,78,81,82,85,86,89]
+#pseudo_residues = sorted(set([j for i in tepitope.pp.values() for j in i]))
 
 def get_matrix(name):
     if name not in sim_matrices:
@@ -59,7 +60,6 @@ def get_pocket_positions():
 def generate_pssm(expdata):
     """Create pssm for known binding data given a set
        of n-mers and binding score"""
-
     return
 
 def getPSSMs():
@@ -120,16 +120,16 @@ def get_scores(pssm, sequence=None, peptides=None, length=11, overlap=1):
         pos+=overlap
     return scores
 
-def get_pseudo_sequence(pp, query, method='tepitope'):
-    """Get non redundant pseudo-seq"""
+def get_pseudo_sequence(query, positions=None, offset=28):
+    """Get non redundant pseudo-sequence for a query. Assumes input is a gapped
+       sequence from an alignment.
+       """
 
-    offset=28
     seq = []
-    if method == 'tepitope':
-        res = pseudo_residues
-    elif method == 'netmhciipan':
-        res = [9,11,13,14,26,28,30,47,56,57,60,67,70,71,74,77,78,81,85,86,89]
-    for i in res:
+    if positions == None:
+        positions = pseudo_residues
+
+    for i in positions:
         s=''
         s+=query[i+offset]
         #print i,s
@@ -271,13 +271,13 @@ def get_similarities(allele, refalleles, alnindex, matrix):
 
     query = alnindex[allele]
     #qp = ''.join(get_pockets_pseudo_sequence(pp,query))
-    qp = ''.join(get_pseudo_sequence(pp,query))
+    qp = ''.join(get_pseudo_sequence(query))
     sims = []
     #for k in librarypssms.keys():
     for k in refalleles:
         ref = alnindex[k]
         #rp = ''.join(get_pockets_pseudo_sequence(pp, ref))
-        rp = ''.join(get_pseudo_sequence(pp, ref))
+        rp = ''.join(get_pseudo_sequence(ref))
         #print (qp,rp)
         sim = similarity_score(matrix, rp, qp)
         sims.append((k,sim))
@@ -330,7 +330,7 @@ def compare_alleles(alleles1, alleles2, alnindex, reduced=True, cutoff=.25,
     '''found = list(df.index)
     print (found)
     for r in refalleles:
-        pseqs[r] =  ''.join(get_pseudo_sequence(pp, alnindex[r]))
+        pseqs[r] =  ''.join(get_pseudo_sequence(alnindex[r]))
         if r not in found:
             found.append(r)
     for i in sorted(pseqs):
@@ -405,8 +405,6 @@ def compare_ref(query1, query2, ref, alnindex):
 
 def test():
 
-    #alnindex = dict([(a.id,a) for a in aln])
-    #Genome.showAlignment(aln)
     aln = drbaln
     alnindex = dict([(a.id,a) for a in aln])
     compare_tepitope_alleles(alnindex)

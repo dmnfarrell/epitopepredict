@@ -74,11 +74,17 @@ def read_defaults():
 defaults = read_defaults()
 
 def predict_proteins_worker(P, recs, kwargs):
-    df = P._predict_sequences(recs, **kwargs)
+    try:
+        df = P._predict_sequences(recs, **kwargs)
+    except KeyboardInterrupt:
+        return
     return df
 
 def predict_peptides_worker(P, recs, kwargs):
-    df = P._predict_peptides(recs, **kwargs)
+    try:
+        df = P._predict_peptides(recs, **kwargs)
+    except KeyboardInterrupt:
+        return
     return df
 
 def get_preset_alleles(name):
@@ -793,17 +799,23 @@ class Predictor(object):
         st = time.time()
         chunks = np.array_split(recs,cpus)
         #print ([len(i) for i in chunks])
+
         for recs in chunks:
             f = pool.apply_async(worker, [self,recs,kwargs])
-            #print (f)
             funclist.append(f)
         result = []
-        for f in funclist:
-            df = f.get(timeout=None)
-            if df is not None and len(df)>0:
-                result.append(df)
+        try:
+            for f in funclist:
+                df = f.get(timeout=None)
+                if df is not None and len(df)>0:
+                    result.append(df)
+        except KeyboardInterrupt:
+            print ('process interrupted')
+            pool.terminate()
+            sys.exit(0)
         pool.close()
         pool.join()
+
         #print (result)
         if len(result)>0:
             result = pd.concat(result)

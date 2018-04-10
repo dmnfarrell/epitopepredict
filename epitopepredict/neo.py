@@ -39,6 +39,7 @@ class NeoEpitopeWorkFlow(object):
         if len(self.mhc1_alleles)==0 and len(self.mhc2_alleles)==0:
             return False
         self.predictors = self.predictors.split(',')
+
         for p in self.predictors:
             if p not in base.predictors:
                 print ('unknown predictor in config file. Use:')
@@ -49,7 +50,10 @@ class NeoEpitopeWorkFlow(object):
         elif self.mhc2_alleles[0] in base.mhc2_presets:
             self.mhc2_alleles = base.get_preset_alleles(self.mhc2_alleles[0])
 
-        self.cutoff = float(self.cutoff)
+        if type(self.cutoffs) is int:
+            self.cutoffs = [self.cutoffs for p in self.predictors]
+        else:
+            self.cutoffs = [float(i) for i in self.cutoffs.split(',')]
         self.names = self.names.split(',')
         if self.names == ['']: self.names=None
         if not os.path.exists(self.path) and self.path != '':
@@ -74,6 +78,7 @@ class NeoEpitopeWorkFlow(object):
         overwrite = self.overwrite
         files = self.vcf_files
         labels = self.get_file_labels(files)
+        cutoffs = self.cutoffs
 
         for f in labels:
             print (f)
@@ -97,6 +102,7 @@ class NeoEpitopeWorkFlow(object):
             eff_data['sample'] = f
             eff_data.to_csv(eff_csv)
 
+            i=0
             for predictor in self.predictors:
                 outfile = os.path.join(path, 'results_%s_%s.csv' %(f,predictor))
                 if os.path.exists(outfile) and overwrite == False:
@@ -117,11 +123,11 @@ class NeoEpitopeWorkFlow(object):
                 #gets promiscuous binders based on the cutoff
                 P = base.get_predictor(predictor)
                 P.data = res
-                pb = P.promiscuous_binders(n=1, keep_columns=True)
+                pb = P.promiscuous_binders(n=1, keep_columns=True, cutoff=cutoffs[i])
                 #pb['label'] = f
                 print (pb[:20])
                 pb.to_csv(os.path.join(path, 'binders_%s_%s.csv' %(f,predictor)), index=False)
-
+                i+=1
                 #peps = self_similarity(res, proteome="human_proteome")
 
         #combine results for multiple samples
