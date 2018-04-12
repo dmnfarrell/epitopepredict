@@ -127,6 +127,7 @@ class WorkFlow(object):
         cutoffs = self.cutoffs
         cutoff_method = self.cutoff_method
         i=0
+        prom_binders = []
         for P in self.preds:
             print (P)
             if len(P.data) == 0:
@@ -144,7 +145,7 @@ class WorkFlow(object):
 
             print ('found %s promiscuous binders at  cutoff=%s, n=%s' %(len(pb),cutoff,n))
             pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)), float_format='%g')
-            if self.verbose == True and len(pb)>0:
+            if len(pb)>0:
                 print ('top promiscuous binders:')
                 print (pb[:10])
             if self.genome_analysis == True and self.sequences is not None:
@@ -152,13 +153,19 @@ class WorkFlow(object):
                 cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
             print ('-----------------------------')
             i+=1
+            prom_binders.append(pb)
+        if len(prom_binders) >1:
+            self.combine(prom_binders)
         return
 
-    def combine(self, df1, df2):
-        """Combine binders"""
+    def combine(self, data):
+        """Combine peptide binders present in all methods"""
 
-        df = df1.merge(df2, on=['peptide','name'])
-
+        cols = ['peptide','alleles']
+        df1=data[0][cols]; df2=data[1][cols]
+        df = df1.merge(df2, on=['peptide'], how='inner', suffixes=['_1','_2'])
+        #print (df[:10])
+        #df.to_csv(os.path.join(self.path,'combined.csv'))
         return
 
     def plot_results(self):

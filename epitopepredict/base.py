@@ -1013,27 +1013,14 @@ class NetMHCIIPanPredictor(Predictor):
         df = df.drop(['Pos','Identity','Rank'],1)
         df = df.dropna()
         df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
+        df['score'] = df['Affinity']
         self.get_ranking(df)
         self.data = df
         return
 
-    def run_sequence(self, seq, length, allele, name='temp', overlap=1):
-        """Run netmhciipan for a single sequence"""
-
-        tempfile = os.path.join(self.temppath, name+'.fa')
-        seqfile = write_fasta(seq, id=name, filename=tempfile)
-        cmd = 'netMHCIIpan -s -length %s -a %s -f %s' %(length, allele, seqfile)
-        #print (cmd)
-        temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-        #print (temp)
-        rows = self.read_result(temp)
-        df = pd.DataFrame(rows)
-        return df
-
-    def predict(self, sequence=None, peptides=None, length=11, overlap=1,
-                    allele='HLA-DRB1*0101', name='', pseudosequence=None,
-                    **kwargs):
-        """Call netMHCIIpan command line"""
+    def predict(self, peptides, allele='HLA-DRB1*0101', name='temp',
+                pseudosequence=None, **kwargs):
+        """Call netMHCIIpan command line."""
 
         #assume allele names are in standard format HLA-DRB1*0101
         try:
@@ -1042,17 +1029,22 @@ class NetMHCIIPanPredictor(Predictor):
             print('invalid allele')
             return
         allele = allele.replace(':','')
-        if peptides != None:
-            res = pd.DataFrame()
+
+        #write peptides to temp file
+        pepfile = tempfile.mktemp()+'.pep'
+        with open(pepfile ,'w') as f:
             for p in peptides:
-                temp = self.run_sequence(p, len(p), allele)
-                res = res.append(temp,ignore_index=True)
-        else:
-            res = self.run_sequence(sequence, length, allele, name, overlap)
+                f.write(p+'\n')
+        f.close()
+
+        cmd = 'netMHCIIpan -f %s -inptype 1 -a %s' %(pepfile , allele)
+        #print (cmd)
+        temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        rows = self.read_result(temp)
+        res = pd.DataFrame(rows)
         if len(res)==0:
             return res
         self.prepare_data(res, name)
-        #print (self.data[self.data.columns[:7]][:5])
         return self.data
 
     def get_alleles(self):
