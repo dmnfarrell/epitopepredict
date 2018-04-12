@@ -587,7 +587,7 @@ class Predictor(object):
         df['pos'] = range(len(seqs))
         return df
 
-    def _predict_peptides(self, peptides, alleles=[], **kwargs):
+    def _predict_peptides(self, peptides, alleles=[], verbose=False, **kwargs):
         """
         Predict a set of arbitary peptide sequences in a list or dataframe.
         These are treated as individual peptides and not split into n-mers. This is
@@ -606,6 +606,10 @@ class Predictor(object):
             if df is None:
                 continue
             res.append(df)
+            if verbose == True and len(df)>0:
+                x = df.iloc[0]
+                s = self.format_row(x)
+                print (s)
         if len(res) == 0:
             return
         data = pd.concat(res)
@@ -655,12 +659,12 @@ class Predictor(object):
         return recs
 
     def predict_proteins(self, args, **kwargs):
-        """alias to predict_sequences"""
+        """Alias to predict_sequences"""
         results = self.predict_sequences(args, **kwargs)
         return results
 
-    def predict_sequences(self, recs, cpus=1, alleles=[], path=None, verbose=False,
-                          names=None, key='locus_tag', seqkey='translation', **kwargs):
+    def predict_sequences(self, recs, alleles=[], path=None, verbose=False,
+                          names=None, key='locus_tag', seqkey='translation', cpus=1, **kwargs):
         """
         Get predictions for a set of proteins over multiple alleles that allows
         running in parallel using the cpus parameter.
@@ -680,9 +684,9 @@ class Predictor(object):
         if verbose == True:
             self.print_heading()
         if cpus == 1:
-            results = self._predict_sequences(recs, alleles=alleles, path=path, **kwargs)
+            results = self._predict_sequences(recs, alleles=alleles, path=path, verbose=verbose, **kwargs)
         else:
-            results = self._run_multiprocess(recs, alleles=alleles, path=path, cpus=cpus, **kwargs)
+            results = self._run_multiprocess(recs, alleles=alleles, path=path, verbose=verbose, cpus=cpus, **kwargs)
 
         print ('predictions done for %s sequences in %s alleles' %(len(recs),len(alleles)))
         if path is None:
@@ -722,7 +726,6 @@ class Predictor(object):
             return
 
         #recs = self._convert_to_dataframe(recs)
-
         results = []
         if path is not None and path != '':
             if not os.path.exists(path):
@@ -767,13 +770,13 @@ class Predictor(object):
         return results
 
     def print_heading(self):
-        s = ("{:<30} {:<16} {:<18} {:<}"
+        s = ("{:<25} {:<16} {:<18} {:<}"
                            .format('name','allele','top peptide','score'))
         print (s)
         return
 
     def format_row(self, x):
-        s = ("{:<30} {:<16} {:<18} {:} "
+        s = ("{:<25} {:<16} {:<18} {:} "
                            .format(x['name'], x.allele, x.peptide, x[self.scorekey] ))
         return s
 
@@ -781,8 +784,12 @@ class Predictor(object):
         """
         Call function with multiprocessing pools. Used for running predictions
         in parallel where the main input is a pandas dataframe.
+        Args:
+            recs: input dataframe
+            cpus: number of cores to use
+            worker: function to be run in parallel
         Returns:
-            concatenated result, a dataframe
+            concatenated result, a pandas dataframe
            """
 
         if worker is None:
@@ -807,6 +814,7 @@ class Predictor(object):
         try:
             for f in funclist:
                 df = f.get(timeout=None)
+                #print (df)
                 if df is not None and len(df)>0:
                     result.append(df)
         except KeyboardInterrupt:
@@ -1219,14 +1227,15 @@ class IEDBMHCIIPredictor(Predictor):
         df['core'] = df[df.filter(regex="core").columns[0]]
         df['name'] = name
 
-        if self.method == 'IEDB_recommended':
-            df['score'] = df.percentile_rank
-        else:
-            if not 'ic50' in df.columns:
-                df['ic50'] = df.filter(regex="ic50").mean(1)
-            if not 'score' in df.columns:
-                df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
+        if 'method' not in df.columns:
+            df['method'] = self.method
 
+        if self.method in ['IEDB_recommended','consensus']:
+            df['ic50'] = df.filter(regex="ic50").mean(1)
+
+        if not 'score' in df.columns:
+            df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
+        self.get_ranking(df)
         self.get_ranking(df)
         self.data = df
         return df
@@ -1252,7 +1261,7 @@ class IEDBMHCIIPredictor(Predictor):
         else:
             return
 
-        path = iedbmhc2path
+        path = self.iedbmhc2_path
         if method == None: method = 'IEDB_recommended'
         if not os.path.exists(path):
             print ('iedb mhcII tools not found')
@@ -1286,14 +1295,14 @@ class TEpitopePredictor(Predictor):
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'tepitope'
-        self.pssms = tepitope.getPSSMs()
+        self.pssms = tepitope.get_pssms()
         self.cutoff = 2
         self.operator = '>'
         self.rankascending = 0
 
     def predict(self, peptides=None, length=9, overlap=1,
-                    allele='HLA-DRB1*0101', name='',
-                    pseudosequence=None, **kwargs):
+                 allele='HLA-DRB1*0101', name='', pseudosequence=None,
+                 **kwargs):
 
         if length not in [9,11,12,15]:
             print ('you should use lengths of 9 or 11, 13 or 15.')

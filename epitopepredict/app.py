@@ -85,7 +85,7 @@ class WorkFlow(object):
                 method = self.iedb_mhc2_method
             if method == '': method = None
             print ('predictor:', p)
-            print ('alleles:',a)
+            print ('alleles:',', '.join(a))
             print ('length:',length)
             print ('cpus:', self.cpus)
             if 'iedb' in p:
@@ -273,12 +273,13 @@ def test_run():
 
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
-    options['base']['sequence_file'] = os.path.join(path, 'testing','zaire-ebolavirus.faa')
-    options['base']['mhc1_alleles'] = 'HLA-A*02:01,HLA-A*23:01'
-    options['base']['mhc2_alleles'] = 'human_common_mhc2'
-    options['base']['predictors'] = 'tepitope,mhcflurry'
-    options['base']['path'] = 'zaire_test'
-    options['base']['verbose'] = True
+    b=options['base']
+    b['sequence_file'] = os.path.join(path, 'testing','zaire-ebolavirus.faa')
+    b['mhc1_alleles'] = 'HLA-A*02:01,HLA-A*23:01'
+    b['mhc2_alleles'] = 'human_common_mhc2'
+    b['predictors'] = 'tepitope,mhcflurry'
+    b['path'] = 'zaire_test'
+    b['verbose'] = True
     options = config.check_options(options)
     W = WorkFlow(options)
     st = W.setup()

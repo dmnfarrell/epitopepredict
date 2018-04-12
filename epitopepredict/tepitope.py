@@ -1,7 +1,15 @@
 #!/usr/bin/env python
 
 """
-    Module that implements the TEPITOPEPan method
+    Module that implements the TEPITOPEPan method. Includes methods for pickpocket
+    and pseudosequence similarity calcaulation.
+    References:
+    [1] L. Zhang, Y. Chen, H.-S. Wong, S. Zhou, H. Mamitsuka, and S. Zhu, "TEPITOPEpan: extending
+    TEPITOPE for peptide binding prediction covering over 700 HLA-DR molecules.,"
+    PLoS One, vol. 7, no. 2, p. e30483, Jan. 2012.
+    [2] H. Zhang, O. Lund, and M. Nielsen, "The PickPocket method for predicting binding
+    specificities for receptors based on receptor pocket similarities: application to MHC-peptide binding."
+    Bioinformatics, vol. 25, no. 10, pp. 1293-9, May 2009.
     Created January 2014
     Copyright (C) Damien Farrell
 """
@@ -34,12 +42,11 @@ aa_codes3 = {'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
         'R':'ARG', 'K':'LYS', 'S':'SER', 'T':'THR', 'M':'MET', 'A':'ALA', \
         'G':'GLY', 'P':'PRO', 'C':'CYS'}
 
-#blosum50 = pd.read_csv(os.path.join(datadir, 'blosum50.csv'),index_col=0)
 sim_matrices = ['blosum50','blosum62','pmbec']
 alpha = 10
 #pseudo_residues = sorted(set([j for i in pp.values() for j in i]))
 pseudo_residues = [9,11,13,26,28,30,37,47,57,60,61,67,70,71,74,77,78,81,82,85,86,89]
-#pseudo_residues = sorted(set([j for i in tepitope.pp.values() for j in i]))
+drb_aln_file = os.path.join(tepitopedir,'bola_hla.drb.txt')
 
 def get_matrix(name):
     if name not in sim_matrices:
@@ -62,7 +69,7 @@ def generate_pssm(expdata):
        of n-mers and binding score"""
     return
 
-def getPSSMs():
+def get_pssms():
     """Get tepitope pssm data"""
 
     path = os.path.join(tepitopedir, 'pssm')
@@ -121,8 +128,8 @@ def get_scores(pssm, sequence=None, peptides=None, length=11, overlap=1):
     return scores
 
 def get_pseudo_sequence(query, positions=None, offset=28):
-    """Get non redundant pseudo-sequence for a query. Assumes input is a gapped
-       sequence from an alignment.
+    """Get non redundant pseudo-sequence for a query. Assumes input is a
+       sequence from alignment of MHC genes.
        """
 
     seq = []
@@ -130,16 +137,24 @@ def get_pseudo_sequence(query, positions=None, offset=28):
         positions = pseudo_residues
 
     for i in positions:
-        s=''
-        s+=query[i+offset]
+        idx = i+offset
+        if idx>=len(query):
+            s='-'
+        else:
+            s=query[idx]
         #print i,s
         seq.append(s)
     return seq
 
-def get_pockets_pseudo_sequence(pp, query):
-    """Get pockets pseudo-seq from alignment and pocket residues"""
+def get_pockets_pseudo_sequence(query, offset=28):
+    """Get pockets pseudo-seq from sequence and pocket residues.
+    Args:
+        query: query sequence
+        offset: seq numbering offset of alignment numbering to pickpocket
+        residue values
+    """
 
-    offset=28 #seq numbering offset in IPD_MHC aligments
+    pp = pocket_residues
     seq = []
     for pos in pp:
         s=''
@@ -153,10 +168,15 @@ def get_allele_pocket_sequences(allele):
 
     alnindex = dict([(a.id,a) for a in drbaln])
     ref = alnindex[allele]
-    return get_pockets_pseudo_sequence(pp,ref)
+    return get_pockets_pseudo_sequence(ref)
 
 def convert_allele_names(seqfile):
-    """Convert long IPD names to common form"""
+    """Convert long IPD names to common form.
+    Args:
+        fasta sequence file
+    Returns:
+        new list of seqrecords
+    """
 
     recs = list(SeqIO.parse(seqfile,'fasta'))
     new = []
@@ -166,51 +186,57 @@ def convert_allele_names(seqfile):
         a = 'HLA-'+a.replace(':','')
         if not a in found:
             found.append(a)
-            s = SeqRecord(r.seq, id=a, description='')
+            s = SeqRecord(r.seq, id=a, description=r.description)
             new.append(s)
-            print (a, r.description)
+            #print (a, r.description)
+    print ('%s sequences converted' %len(recs))
     filename = 'convertednames.fa'
     SeqIO.write(new, filename, 'fasta')
-    return filename
+    return recs
 
-def get_alignments(file1, file2):
-    """Align multiple sequences from 2 fasta files"""
+def similarity_score(matrix, ref, query):
+    """
+    Similarity for pseudosequences using a substitution matrix.
+    Args:
+        matrix: subs matrix as dictionary
+        ref: reference sequence
+        query: query sequence
+    Returns:
+        a similarity value normalized to matrix
+    """
 
-    recs1 = list(SeqIO.parse(file1,'fasta'))
-    recs2 = list(SeqIO.parse(file2,'fasta'))
-    allrecs = recs2 + recs1
-    alnfile = 'queryaln.fa'
-    SeqIO.write(allrecs, alnfile, 'fasta')
-    print ('doing multiple sequence alignment for %s recs' %len(allrecs))
-    aln = sequtils.muscleAlignment(alnfile)
-    return aln
-
-def similarity_score(blosum, r, q):
-    """Similarity for pseudosequences using blosum matrix"""
-
-    sim = sum([blosum[i][j] for i,j in zip(r,q) if (i!= '-' and j!='-')])
-    sim1 = sum([blosum[i][j] for i,j in zip(r,r) if (i!= '-' and j!='-')])
-    sim2 = sum([blosum[i][j] for i,j in zip(q,q) if (i!= '-' and j!='-')])
+    r=ref; q=query
+    sim = sum([matrix[i][j] for i,j in zip(r,q) if (i!= '-' and j!='-')])
+    sim1 = sum([matrix[i][j] for i,j in zip(r,r) if (i!= '-' and j!='-')])
+    sim2 = sum([matrix[i][j] for i,j in zip(q,q) if (i!= '-' and j!='-')])
+    #normalise the score
     normsim = sim / np.sqrt(sim1 * sim2)
     return normsim
 
-def pickpocket(ind, allele):
-    """Derive weights for a query allele using pickpocket method"""
+def pickpocket(pos, allele):
+    """Derive weights for a query allele using pickpocket method. This uses the
+     pocket pseudosequences to determine similarity to the reference. This relies on
+     the DRB alignment present in the tepitope folder.
+    Args:
+        pos: pocket position
+        allele: query allele
+    Returns:
+        set of weights for library alleles at this position
+    """
 
-    pp = get_pocket_positions()
     alnindex = dict([(a.id,a) for a in drbaln])
     if allele not in alnindex:
         #print ('no such allele')
         return
-    ind=ind-1
+    pos=pos-1
     #get query pseudosequence
     query = alnindex[allele]
-    qp = get_pockets_pseudo_sequence(pp,query)[ind]
+    qp = get_pockets_pseudo_sequence(query)[pos]
     #derive weight per libary allele using similarity measure
     S = {}
     for k in librarypssms.keys():
         ref = alnindex[k]
-        rp = get_pockets_pseudo_sequence(pp, ref)[ind]
+        rp = get_pockets_pseudo_sequence(ref)[pos]
         sim = similarity_score(blosum62, rp, qp)
         S[k] = sim
         #print ind, qp, rp, ref.id, sim
@@ -226,7 +252,7 @@ def create_virtual_pssm(allele):
     lpssms = librarypssms
     ignore = [5,8]
     M=[]
-    for i in pp:
+    for i in pocket_residues:
         w = pickpocket(i, allele)
         if w == None: return
         if i in ignore:
@@ -252,13 +278,13 @@ def allelenumber(x):
     return int(x.split('*')[1])
 
 def get_alleles():
-    """Get all alleles covered"""
+    """Get all alleles covered by this method."""
 
     df=pd.read_csv(os.path.join(tepitopedir ,'alleles.txt'))
     a= df['allele']
     return list(a)
 
-def get_bola_alleles():
+def _get_bola_alleles():
     ref='HLA-DRB1*0101'
     ids = [2005, 1601, 3301, 4801, 4701, 6701, 3701, 2101,
            2002, 3001, 1901, 1902, 4901, 4101, 4802, 2003, 1602, 3801]
@@ -270,13 +296,11 @@ def get_similarities(allele, refalleles, alnindex, matrix):
     """Get distances between a query and set of ref pseudo-seqs"""
 
     query = alnindex[allele]
-    #qp = ''.join(get_pockets_pseudo_sequence(pp,query))
     qp = ''.join(get_pseudo_sequence(query))
     sims = []
     #for k in librarypssms.keys():
     for k in refalleles:
         ref = alnindex[k]
-        #rp = ''.join(get_pockets_pseudo_sequence(pp, ref))
         rp = ''.join(get_pseudo_sequence(ref))
         #print (qp,rp)
         sim = similarity_score(matrix, rp, qp)
@@ -327,15 +351,6 @@ def compare_alleles(alleles1, alleles2, alnindex, reduced=True, cutoff=.25,
     h = h.drop(['mean','nearest'],axis=1)
     h = h.reindex(h.mean().sort_values().index, axis=1)
 
-    '''found = list(df.index)
-    print (found)
-    for r in refalleles:
-        pseqs[r] =  ''.join(get_pseudo_sequence(alnindex[r]))
-        if r not in found:
-            found.append(r)
-    for i in sorted(pseqs):
-        print ('%-15s' %i, pseqs[i])'''
-
     return h
 
 def compare(file1, file2, alnindex, reduced=True):
@@ -360,7 +375,7 @@ def reduce_alleles(alleles):
     return red.values()
 
 def benchmark():
-    pssms = getPSSMs()
+    pssms = get_pssms()
     m = pssms['HLA-DRB1*0101']
     exp = utilities.getKnownMHCIIStructures()
     for i in exp:
@@ -385,6 +400,16 @@ def benchmark():
         sc = get_scores(m, s)
         sc = sorted(sc, key=itemgetter(1),reverse=True)
         #print s, sc[0],val
+    return
+
+def show_pocket_residues(pdbfile):
+    """Test to show the pocket residues in a pdb structure"""
+
+    from . import pymolutils
+    res = pseudo_residues
+    pymolutils.show_protein(pdbfile, save=True)
+    pymolutils.show_residues(coords=res,offset=0)
+    pymolutils.save('pockets.pse')
     return
 
 def compare_ref(query1, query2, ref, alnindex):
@@ -415,10 +440,10 @@ def test():
     plt.show()
     return
 
-pp = get_pocket_positions()
-librarypssms = getPSSMs()
-#drb HLA + BOLA alignments
-drbaln = AlignIO.read(os.path.join(tepitopedir,'bola_hla.drb.txt'), "fasta")
+pocket_residues = get_pocket_positions()
+librarypssms = get_pssms()
+#drb MHC alignment using IPD sequences, includes BoLA-DRB3 sequences
+drbaln = AlignIO.read(drb_aln_file, "fasta")
 
 def main():
     from optparse import OptionParser
