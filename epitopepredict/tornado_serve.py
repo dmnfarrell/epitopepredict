@@ -41,7 +41,7 @@ def help_msg():
     msg += '<a href="%s"> see help page</a>' %wikipage
     return msg
 
-def get_args(args, defaults={'path':'','name':'','cutoff':5,'cutoff_method':'rank', 'pred':'tepitope',
+def get_args(args, defaults={'savepath':'','name':'','cutoff':5,'cutoff_method':'rank', 'pred':'tepitope',
                    'n':2,'kind':'tracks','view':'binders'}):
     for k in defaults:
         if k in args:
@@ -78,7 +78,7 @@ def exists(message=u'File does not exist'):
 
 class ControlsForm(Form):
     name = SelectField('name', choices=[])
-    path = TextField('path', default='results')
+    savepath = TextField('savepath', default='results')
     cutoff = FloatField('cutoff', default=5)
     n = TextField('n', default='2')
     cm = [(i,i) for i in cut_methods]
@@ -135,7 +135,7 @@ class MainHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         buttons = ''
-        self.render('index.html', buttons=buttons, path='')
+        self.render('index.html', buttons=buttons, savepath='')
 
 class GlobalViewHandler(RequestHandler):
     """Handler for showing multiple sequences in a results folder"""
@@ -143,55 +143,58 @@ class GlobalViewHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         form = ControlsForm()
-        defaultargs = {'path':'','cutoff':5,'cutoff_method':'rank',
+        defaultargs = {'savepath':'','cutoff':5,'cutoff_method':'rank',
                        'view':'promiscuous','n':2,'cached':1}
         for k in defaultargs:
             if k in args:
                 defaultargs[k] = args[k][0].decode("utf-8")
-        path = defaultargs['path'].strip()
+        savepath = defaultargs['savepath'].strip()
         view = defaultargs['view']
         usecached = defaultargs['cached']
-        if usecached == 1:
-            print ('using cached results')
+        #if usecached == 1:
+        #    print ('using cached results')
 
-        if not os.path.exists(path):
+        if not os.path.exists(savepath):
             msg = help_msg()
-            self.render('global.html', form=form, msg=msg, path=path, status=0)
+            self.render('global.html', form=form, msg=msg, savepath=savepath, status=0)
 
-        preds = web.get_predictors(path)
+        #preds = web.get_predictors(savepath)
         data = {}
         if view == 'summary':
-            for P in preds:
+            #this should also be handled in get_binder_tables
+            pass
+            '''for P in preds:
                 if P.data is None: continue
                 seqs = web.get_sequences(P)
-                #tables = web.sequences_to_html_table(seqs, classes="seqtable")
+                print (P)
+                #b = P.get_binders(**defaultargs)
                 pb = P.promiscuous_binders(**defaultargs)
                 #print (pb)
-                #cl = analysis.find_clusters(b, min_binders=2)
                 x = pb.groupby('name').agg({'peptide':np.size,
                                             P.scorekey:np.median}).reset_index()
                 x = x.rename(columns={'peptide':'binders'})
                 x = x.merge(seqs, on='name', how='right')
-                x = web.column_to_url(x, 'name', '/sequence?path=%s&name=' %path)
-                data[P.name] = x
+                x = web.column_to_url(x, 'name', '/sequence?savepath=%s&name=' %savepath)
+                data[P.name] = x'''
         else:
-            data = web.get_binder_tables(preds, **defaultargs)
+            #get binder results for available data
+            data = web.get_binder_tables(path=savepath, limit=150, **defaultargs)
             #add url to prot/seq name
             for k in data:
-                data[k] = web.column_to_url(data[k], 'name', '/sequence?path=%s&name=' %path)
+                data[k] = web.column_to_url(data[k], 'name', '/sequence?savepath=%s&name=' %savepath)
 
         #convert dfs to html
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
         #put tables in tabbed divs
         tables = web.tabbed_html(tables)
 
-        form.path.data = path
+        form.savepath.data = savepath
         form.cutoff.data = defaultargs['cutoff']
         form.n.data = defaultargs['n']
         form.cutoff_method.data = defaultargs['cutoff_method']
         form.view.data = view
 
-        self.render('global.html', form=form, tables=tables, msg='', status=1, path=path)
+        self.render('global.html', form=form, tables=tables, msg='', status=1, savepath=savepath)
 
 class GenomeViewHandler(RequestHandler):
     def get(self):
@@ -205,17 +208,17 @@ class SequenceViewHandler(RequestHandler):
         args = self.request.arguments
         defaultargs = get_args(args)
         form = ControlsForm()
-        path = defaultargs['path']
+        savepath = defaultargs['savepath']
         current_name = defaultargs['name']
 
-        if not os.path.exists(path):
+        if not os.path.exists(savepath):
             msg = help_msg()
-            self.render('sequence.html', form=form, status=0, name='', msg=msg, path=path)
+            self.render('sequence.html', form=form, status=0, name='', msg=msg, savepath=savepath)
             return
 
-        names = web.get_file_lists(path)
+        names = web.get_file_lists(savepath)
         if current_name == '': current_name = names[0]
-        form.path.data = path
+        form.savepath.data = savepath
         form.name.choices = [(i,i) for i in names]
         form.name.data = current_name
         form.cutoff.data = defaultargs['cutoff']
@@ -224,10 +227,11 @@ class SequenceViewHandler(RequestHandler):
         form.kind.data = defaultargs['kind']
         form.view.data = defaultargs['view']
 
-        preds = web.get_predictors(path, current_name)
+        preds = web.get_predictors(savepath, current_name)
+        print (preds)
         #alleles = web.get_alleles(preds)
 
-        data = web.get_binder_tables(preds, **defaultargs)
+        data = web.get_binder_tables(path=savepath, **defaultargs)
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
         tables = web.tabbed_html(tables)
         #info = web.dict_to_html(web.get_results_info(preds[0]))
@@ -258,7 +262,7 @@ class SequenceViewHandler(RequestHandler):
             links.append(self.get_url(defaultargs, link=k))
 
         self.render('sequence.html', script=script, div=div, form=form, tables=tables,
-                    msg='', info=info, name=current_name, status=1, links=links, path=path)
+                    msg='', info=info, name=current_name, status=1, links=links, savepath=savepath)
 
     def get_url(self, args, link='download'):
         """Get url from current args"""

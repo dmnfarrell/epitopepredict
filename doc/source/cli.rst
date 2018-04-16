@@ -36,14 +36,12 @@ The advantage of configuration files is in avoiding long commands that have to b
     mhc2_length = 15
     n = 2
     cutoff_method = default
-    cutoff = 4
+    cutoffs = 4
     sequence_file =
     path = results
     overwrite = no
     verbose = no
     names =
-    plots = no
-    genome_analysis = no
     cpus = 1
 
     [iedbtools]
@@ -72,7 +70,7 @@ Settings explained
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | cutoff_method    | score                       | cutoff method, score or rank used for getting binders                        |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
-| cutoff           | 4                           | percentile cutoff for counting promiscuous binders, i.e. top 4 percent       |
+| cutoffs          | 4                           | percentile cutoff for counting promiscuous binders, i.e. top 4 percent       |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | sequence_file    | zaire-ebolavirus.gb         | set of protein sequences in genbank or fasta format                          |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
@@ -83,10 +81,6 @@ Settings explained
 | names            | Rv0011c,Rv0019c             | protein/sequence/locus tag names to predict in your file, optional           |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | verbose          | no                          | displays more information while running                                      |
-+------------------+-----------------------------+------------------------------------------------------------------------------+
-| plots            | yes                         | make plots of protein binders                                                |
-+------------------+-----------------------------+------------------------------------------------------------------------------+
-| genome_analysis  | no                          | global analysis for all proteins                                             |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | cpus             | 1                           | number of processors to use, use 0 for all available                         |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
@@ -160,7 +154,7 @@ Using preset allele lists saves you the trouble of writing the alleles out. You 
     predictors = tepitope
     mhc1_alleles = human_common_mhc2
     n = 2
-    cutoff = 5
+    cutoffs = 5
     sequence_file = zaire-ebolavirus.gb
     path = results
     names =

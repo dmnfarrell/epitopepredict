@@ -13,17 +13,19 @@ This software should be run on a Linux operating system. Ubuntu is recommended b
 
 **Snap package**
 
-You can install as a snap on linux which will usually be the latest version and will include everything needed. This option is **recommended** for its convenience and because it can be updated regularly. Snaps are ubuntu based but supported on most major linux distributions. Install snapd_ with your package manager and then run::
+You can install as a snap on linux which might be easier than using pip for some users. This option convenient because updates can be provided regularly and automatically. Snaps are ubuntu based but supported on most major linux distributions. Install snapd_ with your package manager and then run::
 
     sudo snap install epitopepredict
 
 .. _snapd: https://docs.snapcraft.io/core/install
 
-Or you can just go to https://snapcraft.io/epitopepredict and press install.
+Or you can just go to https://snapcraft.io/epitopepredict.
 
 Updating the snap is simply done using::
 
     sudo snap refresh epitopepredict
+
+*Note: Some prediction methods are not yet available with the snap, such as netMHCIIpan because of restrictions in how those programs are redistributed. This should be fixed later.*
 
 **Python dependencies**
 
@@ -47,9 +49,9 @@ There are now multiple MHC binding prediction algorithms available freely online
 +---------------------+-------------------------------------------------------------+---------------+
 | tepitope            | implements the TEPITOPEPan method, built in                 | yes           |
 +---------------------+-------------------------------------------------------------+---------------+
-| netMHCIIpan         | http://www.cbs.dtu.dk/services/NetMHCIIpan/                 | no            |
+| netMHCIIpan         | http://www.cbs.dtu.dk/services/NetMHCIIpan/                 | not yet       |
 +---------------------+-------------------------------------------------------------+---------------+
-| IEDB MHC-I and II   | http://tools.immuneepitope.org/mhci/download/               | no            |
+| IEDB MHC-I and II   | http://tools.immuneepitope.org/mhci/download/               | not yet       |
 +---------------------+-------------------------------------------------------------+---------------+
 | mhcflurry           | MHC-I predictor https://github.com/openvax/mhcflurry        | yes           |
 +---------------------+-------------------------------------------------------------+---------------+

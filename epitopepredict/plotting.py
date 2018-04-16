@@ -141,7 +141,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
             df = df[df.name==name]
         sckey = pred.scorekey
 
-        binders = pred.get_binders(name, cutoff=cutoff, cutoff_method=cutoff_method)
+        binders = pred.get_binders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
         #print (cutoff, n)
         pb = pred.promiscuous_binders(n=n, cutoff=cutoff, cutoff_method=cutoff_method)
         if len(pb) == 0:
@@ -380,7 +380,7 @@ def plot_tracks(preds, name, n=1, cutoff=5, value='score',
             df = df[df.name==name]
         sckey = pred.scorekey
 
-        binders = pred.get_binders(name, cutoff=cutoff, value=value)
+        binders = pred.get_binders(name=name, cutoff=cutoff, value=value)
         #print (binders)
         pb = pred.promiscuous_binders(binders=binders, n=n, value=value)
 

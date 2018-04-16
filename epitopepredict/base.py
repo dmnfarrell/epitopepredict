@@ -147,25 +147,6 @@ def get_length(data):
         return len(data.head(1).peptide.max())
     return
 
-'''def get_coords_from_sequence(df, genome, key='peptide'):
-    """Get peptide coords from parent protein sequences"""
-
-    def func(x):
-        seq = x.translation
-        st = seq.find(x[key])
-        end = st+len(x[key])
-        #print (x['name'],x[key], st, end)
-        return pd.Series({'start':st,'end':end})# 'name':x['name'],'peptide':x[key]})
-
-    temp = df.merge(genome[['locus_tag','translation']],
-                    left_on='name',right_on='locus_tag')#.set_index(df.index)
-
-    #print (temp[:10])
-    temp = temp.apply( lambda r: func(r),1)
-    #print (temp[:10])
-    df = df.drop(['start','end'],1)
-    return df.join(temp)'''
-
 def get_coords(df):
     """Get start end coords from position and length of peptides"""
 
@@ -228,6 +209,49 @@ def summarize(data):
     print ('summary: %s peptides in %s proteins and %s alleles' %(len(data),
                                         len(proteins),len(allelegrps)))
     return
+
+def get_filenames(path, names=None, file_limit=None):
+
+    if not os.path.exists(path):
+        print('no such path %s' %path)
+        return
+    files = glob.glob(os.path.join(path, '*.csv'))
+    if names is not None:
+        names = [n+'.csv' for n in names]
+        files = [n for n in files if os.path.basename(n) in names]
+    if len(files) == 0:
+        return
+    if file_limit != None:
+        files = files[:file_limit]
+    return files
+
+def results_from_csv(path=None, names=None, compression='infer', file_limit=None):
+    """
+    Load results for multiple csv files in a folder or a single file.
+    Args:
+        path: name of a csv file or directory with one or more csv files
+        names: names of proteins to load
+        file_limit: limit to load only the this number of proteins
+    """
+
+    if os.path.isfile(path):
+        data = pd.read_csv(path, index_col=0)
+    elif os.path.isdir(path):
+        files = get_filenames(path, names, file_limit)
+        if files == None:
+            return
+        res = []
+        for f in files:
+            df = pd.read_csv(f, index_col=0, compression=compression)
+            if len(df) == 0:
+                continue
+            #if not self.scorekey in df.columns:
+            #    continue
+            res.append(df)
+        data = pd.concat(res)
+    else:
+        return
+    return data
 
 def get_cutoffs(pred=None, data=None, cutoff=5):
     """
@@ -362,6 +386,26 @@ def summarize_by_protein(pred, pb):
         x = binders_allele_summary(pred, g.peptide, values='score', name=i)
         ax=plot_summary_heatmap(x, name=i)
 
+class DataFrameIterator:
+    """Simple iterator to get dataframes from a path out of memory"""
+    def __init__(self, files):
+        self.files = files
+        self.current = 0
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.current >= len(self.files):
+            raise StopIteration
+        else:
+            df=pd.read_csv(self.files[self.current],index_col=0)
+            self.current += 1
+            return df
+
+    def __repr__(self):
+        return 'DataFrameIterator with %s files' %len(self.files)
+
 class Predictor(object):
     """Base class to handle generic predictor methods, usually these will
        wrap methods from other modules and/or call command line predictors.
@@ -376,6 +420,7 @@ class Predictor(object):
         #can specify per allele cutoffs here
         self.allelecutoffs = None
         self.temppath = tempfile.mkdtemp()
+        self.path = None
         return
 
     def __repr__(self):
@@ -422,67 +467,105 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def get_binders(self, name=None, cutoff=5, cutoff_method='default', data=None, **kwargs):
+    def get_allele_cutoffs(self, data, cutoff=5):
+        """Get allele cutoffs using a sample of the data"""
+
+        value = self.scorekey
+        if self.rankascending == 0:
+            q = (1-cutoff/100.)
+        else:
+            q = cutoff/100
+        if hasattr(self, 'cutoffs'):
+            cuts = self.cutoffs
+        else:
+            cuts={}
+            #derive score cutoffs for each allele
+            for a,g in data.groupby('allele'):
+                cuts[a] = g[value].quantile(q=q)
+        cuts = pd.Series(cuts)
+        return cuts
+
+    def _per_allele_binders(self, data, cuts):
+        """Return binders per allele based cutoffs"""
+
+        value = self.scorekey
+        res=[]
+        for a,g in data.groupby('allele'):
+            if self.rankascending == 0:
+                b = g[g[value]>=cuts[a]]
+            else:
+                b = g[g[value]<cuts[a]]
+            res.append(b)
+        return pd.concat(res)
+
+    def _ranked_binders(self, data, cutoff):
+        """return binders by rank which has been calculated per sequence/allele"""
+        return data[data['rank'] < cutoff]
+
+    def _score_binders(self, data, cutoff):
+        """return binders by global single score cutoff"""
+        if self.rankascending == 0:
+            res = data[data[self.scorekey] >= cutoff]
+        else:
+            res = data[data[self.scorekey] <= cutoff]
+        return res
+
+    def get_binders(self, cutoff=5, cutoff_method='default', path=None, name=None, **kwargs):
         """
         Get the top scoring binders. If using default cutoffs are derived
         from the available prediction data stored in the object. For
         per protein cutoffs the rank can used instead. This will give
         slightly different results.
         Args:
-            name: name of protein in predictions, optional
+            path: use results in a path instead of loading at once, conserves memory
             cutoff: percentile cutoff, absolute score or a rank value
-            value: 'default', 'score' or 'rank'
+            value: 'allele', 'score' or 'rank'
+            name: name of protein in predictions, optional
         Returns:
             binders above cutoff in all alleles, pandas dataframe
         """
 
-        if data is None:
-            if self.data is None:
-                return
-            data = self.data
         cutoff = float(cutoff)
-        if name != None:
-            if name not in self.proteins():
+        data = self.data
+        if data is not None and name != None:
+            if name not in self.data['name']:
                 print ('no such protein name in binder data')
                 return
             data = data[data.name==name]
 
-        if cutoff_method in ['default','']:
-            #calculates per allele cutoff over all data laoded
-            value = self.scorekey
-            if self.rankascending == 0:
-                q = (1-cutoff/100.)
-            else:
-                q = cutoff/100
-            if hasattr(self, 'cutoffs'):
-                cuts = self.cutoffs
-            else:
-                cuts={}
-                #derive score cutoffs for each allele
-                for a,g in data.groupby('allele'):
-                    cuts[a] = g[value].quantile(q=q)
-            cuts = pd.Series(cuts)
-            #print (cuts)
+        if path is not None:
+            #get binders out of memory for large datasets
+            files = get_filenames(path)
+            if files == None:
+                return
+            #estimate cutoffs from first 100 files
+            tempdata = results_from_csv(path, file_limit=100)
+            cuts = self.get_allele_cutoffs(tempdata, cutoff)
+            d = DataFrameIterator(files)
             res=[]
-            for a,g in data.groupby('allele'):
-                #print cuts[a]
-                if self.rankascending == 0:
-                    b = g[g[value]>cuts[a]]
-                else:
-                    b = g[g[value]<cuts[a]]
+            for data in d:
+                if cutoff_method in ['default','']:
+                    b = self._per_allele_binders(data, cuts)
+                elif cutoff_method == 'rank':
+                    b = self._ranked_binders(data, cutoff)
+                elif cutoff_method == 'score':
+                    b = self._score_binders(data, cutoff)
                 res.append(b)
             return pd.concat(res)
+
+        if data is None:
+            return
+        if cutoff_method in ['default','']:
+            #by per allele percentile cutoffs
+            cuts = self.get_allele_cutoffs(data, cutoff)
+            #print (cuts)
+            res = self._per_allele_binders(data, cuts)
+            return res
         elif cutoff_method == 'rank':
-            #done by rank in each sequence/allele
-            res = data[data['rank'] < cutoff]
+            res = self._ranked_binders(data, cutoff)
             return res
         elif cutoff_method == 'score':
-            #done by global single score cutoff
-            #print (data[self.scorekey])
-            if self.rankascending == 0:
-                res = data[data[self.scorekey] >= cutoff]
-            else:
-                res = data[data[self.scorekey] <= cutoff]
+            res = self._score_binders(data, cutoff)
             return res
 
     def promiscuous_binders(self, binders=None, name=None, cutoff=5,
@@ -612,6 +695,7 @@ class Predictor(object):
                 print (s)
         if len(res) == 0:
             return
+
         data = pd.concat(res)
         self.data = data
         return data
@@ -639,11 +723,11 @@ class Predictor(object):
 
         data = data.reset_index(drop=True)
         data = data.groupby('allele').apply(self.get_ranking)
+        data = data.reset_index(drop=True)
         if name==None:
             name=self.name
         data['name'] = name
 
-        #data = data.reset_index(drop=True)
         self.data = data
         if path is not None:
             data.to_csv(fname, float_format='%g')
@@ -833,37 +917,13 @@ class Predictor(object):
         return result
 
     def load(self, path=None, names=None, compression='infer', file_limit=None):
-        """
-        Load results for multiple results csv files or single file
-        Args:
-            path: name of a csv file or directory with one or more csv files
-            file_limit: limit to load only the this number of proteins
-        """
+        """Load results from path or file. See results_from_csv."""
 
-        if os.path.isfile(path):
-            self.data = pd.read_csv(path, index_col=0)
-        elif os.path.isdir(path):
-            if not os.path.exists(path):
-                print('no such path %s' %path)
-                return
-            files = glob.glob(os.path.join(path, '*.csv'))
-            if names is not None:
-                names = [n+'.csv' for n in names]
-                files = [n for n in files if os.path.basename(n) in names]
-            if len(files) == 0:
-                #print ('no files to load')
-                return
-            if file_limit != None:
-                files = files[:file_limit]
-            res = []
-            for f in files:
-                df = pd.read_csv(f, index_col=0, compression=compression)
-                if len(df) == 0:
-                    continue
-                if not self.scorekey in df.columns:
-                    continue
-                res.append(df)
-            self.data = pd.concat(res)
+        data = results_from_csv(path, names, compression, file_limit)
+        if data is None:
+            print ('no data found')
+        else:
+            self.data = data
         return
 
     def save(self, prefix='_', filename=None, compression=None):
@@ -1013,7 +1073,7 @@ class NetMHCIIPanPredictor(Predictor):
         df = df.drop(['Pos','Identity','Rank'],1)
         df = df.dropna()
         df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
-        df['score'] = df['Affinity']
+        #df['score'] = df['Affinity']
         self.get_ranking(df)
         self.data = df
         return
@@ -1039,7 +1099,11 @@ class NetMHCIIPanPredictor(Predictor):
 
         cmd = 'netMHCIIpan -f %s -inptype 1 -a %s' %(pepfile , allele)
         #print (cmd)
-        temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        try:
+            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        except Exception as e:
+            #print (e)
+            return
         rows = self.read_result(temp)
         res = pd.DataFrame(rows)
         if len(res)==0:

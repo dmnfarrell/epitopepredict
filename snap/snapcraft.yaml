@@ -8,7 +8,7 @@ description: |
  each method can then be processed and visualized in a consistent manner.
 
 grade: stable
-confinement: strict
+confinement: classic
 icon: gui/icon.png
 
 apps:

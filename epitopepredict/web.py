@@ -32,18 +32,6 @@ def get_file_lists(path):
     names = sorted(names)
     return names
 
-def get_results(path, predictor, name=None):
-
-    P = base.get_predictor(predictor)
-    if name is not None:
-        filename = os.path.join(path, predictor, name)
-        P.load(filename+'.csv')
-    else:
-        P.load(path=os.path.join(path, predictor))
-    #print filename
-    #print P.data
-    return P
-
 def get_results_info(P):
     """Info on sequence used for prediction"""
 
@@ -79,13 +67,33 @@ def get_alleles(preds):
     a = list(set(a))
     return a
 
+'''def get_results(path, predictor, name=None):
+    """Get results from folder"""
+
+    P = base.get_predictor(predictor)
+    if name is not None:
+        filename = os.path.join(path, predictor, name)
+        P.load(filename+'.csv')
+    else:
+        P.load(path=os.path.join(path, predictor))
+    return P'''
+
 def get_predictors(path, name=None):
-    """Get a set of predictors with available results"""
+    """Get a set of predictors under a results path.
+    """
 
     preds = []
     for pred in predictors:
-        P = get_results(path, pred, name)
-        if P.data is not None and len(P.data)>0:
+        P = base.get_predictor(pred)
+        if name is not None:
+            #if single file load into object
+            respath = os.path.join(path, pred, name)+'.csv'
+            P.load(respath)
+        else:
+            #multiple files keep reference to path only
+            respath = os.path.join(path, pred)
+            P.path = respath
+        if P.data is not None or os.path.exists(respath):
             preds.append(P)
     return preds
 
@@ -238,26 +246,46 @@ def create_bokeh_table(path, name):
     table = DataTable(source=source, columns=columns, width=400, height=280)
     return table
 
-def get_binder_tables(preds, name=None, view='binders', **kwargs):
+def get_binder_tables(path=None, name=None, view='binders', limit=None, **kwargs):
     """Create html tables of prediction data from predictor objects. The
        data is assumed to be loaded into the predictors.
+       Args:
+        name: name of particular protein/sequence
+        view: get all binders or just promiscuous
+        limit: limit results to top n
        Returns: dict of dataframes
        """
 
     data = {}
     drop=True
-    import pylab as plt
+
+    preds = get_predictors(path, name)
     for P in preds:
-        df = P.get_binders(name=name, **kwargs)
+        p=P.name
+        n=kwargs['n']
+
+        if name is None:
+            binder_file = os.path.join(path,'binders_%s_%s.csv' %(p,n))
+            if os.path.exists(binder_file):
+                print ('cached file found')
+                df = pd.read_csv(binder_file, index_col=0)
+        else:
+            df = P.get_binders(path=P.path, name=name, **kwargs)
+        print (P, P.path)
+        #cache the result
+        df.to_csv(binder_file, float_format='%g')
         if df is None:
             continue
         if view == 'promiscuous':
             df = P.promiscuous_binders(df, **kwargs)
         elif view == 'by allele':
-            df = pd.pivot_table(P.data, index=['pos','peptide'],
+            df = pd.pivot_table(df, index=['pos','peptide'],
                                 columns='allele', values=P.scorekey)
             drop=False
         df = df.reset_index(drop=drop)
+        #print (len(df))
+        if limit != None:
+            df=df.loc[:limit]
         data[P.name] = df
     return data
 

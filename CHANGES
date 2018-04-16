@@ -13,6 +13,8 @@ changed all class methods to use underscore convention
 added sphinx documentation
 added neo module for neo-epitope prediction pipeline
 snap package now builds with some predictors built in
+fixed netmhciipan predictor
+default config file in home dir for paths
 
 ------
 0.2.0

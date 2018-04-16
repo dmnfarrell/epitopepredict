@@ -40,7 +40,7 @@ baseoptions['base'] = {'predictors': 'tepitope',
                 'mhc2_alleles':'HLA-DRB1*01:01,HLA-DRB1*04:01',
                 'mhc1_alleles':'HLA-A*01:01',
                 'mhc1_length': 11,
-                'mhc2_length': 15,
+                'mhc2_length': 11,
                 'n': 2, #number of alleles
                 'cutoff_method': 'default',
                 'cutoffs': 4, #percentile cutoff

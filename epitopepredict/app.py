@@ -161,11 +161,12 @@ class WorkFlow(object):
     def combine(self, data):
         """Combine peptide binders present in all methods"""
 
-        cols = ['peptide','alleles']
+        cols = ['peptide','alleles','mean']
         df1=data[0][cols]; df2=data[1][cols]
         df = df1.merge(df2, on=['peptide'], how='inner', suffixes=['_1','_2'])
         #print (df[:10])
-        #df.to_csv(os.path.join(self.path,'combined.csv'))
+        if len(df)>1:
+            df.to_csv(os.path.join(self.path,'combined.csv'),float_format='%g')
         return
 
     def plot_results(self):
