@@ -527,11 +527,6 @@ class Predictor(object):
 
         cutoff = float(cutoff)
         data = self.data
-        if data is not None and name != None:
-            if name not in self.data['name']:
-                print ('no such protein name in binder data')
-                return
-            data = data[data.name==name]
 
         if path is not None:
             #get binders out of memory for large datasets
@@ -555,6 +550,14 @@ class Predictor(object):
 
         if data is None:
             return
+        names = list(data['name'].unique())
+        if name != None:
+            if name in names:
+                data = data[data.name==name]
+            else:
+                print ('no such protein name in binder data')
+                return
+
         if cutoff_method in ['default','']:
             #by per allele percentile cutoffs
             cuts = self.get_allele_cutoffs(data, cutoff)

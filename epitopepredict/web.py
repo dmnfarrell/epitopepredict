@@ -79,15 +79,18 @@ def get_alleles(preds):
     return P'''
 
 def get_predictors(path, name=None):
-    """Get a set of predictors under a results path.
+    """Get a set of predictors under a results path for all or a specific protein.
     """
 
     preds = []
-    for pred in predictors:
+    for pred in base.predictors:
         P = base.get_predictor(pred)
         if name is not None:
             #if single file load into object
             respath = os.path.join(path, pred, name)+'.csv'
+            if not os.path.exists(respath):
+                continue
+            #print (respath)
             P.load(respath)
         else:
             #multiple files keep reference to path only
@@ -246,47 +249,58 @@ def create_bokeh_table(path, name):
     table = DataTable(source=source, columns=columns, width=400, height=280)
     return table
 
-def get_binder_tables(path=None, name=None, view='binders', limit=None, **kwargs):
-    """Create html tables of prediction data from predictor objects. The
-       data is assumed to be loaded into the predictors.
-       Args:
+def get_results_tables(path, name=None, view='promiscuous', limit=None, **kwargs):
+    """Get binder results from a results path.
+    Args:
+        path: path to results
         name: name of particular protein/sequence
         view: get all binders or just promiscuous
-        limit: limit results to top n
-       Returns: dict of dataframes
-       """
 
-    data = {}
-    drop=True
+    """
 
+    print (kwargs)
+    n=kwargs['n']
+    cutoff=kwargs['cutoff']
     preds = get_predictors(path, name)
+    data = {}
     for P in preds:
-        p=P.name
-        n=kwargs['n']
-
-        if name is None:
-            binder_file = os.path.join(path,'binders_%s_%s.csv' %(p,n))
-            if os.path.exists(binder_file):
-                print ('cached file found')
-                df = pd.read_csv(binder_file, index_col=0)
+        binder_file = os.path.join(path,'binders_%s_%s.csv' %(P.name,cutoff))
+        #print (binder_file)
+        #if we have all binders from last time use these
+        if P.data is not None:
+            #results for specific name if present in object
+            b = P.get_binders(name=name, **kwargs)
+        elif os.path.exists(binder_file):
+            print ('cached file found')
+            b = pd.read_csv(binder_file, index_col=0)
         else:
-            df = P.get_binders(path=P.path, name=name, **kwargs)
-        print (P, P.path)
-        #cache the result
-        df.to_csv(binder_file, float_format='%g')
-        if df is None:
-            continue
-        if view == 'promiscuous':
-            df = P.promiscuous_binders(df, **kwargs)
-        elif view == 'by allele':
-            df = pd.pivot_table(df, index=['pos','peptide'],
-                                columns='allele', values=P.scorekey)
-            drop=False
-        df = df.reset_index(drop=drop)
-        #print (len(df))
+            #otherwise calculate binders
+            b = P.get_binders(path=P.path, **kwargs)
+            b.to_csv(binder_file)
+        if view=='promiscuous':
+            b = P.promiscuous_binders(binders=b, **kwargs)
+        b = b.reset_index(drop=True)
         if limit != None:
-            df=df.loc[:limit]
-        data[P.name] = df
+            b = b.loc[:limit]
+        #print (b[:10])
+        data[P.name] = b
+    return data
+
+def get_summary_tables(path, limit=None, **kwargs):
+    """Get binder results summary for all proteins in path.
+    Args:
+        path: path to results
+    """
+
+    data={}
+    b = get_results_tables(path, **kwargs)
+    for i in b:
+        #seqs = web.get_sequences(P)
+        x = b[i].groupby('name').agg({'peptide':np.size,'score':np.median}).reset_index()
+        x = x.rename(columns={'peptide':'binders'})
+        #x['binder_density'] = x.length/x.
+        x = x.sort_values(by='binders',ascending=False)
+        data[i] = x
     return data
 
 def dataframes_to_html(data, classes=''):

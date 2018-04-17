@@ -33,7 +33,7 @@ from bokeh.embed import components
 wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki/Web-Application'
 plotkinds = ['tracks','text','grid']
 cut_methods = ['default','rank','score']
-views = ['binders','promiscuous','by allele','summary']
+views = ['binders','promiscuous','summary']
 opts = config.baseoptions.copy()
 
 def help_msg():
@@ -87,7 +87,7 @@ class ControlsForm(Form):
     kind = SelectField('plot kind', choices=kinds)
     views = [(i,i) for i in views]
     view = SelectField('table view', choices=views)
-    cached = BooleanField('use cached')
+    deletecached = BooleanField('delete cached')
 
 class ConfigForm(Form):
     path = TextField('output path', default='results', validators=[DataRequired()],
@@ -144,13 +144,13 @@ class GlobalViewHandler(RequestHandler):
         args = self.request.arguments
         form = ControlsForm()
         defaultargs = {'savepath':'','cutoff':5,'cutoff_method':'rank',
-                       'view':'promiscuous','n':2,'cached':1}
+                       'view':'promiscuous','n':2,'deletecached':1}
         for k in defaultargs:
             if k in args:
                 defaultargs[k] = args[k][0].decode("utf-8")
         savepath = defaultargs['savepath'].strip()
         view = defaultargs['view']
-        usecached = defaultargs['cached']
+        deletecached = defaultargs['deletecached']
         #if usecached == 1:
         #    print ('using cached results')
 
@@ -161,27 +161,15 @@ class GlobalViewHandler(RequestHandler):
         #preds = web.get_predictors(savepath)
         data = {}
         if view == 'summary':
-            #this should also be handled in get_binder_tables
-            pass
-            '''for P in preds:
-                if P.data is None: continue
-                seqs = web.get_sequences(P)
-                print (P)
-                #b = P.get_binders(**defaultargs)
-                pb = P.promiscuous_binders(**defaultargs)
-                #print (pb)
-                x = pb.groupby('name').agg({'peptide':np.size,
-                                            P.scorekey:np.median}).reset_index()
-                x = x.rename(columns={'peptide':'binders'})
-                x = x.merge(seqs, on='name', how='right')
-                x = web.column_to_url(x, 'name', '/sequence?savepath=%s&name=' %savepath)
-                data[P.name] = x'''
+            data = web.get_summary_tables(savepath, **defaultargs)
+
         else:
             #get binder results for available data
-            data = web.get_binder_tables(path=savepath, limit=150, **defaultargs)
+            #preds = web.get_predictors(path=savepath, name=name)
+            data = web.get_results_tables(path=savepath, limit=200, **defaultargs)
             #add url to prot/seq name
-            for k in data:
-                data[k] = web.column_to_url(data[k], 'name', '/sequence?savepath=%s&name=' %savepath)
+        for k in data:
+            data[k] = web.column_to_url(data[k], 'name', '/sequence?savepath=%s&name=' %savepath)
 
         #convert dfs to html
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
@@ -227,16 +215,15 @@ class SequenceViewHandler(RequestHandler):
         form.kind.data = defaultargs['kind']
         form.view.data = defaultargs['view']
 
-        preds = web.get_predictors(savepath, current_name)
-        print (preds)
-        #alleles = web.get_alleles(preds)
-
-        data = web.get_binder_tables(path=savepath, **defaultargs)
+        data = web.get_results_tables(path=savepath, **defaultargs)
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
         tables = web.tabbed_html(tables)
         #info = web.dict_to_html(web.get_results_info(preds[0]))
         info=''
         kind = defaultargs['kind']
+
+        preds = web.get_predictors(path=savepath, name=current_name)
+        print (preds)
 
         if kind == 'grid':
             seqhtml = web.sequence_to_html_grid(preds, classes="gridtable")
