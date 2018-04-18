@@ -249,7 +249,7 @@ def create_bokeh_table(path, name):
     table = DataTable(source=source, columns=columns, width=400, height=280)
     return table
 
-def get_results_tables(path, name=None, view='promiscuous', limit=None, **kwargs):
+def get_results_tables(path, name=None, promiscuous=True, limit=None, **kwargs):
     """Get binder results from a results path.
     Args:
         path: path to results
@@ -258,7 +258,6 @@ def get_results_tables(path, name=None, view='promiscuous', limit=None, **kwargs
 
     """
 
-    print (kwargs)
     n=kwargs['n']
     cutoff=kwargs['cutoff']
     preds = get_predictors(path, name)
@@ -277,7 +276,7 @@ def get_results_tables(path, name=None, view='promiscuous', limit=None, **kwargs
             #otherwise calculate binders
             b = P.get_binders(path=P.path, **kwargs)
             b.to_csv(binder_file)
-        if view=='promiscuous':
+        if promiscuous == True:
             b = P.promiscuous_binders(binders=b, **kwargs)
         b = b.reset_index(drop=True)
         if limit != None:
@@ -291,14 +290,24 @@ def get_summary_tables(path, limit=None, **kwargs):
     Args:
         path: path to results
     """
-
+    print (kwargs)
     data={}
     b = get_results_tables(path, **kwargs)
+    seqfile = os.path.join(path, 'input.csv')
+    seqs=None
+    if os.path.exists(seqfile):
+        seqs = pd.read_csv(seqfile)
+        if not 'length' in seqs.columns:
+            seqs['length'] = seqs.translation.str.len()
+        seqs = seqs[['locus_tag','length']]
+
     for i in b:
-        #seqs = web.get_sequences(P)
+        print (b[i][:5])
         x = b[i].groupby('name').agg({'peptide':np.size,'score':np.median}).reset_index()
         x = x.rename(columns={'peptide':'binders'})
-        #x['binder_density'] = x.length/x.
+        if seqs is not None:
+            x = x.merge(seqs,left_on='name',right_on='locus_tag')
+            x['binder_density'] = (x.binders/x.length).round(3)
         x = x.sort_values(by='binders',ascending=False)
         data[i] = x
     return data

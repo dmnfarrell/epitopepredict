@@ -731,9 +731,11 @@ class Predictor(object):
             name=self.name
         data['name'] = name
 
-        self.data = data
         if path is not None:
             data.to_csv(fname, float_format='%g')
+            self.path = fname
+        else:
+            self.data = data
         return data
 
     def _convert_to_dataframe(self, recs):
@@ -920,8 +922,11 @@ class Predictor(object):
         return result
 
     def load(self, path=None, names=None, compression='infer', file_limit=None):
-        """Load results from path or file. See results_from_csv."""
+        """Load results from path or single file. See results_from_csv for args."""
 
+        if path is None and self.path != None:
+            #if path attribute is set no path arg we use that
+            path = self.path
         data = results_from_csv(path, names, compression, file_limit)
         if data is None:
             print ('no data found')

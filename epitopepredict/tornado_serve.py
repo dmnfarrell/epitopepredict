@@ -30,7 +30,7 @@ from bokeh.plotting import figure
 from bokeh.layouts import row, column, gridplot, widgetbox, layout
 from bokeh.embed import components
 
-wikipage = 'https://github.com/dmnfarrell/epitopepredict/wiki/Web-Application'
+helppage = 'http://epitopepredict.readthedocs.io/en/latest/webapp.html'
 plotkinds = ['tracks','text','grid']
 cut_methods = ['default','rank','score']
 views = ['binders','promiscuous','summary']
@@ -38,7 +38,7 @@ opts = config.baseoptions.copy()
 
 def help_msg():
     msg = 'path for results not found, enter an existing folder with your results.  '
-    msg += '<a href="%s"> see help page</a>' %wikipage
+    msg += '<a href="%s"> see help page</a>' %helppage
     return msg
 
 def get_args(args, defaults={'savepath':'','name':'','cutoff':5,'cutoff_method':'rank', 'pred':'tepitope',

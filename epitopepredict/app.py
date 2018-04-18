@@ -63,6 +63,9 @@ class WorkFlow(object):
         if self.names == ['']: self.names=None
         if not os.path.exists(self.path) and self.path != '':
             os.mkdir(self.path)
+        #copy input seqs to path
+        if self.sequences is not None:
+            self.sequences.to_csv(os.path.join(self.path, 'input.csv'),index=False)
         return True
 
     def run(self):
@@ -96,20 +99,19 @@ class WorkFlow(object):
                 P.predict_peptides(self.peptides, length=length, alleles=a,
                                 path=self.path, overwrite=self.overwrite, verbose=self.verbose,
                                 method=method, cpus=self.cpus)
+                #load the results into the predictor
+                P.load()
             else:
                 #print (savepath)
                 P.predict_proteins(self.sequences, length=length, alleles=a, names=self.names,
                                 path=savepath, overwrite=self.overwrite, verbose=self.verbose,
                                 method=method, cpus=self.cpus)
-                #load results into predictor - is this needed here?
-                P.load(path=savepath)
-            if P.data is None:
-                print ('no results were found, did predictor run?')
-                return
+                #keep reference to path where results saved
+                P.path = savepath
+            #if P.data is None:
+            #    print ('no results were found, did predictor run?')
+            #    return
             preds.append(P)
-            #print (preds)
-            #cutoff = self.cutoff
-            #cutoff_method = self.cutoff_method
             n = self.n
             print ('-----------------------------')
 
@@ -128,21 +130,22 @@ class WorkFlow(object):
         cutoff_method = self.cutoff_method
         i=0
         prom_binders = []
+        print ('analysing results..')
         for P in self.preds:
-            print (P)
-            if len(P.data) == 0:
-                continue
             p = P.name
             cutoff = cutoffs[i]
             n = self.n
-            b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
-            print ('%s/%s binders' %(len(b), len(P.data)))
+            #print (P.path)
+            if P.data is not None:
+                b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
+            else:
+                b = P.get_binders(path=P.path, cutoff=cutoff, cutoff_method=cutoff_method)
+            print ('%s: %s binders found' %(P, len(b)))
             if len(b) == 0:
                 print ('no binders found, check your cutoff value')
                 return
 
             pb = P.promiscuous_binders(binders=b, n=n, cutoff=cutoff, cutoff_method=cutoff_method)
-
             print ('found %s promiscuous binders at  cutoff=%s, n=%s' %(len(pb),cutoff,n))
             pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)), float_format='%g')
             if len(pb)>0:
