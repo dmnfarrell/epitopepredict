@@ -53,6 +53,7 @@ baseoptions['base'] = {'predictors': 'tepitope',
                 'overwrite': 'no',
                 'genome_analysis': 'no',
                 'cpus': 1,
+                'compression': '',
                 'fasta_header_sep': ' '}
 
 baseoptions['iedbtools'] = {'iedbmhc1_path':'', 'iedbmhc2_path':'',

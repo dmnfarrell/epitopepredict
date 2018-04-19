@@ -533,9 +533,11 @@ class Predictor(object):
             files = get_filenames(path)
             if files == None:
                 return
+            #print (files)
             #estimate cutoffs from first 100 files
-            tempdata = results_from_csv(path, file_limit=100)
-            cuts = self.get_allele_cutoffs(tempdata, cutoff)
+            if cutoff_method == 'default':
+                tempdata = results_from_csv(path, file_limit=100)
+                cuts = self.get_allele_cutoffs(tempdata, cutoff)
             d = DataFrameIterator(files)
             res=[]
             for data in d:
@@ -788,7 +790,7 @@ class Predictor(object):
         return results
 
     def _predict_sequences(self, recs, path=None, overwrite=True, alleles=[], length=11, overlap=1,
-                          verbose=False, method=None):
+                          verbose=False, method=None, compression=None):
         """
         Get predictions for a set of proteins and/or over multiple alleles.
         Sequences should be put into
@@ -850,7 +852,9 @@ class Predictor(object):
             res = pd.concat(res)
 
             if path is not None and len(res)>0:
-                res.to_csv(fname)
+                if compression == 'gzip':
+                    fname = fname+'.gz'
+                res.to_csv(fname, compression=compression)
             else:
                 results.append(res)
         #print (len(recs))

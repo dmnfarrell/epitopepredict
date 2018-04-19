@@ -98,14 +98,14 @@ class WorkFlow(object):
             if self.peptides is not None:
                 P.predict_peptides(self.peptides, length=length, alleles=a,
                                 path=self.path, overwrite=self.overwrite, verbose=self.verbose,
-                                method=method, cpus=self.cpus)
+                                method=method, cpus=self.cpus, compression=self.compression)
                 #load the results into the predictor
                 P.load()
             else:
                 #print (savepath)
                 P.predict_proteins(self.sequences, length=length, alleles=a, names=self.names,
                                 path=savepath, overwrite=self.overwrite, verbose=self.verbose,
-                                method=method, cpus=self.cpus)
+                                method=method, cpus=self.cpus, compression=self.compression)
                 #keep reference to path where results saved
                 P.path = savepath
             #if P.data is None:
@@ -135,18 +135,19 @@ class WorkFlow(object):
             p = P.name
             cutoff = cutoffs[i]
             n = self.n
-            #print (P.path)
-            if P.data is not None:
-                b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
-            else:
+            #print (P.data)
+            if P.path is not None:
                 b = P.get_binders(path=P.path, cutoff=cutoff, cutoff_method=cutoff_method)
+            else:
+                b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
+
             print ('%s: %s binders found' %(P, len(b)))
             if len(b) == 0:
                 print ('no binders found, check your cutoff value')
                 return
 
             pb = P.promiscuous_binders(binders=b, n=n, cutoff=cutoff, cutoff_method=cutoff_method)
-            print ('found %s promiscuous binders at  cutoff=%s, n=%s' %(len(pb),cutoff,n))
+            print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
             pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)), float_format='%g')
             if len(pb)>0:
                 print ('top promiscuous binders:')
@@ -286,11 +287,14 @@ def test_run():
     options = config.baseoptions
     b=options['base']
     b['sequence_file'] = os.path.join(path, 'testing','zaire-ebolavirus.faa')
-    b['mhc1_alleles'] = 'HLA-A*02:01,HLA-A*23:01'
+    b['mhc1_alleles'] = 'HLA-A*02:01,HLA-A*03:01,HLA-A*23:01'
     b['mhc2_alleles'] = 'human_common_mhc2'
     b['predictors'] = 'tepitope,mhcflurry'
     b['path'] = 'zaire_test'
     b['verbose'] = True
+    b['cutoff_method'] = 'score'
+    b['cutoffs'] = '5,500'
+    #b['compression'] = 'gzip'
     options = config.check_options(options)
     W = WorkFlow(options)
     st = W.setup()
