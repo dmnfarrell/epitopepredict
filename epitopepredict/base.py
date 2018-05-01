@@ -253,7 +253,7 @@ def results_from_csv(path=None, names=None, compression='infer', file_limit=None
         return
     return data
 
-def get_cutoffs(pred=None, data=None, cutoff=5):
+def get_allele_cutoffs(pred=None, data=None, cutoff=5):
     """
     Get score cutoffs per allele for supplied predictions at this
     percentile level. Can be used to set global cutoffs for scoring
@@ -468,20 +468,19 @@ class Predictor(object):
             return df[df[key] >= value]
 
     def get_allele_cutoffs(self, data, cutoff=5):
-        """Get allele cutoffs using a sample of the data"""
+        """Get allele cutoffs using results data"""
 
         value = self.scorekey
         if self.rankascending == 0:
             q = (1-cutoff/100.)
         else:
             q = cutoff/100
-        if hasattr(self, 'cutoffs'):
-            cuts = self.cutoffs
-        else:
-            cuts={}
-            #derive score cutoffs for each allele
-            for a,g in data.groupby('allele'):
-                cuts[a] = g[value].quantile(q=q)
+        #if hasattr(self, 'cutoffs'):
+        #    cuts = self.cutoffs
+        cuts={}
+        #derive score cutoffs for each allele
+        for a,g in data.groupby('allele'):
+            cuts[a] = g[value].quantile(q=q)
         cuts = pd.Series(cuts)
         return cuts
 
@@ -518,9 +517,9 @@ class Predictor(object):
         slightly different results.
         Args:
             path: use results in a path instead of loading at once, conserves memory
-            cutoff: percentile cutoff, absolute score or a rank value
+            cutoff: percentile cutoff (default), absolute score or a rank value within each sequence
             value: 'allele', 'score' or 'rank'
-            name: name of protein in predictions, optional
+            name: name of a specific protein/sequence
         Returns:
             binders above cutoff in all alleles, pandas dataframe
         """
@@ -533,11 +532,13 @@ class Predictor(object):
             files = get_filenames(path)
             if files == None:
                 return
-            #print (files)
-            #estimate cutoffs from first 100 files
+            #estimate cutoffs from first n files
             if cutoff_method == 'default':
-                tempdata = results_from_csv(path, file_limit=100)
+                tempdata = results_from_csv(path, file_limit=250)
                 cuts = self.get_allele_cutoffs(tempdata, cutoff)
+                print (cuts)
+            if name is not None:
+                files = [f for f in files if f.find(name+'.csv')!=-1]
             d = DataFrameIterator(files)
             res=[]
             for data in d:
@@ -548,30 +549,23 @@ class Predictor(object):
                 elif cutoff_method == 'score':
                     b = self._score_binders(data, cutoff)
                 res.append(b)
-            return pd.concat(res)
-
-        if data is None:
-            return
-        names = list(data['name'].unique())
-        if name != None:
-            if name in names:
-                data = data[data.name==name]
-            else:
-                print ('no such protein name in binder data')
+            res = pd.concat(res)
+        else:
+            if data is None:
                 return
-
-        if cutoff_method in ['default','']:
-            #by per allele percentile cutoffs
-            cuts = self.get_allele_cutoffs(data, cutoff)
-            #print (cuts)
-            res = self._per_allele_binders(data, cuts)
-            return res
-        elif cutoff_method == 'rank':
-            res = self._ranked_binders(data, cutoff)
-            return res
-        elif cutoff_method == 'score':
-            res = self._score_binders(data, cutoff)
-            return res
+            if cutoff_method in ['default','']:
+                #by per allele percentile cutoffs
+                cuts = self.get_allele_cutoffs(data, cutoff)
+                print (cuts)
+                res = self._per_allele_binders(data, cuts)
+            elif cutoff_method == 'rank':
+                res = self._ranked_binders(data, cutoff)
+            elif cutoff_method == 'score':
+                res = self._score_binders(data, cutoff)
+            names = list(res['name'].unique())
+            if name != None and name in names:
+                res = res[res.name == name]
+        return res
 
     def promiscuous_binders(self, binders=None, name=None, cutoff=5,
                            cutoff_method='default', n=1, unique_core=True,
@@ -622,7 +616,8 @@ class Predictor(object):
             s = s[cols]
             s = s.drop('allele',1)
 
-        s = s.sort_values(['alleles','median_rank'],ascending=[False,True])
+        s = s.sort_values(['alleles','median_rank',self.scorekey],
+                          ascending=[False,True,self.rankascending])
         #if we just want unique cores, drop duplicates takes most promiscuous in each group
         #since we have sorted by alleles and median rank
         if unique_core == True:

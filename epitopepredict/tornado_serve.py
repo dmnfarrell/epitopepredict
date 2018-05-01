@@ -33,7 +33,6 @@ from bokeh.embed import components
 helppage = 'http://epitopepredict.readthedocs.io/en/latest/webapp.html'
 plotkinds = ['tracks','text','grid']
 cut_methods = ['default','rank','score']
-views = ['binders','promiscuous','summary']
 opts = config.baseoptions.copy()
 
 def help_msg():
@@ -76,7 +75,22 @@ def exists(message=u'File does not exist'):
             raise ValidationError(message)
     return _exists
 
+class SummaryForm(Form):
+    views = ['summary','promiscuous']
+    name = SelectField('name', choices=[])
+    savepath = TextField('savepath', default='results')
+    cutoff = FloatField('cutoff', default=5)
+    n = TextField('n', default='2')
+    #cm = [(i,i) for i in cut_methods]
+    #cutoff_method = SelectField('cutoff method', choices=cm)
+    kinds = [(i,i) for i in plotkinds]
+    kind = SelectField('plot kind', choices=kinds)
+    views = [(i,i) for i in views]
+    view = SelectField('table view', choices=views)
+    deletecached = BooleanField('delete cached')
+
 class ControlsForm(Form):
+    views = ['binders','promiscuous']
     name = SelectField('name', choices=[])
     savepath = TextField('savepath', default='results')
     cutoff = FloatField('cutoff', default=5)
@@ -87,7 +101,7 @@ class ControlsForm(Form):
     kind = SelectField('plot kind', choices=kinds)
     views = [(i,i) for i in views]
     view = SelectField('table view', choices=views)
-    deletecached = BooleanField('delete cached')
+    #deletecached = BooleanField('delete cached')
 
 class ConfigForm(Form):
     path = TextField('output path', default='results', validators=[DataRequired()],
@@ -142,7 +156,7 @@ class GlobalViewHandler(RequestHandler):
 
     def get(self):
         args = self.request.arguments
-        form = ControlsForm()
+        form = SummaryForm()
         defaultargs = {'savepath':'','cutoff':5,'cutoff_method':'rank',
                        'view':'promiscuous','n':2,'deletecached':1}
         for k in defaultargs:
@@ -179,7 +193,6 @@ class GlobalViewHandler(RequestHandler):
         form.savepath.data = savepath
         form.cutoff.data = defaultargs['cutoff']
         form.n.data = defaultargs['n']
-        form.cutoff_method.data = defaultargs['cutoff_method']
         form.view.data = view
 
         self.render('global.html', form=form, tables=tables, msg='', status=1, savepath=savepath)

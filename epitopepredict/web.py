@@ -290,7 +290,7 @@ def get_summary_tables(path, limit=None, **kwargs):
     Args:
         path: path to results
     """
-    print (kwargs)
+    #print (kwargs)
     data={}
     b = get_results_tables(path, **kwargs)
     seqfile = os.path.join(path, 'input.csv')
