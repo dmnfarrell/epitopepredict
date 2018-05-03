@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function
 import sys, os, math
 from collections import OrderedDict
 import matplotlib
-#matplotlib.use('agg')
+matplotlib.use('agg', warn=False)
 import pylab as plt
 import numpy as np
 import pandas as pd
@@ -64,11 +64,11 @@ def get_bokeh_colors(palette='Set1'):
 def bokeh_test(height=400):
     from bokeh.models import ColumnDataSource
     from bokeh.plotting import figure
-    data = {'x_values': [1, 2, 3, 4, 5],
-            'y_values': [6, 7, 2, 3, 6]}
+    data = {'x_values': np.random.random(20),
+            'y_values': np.random.random(20)}
     source = ColumnDataSource(data=data)
     p = figure(plot_height=height)
-    p.circle(x='x_values', y='y_values', source=source)
+    p.circle(x='x_values', y='y_values', radius=.04, line_color='black', fill_alpha=.6, source=source)
     return p
 
 def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',

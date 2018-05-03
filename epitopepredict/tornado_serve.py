@@ -40,7 +40,7 @@ def help_msg():
     msg += '<a href="%s"> see help page</a>' %helppage
     return msg
 
-def get_args(args, defaults={'savepath':'','name':'','cutoff':5,'cutoff_method':'rank', 'pred':'tepitope',
+def get_args(args, defaults={'savepath':'','name':'','cutoff':.95,'cutoff_method':'default', 'pred':'tepitope',
                    'n':2,'kind':'tracks','view':'binders'}):
     for k in defaults:
         if k in args:
@@ -79,7 +79,7 @@ class SummaryForm(Form):
     views = ['summary','promiscuous']
     name = SelectField('name', choices=[])
     savepath = TextField('savepath', default='results')
-    cutoff = FloatField('cutoff', default=5)
+    cutoff = FloatField('cutoff', default=.95)
     n = TextField('n', default='2')
     #cm = [(i,i) for i in cut_methods]
     #cutoff_method = SelectField('cutoff method', choices=cm)
@@ -93,7 +93,7 @@ class ControlsForm(Form):
     views = ['binders','promiscuous']
     name = SelectField('name', choices=[])
     savepath = TextField('savepath', default='results')
-    cutoff = FloatField('cutoff', default=5)
+    cutoff = FloatField('cutoff', default=.95)
     n = TextField('n', default='2')
     cm = [(i,i) for i in cut_methods]
     cutoff_method = SelectField('cutoff method', choices=cm)
@@ -136,7 +136,7 @@ class ConfigForm(Form):
     iedbmhc2_path = TextField('iedb MHC-II tools path')
 
 class NeoForm(Form):
-    path = TextField('path', default='', validators=[DataRequired()],
+    savepath = TextField('savepath', default='', validators=[DataRequired()],
                      render_kw={"class": "textbox"})
     #views = ['all','promiscuous','by protein']
     sample = SelectField('sample', choices=[])
@@ -157,7 +157,7 @@ class GlobalViewHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         form = SummaryForm()
-        defaultargs = {'savepath':'','cutoff':5,'cutoff_method':'rank',
+        defaultargs = {'savepath':'','cutoff':.95,'cutoff_method':'default',
                        'view':'promiscuous','n':2,'deletecached':1}
         for k in defaultargs:
             if k in args:
@@ -341,15 +341,15 @@ class NeoEpitopeHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         form = NeoForm()
-        args = get_args(args, defaults={'path':'','view':'final','sample':None})
-        path = args['path']
+        args = get_args(args, defaults={'savepath':'','view':'final','sample':None})
+        savepath = args['savepath']
         view = args['view']
         sample = args['sample']
-        if not os.path.exists(path):
+        if not os.path.exists(savepath):
             self.no_data_render(form, msg='no such path')
             return
 
-        labels = pd.read_csv(os.path.join(path, 'sample_labels.csv'),index_col=0)
+        labels = pd.read_csv(os.path.join(savepath, 'sample_labels.csv'),index_col=0)
         samples = list(labels.index)
         if sample == None:
             sample = samples[0]
@@ -364,7 +364,7 @@ class NeoEpitopeHandler(RequestHandler):
         if sample == 'all':
             s=samples[0]
         for p in base.predictors:
-            f = os.path.join(path, 'results_%s_%s.csv' %(s,p))
+            f = os.path.join(savepath, 'results_%s_%s.csv' %(s,p))
             if os.path.exists(f):
                 preds.append(p)
 
@@ -374,7 +374,7 @@ class NeoEpitopeHandler(RequestHandler):
                 data['summary'] = labels
                 res=[]
                 for sample in samples:
-                    fname = os.path.join(path, 'binders_%s_%s.csv' %(sample,p))
+                    fname = os.path.join(savepath, 'binders_%s_%s.csv' %(sample,p))
                     b = pd.read_csv(fname,index_col=0)
                     res.append(b)
 
@@ -384,7 +384,7 @@ class NeoEpitopeHandler(RequestHandler):
 
         else:
             #get table for variants
-            variant_file = os.path.join(path, 'variant_effects_%s.csv' %sample)
+            variant_file = os.path.join(savepath, 'variant_effects_%s.csv' %sample)
             if not os.path.exists(variant_file):
                 self.no_data_render(form, msg='no such file %s' %variant_file)
                 return
@@ -392,9 +392,9 @@ class NeoEpitopeHandler(RequestHandler):
             #data['variants'] = variants
 
             for p in preds:
-                binder_file = fname = os.path.join(path, 'binders_%s_%s.csv' %(sample,p))
+                binder_file = fname = os.path.join(savepath, 'binders_%s_%s.csv' %(sample,p))
                 if not os.path.exists(binder_file):
-                    resfile = os.path.join(path, 'results_%s_%s.csv' %(sample,p))
+                    resfile = os.path.join(savepath, 'results_%s_%s.csv' %(sample,p))
                     res = pd.read_csv(resfile,index_col=0)
                     #get binders here if new cutoff used
                 else:
@@ -429,15 +429,15 @@ class NeoEpitopeHandler(RequestHandler):
         else:
             script = ''; div = ''
 
-        form.path.data = path
+        form.savepath.data = savepath
         samples.append('all')
         form.sample.choices = [(i,i) for i in samples]
         form.sample.data = sample
-        self.render('neoepitope.html', status=1, path=path, links='', form=form,
+        self.render('neoepitope.html', status=1, savepath=savepath, links='', form=form,
                     script=script, div=div, tables=tables)
 
     def no_data_render(self, form, msg):
-        self.render('neoepitope.html', form=form, status=0, name='', msg=msg, path='')
+        self.render('neoepitope.html', form=form, status=0, name='', msg=msg, savepath='')
         return
 
     def add_links(self, df):

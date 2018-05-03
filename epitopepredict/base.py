@@ -267,9 +267,10 @@ def get_quantiles(predictor):
     for a,g in data.groupby('allele'):
         q = g[value].quantile(np.arange(0,1,.01))
         q.name=a
-        #print q
         res.append(q)
     res = pd.DataFrame(res)
+    if P.rankascending==1:
+        res.columns = res.columns.sort_values(ascending=False)
     return res
 
 def get_standard_mhc1(name):
@@ -478,8 +479,8 @@ class Predictor(object):
         qf=pd.read_csv(path,index_col=0)
         qf.columns=qf.columns.astype('float')
         cutoff=round(cutoff,2)
-        if self.rankascending == 1:
-            cutoff = round(1-cutoff,2)
+        #if self.rankascending == 1:
+        #    cutoff = round(1-cutoff,2)
         if not cutoff in qf.columns:
             print ('please use values between 0 and 1 in steps of e.g. .95 (95% cutoff)')
         return qf[cutoff]
@@ -509,7 +510,7 @@ class Predictor(object):
             res = data[data[self.scorekey] <= cutoff]
         return res
 
-    def get_binders(self, cutoff=5, cutoff_method='default', path=None, name=None, **kwargs):
+    def get_binders(self, cutoff=.95, cutoff_method='default', path=None, name=None, **kwargs):
         """
         Get the top scoring binders. If using default cutoffs are derived
         from the available prediction data stored in the object. For
@@ -564,7 +565,7 @@ class Predictor(object):
 
         return res
 
-    def promiscuous_binders(self, binders=None, name=None, cutoff=5,
+    def promiscuous_binders(self, binders=None, name=None, cutoff=.95,
                            cutoff_method='default', n=1, unique_core=True,
                            keep_columns=False, **kwargs):
         """

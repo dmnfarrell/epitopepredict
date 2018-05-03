@@ -90,7 +90,7 @@ def create_config_parser_from_dict(data=None, sections=['base','iedbtools'], **k
 
     if data is None:
         data = baseoptions
-    print (data)
+    #print (data)
     cp = configparser.ConfigParser()
     for s in sections:
         cp.add_section(s)

@@ -290,7 +290,7 @@ def get_summary_tables(path, limit=None, **kwargs):
     Args:
         path: path to results
     """
-    #print (kwargs)
+
     data={}
     b = get_results_tables(path, **kwargs)
     seqfile = os.path.join(path, 'input.csv')
@@ -302,7 +302,7 @@ def get_summary_tables(path, limit=None, **kwargs):
         seqs = seqs[['locus_tag','length']]
 
     for i in b:
-        print (b[i][:5])
+        #print (b[i][:5])
         x = b[i].groupby('name').agg({'peptide':np.size,'score':np.median}).reset_index()
         x = x.rename(columns={'peptide':'binders'})
         if seqs is not None:
