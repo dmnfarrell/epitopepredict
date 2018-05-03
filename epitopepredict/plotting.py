@@ -10,7 +10,7 @@ from __future__ import absolute_import, print_function
 import sys, os, math
 from collections import OrderedDict
 import matplotlib
-matplotlib.use('agg')
+#matplotlib.use('agg')
 import pylab as plt
 import numpy as np
 import pandas as pd
@@ -381,6 +381,7 @@ def plot_tracks(preds, name, n=1, cutoff=5, value='score',
         sckey = pred.scorekey
 
         binders = pred.get_binders(name=name, cutoff=cutoff, value=value)
+        #binders = pred.binders
         #print (binders)
         pb = pred.promiscuous_binders(binders=binders, n=n, value=value)
 

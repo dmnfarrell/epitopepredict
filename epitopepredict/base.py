@@ -253,21 +253,24 @@ def results_from_csv(path=None, names=None, compression='infer', file_limit=None
         return
     return data
 
-def get_allele_cutoffs(pred=None, data=None, cutoff=5):
-    """
-    Get score cutoffs per allele for supplied predictions at this
-    percentile level. Can be used to set global cutoffs for scoring
-    arbitary sequences and then check if they are binders.
+def get_quantiles(predictor):
+    """Get quantile score values per allele in set of predictions.
+    Used for making pre-defined cutoffs.
+    Args:
+        predictor: predictor with set of predictions
     """
 
-    q = (1-cutoff/100.) #score quantile value
-    cuts={}
-    if data is None:
-        data = pred.data
+    P=predictor
+    res=[]
+    value = P.scorekey
+    data=P.data
     for a,g in data.groupby('allele'):
-        cuts[a] = g[pred.scorekey].quantile(q=q)
-    cuts = pd.Series(cuts)
-    return cuts
+        q = g[value].quantile(np.arange(0,1,.01))
+        q.name=a
+        #print q
+        res.append(q)
+    res = pd.DataFrame(res)
+    return res
 
 def get_standard_mhc1(name):
     """Taken from iedb mhc1 utils.py"""
@@ -467,22 +470,19 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
-    def get_allele_cutoffs(self, data, cutoff=5):
-        """Get allele cutoffs using results data"""
+    def get_allele_cutoffs(self, cutoff=.95):
+        """Get per allele cutoffs using global reference."""
 
-        value = self.scorekey
-        if self.rankascending == 0:
-            q = (1-cutoff/100.)
-        else:
-            q = cutoff/100
-        #if hasattr(self, 'cutoffs'):
-        #    cuts = self.cutoffs
-        cuts={}
-        #derive score cutoffs for each allele
-        for a,g in data.groupby('allele'):
-            cuts[a] = g[value].quantile(q=q)
-        cuts = pd.Series(cuts)
-        return cuts
+        path = os.path.join(datadir, 'quantiles_%s.csv' %self.name)
+        #print (path)
+        qf=pd.read_csv(path,index_col=0)
+        qf.columns=qf.columns.astype('float')
+        cutoff=round(cutoff,2)
+        if self.rankascending == 1:
+            cutoff = round(1-cutoff,2)
+        if not cutoff in qf.columns:
+            print ('please use values between 0 and 1 in steps of e.g. .95 (95% cutoff)')
+        return qf[cutoff]
 
     def _per_allele_binders(self, data, cuts):
         """Return binders per allele based cutoffs"""
@@ -526,17 +526,16 @@ class Predictor(object):
 
         cutoff = float(cutoff)
         data = self.data
+        if cutoff_method in ['default','']:
+            #by per allele percentile cutoffs
+            cuts = self.get_allele_cutoffs(cutoff)
 
         if path is not None:
             #get binders out of memory for large datasets
             files = get_filenames(path)
             if files == None:
                 return
-            #estimate cutoffs from first n files
-            if cutoff_method == 'default':
-                tempdata = results_from_csv(path, file_limit=250)
-                cuts = self.get_allele_cutoffs(tempdata, cutoff)
-                print (cuts)
+
             if name is not None:
                 files = [f for f in files if f.find(name+'.csv')!=-1]
             d = DataFrameIterator(files)
@@ -554,9 +553,6 @@ class Predictor(object):
             if data is None:
                 return
             if cutoff_method in ['default','']:
-                #by per allele percentile cutoffs
-                cuts = self.get_allele_cutoffs(data, cutoff)
-                print (cuts)
                 res = self._per_allele_binders(data, cuts)
             elif cutoff_method == 'rank':
                 res = self._ranked_binders(data, cutoff)
@@ -565,6 +561,7 @@ class Predictor(object):
             names = list(res['name'].unique())
             if name != None and name in names:
                 res = res[res.name == name]
+
         return res
 
     def promiscuous_binders(self, binders=None, name=None, cutoff=5,
@@ -1093,8 +1090,9 @@ class NetMHCIIPanPredictor(Predictor):
         try:
             allele = allele.split('-')[1].replace('*','_')
         except:
-            print('invalid allele')
-            return
+            #print('invalid allele')
+            #return
+            pass
         allele = allele.replace(':','')
 
         #write peptides to temp file
@@ -1188,6 +1186,7 @@ class IEDBMHCIPredictor(Predictor):
             print ('available methods are %s' %self.methods)
             return
         self.method = method
+
         cmd = os.path.join(self.iedbmhc1_path,'src/predict_binding.py')
         cmd = cmd+' %s %s %s %s' %(method,allele,length,seqfile)
         if show_cmd == True:
@@ -1503,7 +1502,11 @@ class MHCFlurryPredictor(Predictor):
 
         from mhcflurry import Class1AffinityPredictor
         predictor = Class1AffinityPredictor.load()
-        df = predictor.predict_to_dataframe(peptides=peptides, allele=allele)
+        try:
+            df = predictor.predict_to_dataframe(peptides=peptides, allele=allele)
+        except:
+            print ('failed to predict for allele %s' %allele)
+            return
         #print (df[:5])
         df = self.prepare_data(df, name, allele)
         self.data = df
