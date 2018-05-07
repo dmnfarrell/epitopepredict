@@ -534,7 +534,7 @@ class Predictor(object):
         if cutoff_method in ['default','']:
             #by per allele percentile cutoffs
             cuts = self.get_allele_cutoffs(cutoff)
-
+        #print (cuts)
         if path is not None:
             #get binders out of memory for large datasets
             files = get_filenames(path)
@@ -712,7 +712,8 @@ class Predictor(object):
             if overwrite == False and os.path.exists(fname):
                 #load the data if present and not overwriting
                 print ('results file found, not overwriting')
-                self.load(path=fname)
+                #self.load(path=fname)
+                self.path = fname
                 return
         if cpus == 1:
             data = self._predict_peptides(peptides, **kwargs)

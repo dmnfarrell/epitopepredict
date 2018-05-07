@@ -144,12 +144,16 @@ class WorkFlow(object):
             p = P.name
             cutoff = cutoffs[i]
             n = self.n
-            #print (P.data)
-            if P.path is not None:
+            print (P.path)
+            if P.data is not None:
+                b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
+            elif P.path is not None:
                 b = P.get_binders(path=P.path, cutoff=cutoff, cutoff_method=cutoff_method)
             else:
-                b = P.get_binders(cutoff=cutoff, cutoff_method=cutoff_method)
-
+                print ('empty results?')
+                continue
+            if b is None:
+                continue
             print ('%s: %s binders found' %(P, len(b)))
             if len(b) == 0:
                 print ('no binders found, check your cutoff value')
@@ -185,9 +189,9 @@ class WorkFlow(object):
         x.columns = [col[1]+'_'+col[0] if col[1]!='' else col[0] for col in x.columns.values]
         x = x.rename(columns={'size_peptide':'binders','first_score':'max_score','first_peptide':'top_peptide'})
         cl = analysis.find_clusters(pb)
-        cl = cl.groupby('name').size().rename('clusters').to_frame().reset_index()
-        x = x.merge(cl,on='name',how='left')
-
+        if len(cl)>0:
+            cl = cl.groupby('name').size().rename('clusters').to_frame().reset_index()
+            x = x.merge(cl,on='name',how='left')
         if seqs is not None:
             if not 'length' in seqs.columns:
                 seqs['length'] = seqs.translation.str.len()
@@ -332,6 +336,7 @@ def test_run():
     b['cutoff_method'] = 'score'
     b['cutoffs'] = '5,500'
     #b['compression'] = 'gzip'
+    b['overwrite'] = False
     options = config.check_options(options)
     W = WorkFlow(options)
     st = W.setup()
