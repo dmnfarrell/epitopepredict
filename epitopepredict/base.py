@@ -156,6 +156,10 @@ def get_coords(df):
     df['end'] = ( df.pos + df.peptide.str.len() ).astype(int)
     return df
 
+def seq_from_binders(df):
+    x = pd.Series(df.sort_values('pos').peptide.unique())
+    return ''.join(x.str[0])
+
 def write_fasta(sequences, id=None, filename='tempseq.fa'):
 
     if isinstance(sequences, basestring):
@@ -1078,7 +1082,7 @@ class NetMHCIIPanPredictor(Predictor):
         df = df.drop(['Pos','Identity','Rank'],1)
         df = df.dropna()
         df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
-        #df['score'] = df['Affinity']
+        df['score'] = df['Affinity']
         self.get_ranking(df)
         self.data = df
         return

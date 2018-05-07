@@ -215,13 +215,9 @@ def create_figures(preds, name='', kind='tracks', cutoff=5, n=2,
                          cutoff_method=cutoff_method)
         if plot is not None:
             figures.append(plot)
-    elif kind == 'bar':
-        alleles = get_alleles(preds)
-        xr=None
-        for a in alleles:
-            plot = plotting.bokeh_plot_bar(preds, title=a, allele=a, width=None, x_range=xr )
-            if xr==None:
-                xr = plot.x_range
+    elif kind == 'grid':
+        for p in preds:
+            plot = plotting.bokeh_plot_grid(p, name=name, width=None )
             figures.append(plot)
     return figures
 
@@ -292,24 +288,14 @@ def get_summary_tables(path, limit=None, **kwargs):
     """
 
     data={}
-    b = get_results_tables(path, **kwargs)
-    seqfile = os.path.join(path, 'input.csv')
-    seqs=None
-    if os.path.exists(seqfile):
-        seqs = pd.read_csv(seqfile)
-        if not 'length' in seqs.columns:
-            seqs['length'] = seqs.translation.str.len()
-        seqs = seqs[['locus_tag','length']]
+    #preds = get_predictors(path)
+    for pred in base.predictors:
+        sfile = os.path.join(path, 'summary_%s.csv' %pred)
+        if not os.path.exists(sfile):
+            continue
 
-    for i in b:
-        #print (b[i][:5])
-        x = b[i].groupby('name').agg({'peptide':np.size,'score':np.median}).reset_index()
-        x = x.rename(columns={'peptide':'binders'})
-        if seqs is not None:
-            x = x.merge(seqs,left_on='name',right_on='locus_tag')
-            x['binder_density'] = (x.binders/x.length).round(3)
-        x = x.sort_values(by='binders',ascending=False)
-        data[i] = x
+        summ = pd.read_csv(sfile, index_col=0)
+        data[pred] = summ
     return data
 
 def dataframes_to_html(data, classes=''):

@@ -76,17 +76,17 @@ def exists(message=u'File does not exist'):
     return _exists
 
 class SummaryForm(Form):
-    views = ['summary','promiscuous']
-    name = SelectField('name', choices=[])
+    #views = ['summary','promiscuous']
+    #name = SelectField('name', choices=[])
     savepath = TextField('savepath', default='results')
-    cutoff = FloatField('cutoff', default=.95)
-    n = TextField('n', default='2')
+    #cutoff = FloatField('cutoff', default=.95)
+    #n = TextField('n', default='2')
     #cm = [(i,i) for i in cut_methods]
     #cutoff_method = SelectField('cutoff method', choices=cm)
-    kinds = [(i,i) for i in plotkinds]
-    kind = SelectField('plot kind', choices=kinds)
-    views = [(i,i) for i in views]
-    view = SelectField('table view', choices=views)
+    #kinds = [(i,i) for i in plotkinds]
+    #kind = SelectField('plot kind', choices=kinds)
+    #views = [(i,i) for i in views]
+    #view = SelectField('table view', choices=views)
     deletecached = BooleanField('delete cached')
 
 class ControlsForm(Form):
@@ -157,13 +157,11 @@ class GlobalViewHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         form = SummaryForm()
-        defaultargs = {'savepath':'','cutoff':.95,'cutoff_method':'default',
-                       'view':'promiscuous','n':2,'deletecached':1}
+        defaultargs = {'savepath':'','deletecached':1}
         for k in defaultargs:
             if k in args:
                 defaultargs[k] = args[k][0].decode("utf-8")
         savepath = defaultargs['savepath'].strip()
-        view = defaultargs['view']
         deletecached = defaultargs['deletecached']
         #if usecached == 1:
         #    print ('using cached results')
@@ -172,35 +170,29 @@ class GlobalViewHandler(RequestHandler):
             msg = help_msg()
             self.render('global.html', form=form, msg=msg, savepath=savepath, status=0)
 
-        #preds = web.get_predictors(savepath)
-        data = {}
-        if view == 'summary':
-            data = web.get_summary_tables(savepath, **defaultargs)
+        data = web.get_summary_tables(savepath, **defaultargs)
 
+        df = pd.concat(data).reset_index()
+        plot = plotting.bokeh_summary_plot(df)
+        plots = [plot]
+
+        if len(plots) > 0:
+            grid = gridplot(plots, ncols=1, merge_tools=True, sizing_mode='scale_width',
+                            toolbar_options=dict(logo=None))
+            script, div = components(grid)
         else:
-            #get binder results for available data
-            #preds = web.get_predictors(path=savepath, name=name)
-            data = web.get_results_tables(path=savepath, limit=200, **defaultargs)
-            #add url to prot/seq name
+            script = ''; div = ''
+
         for k in data:
             data[k] = web.column_to_url(data[k], 'name', '/sequence?savepath=%s&name=' %savepath)
-
         #convert dfs to html
         tables = web.dataframes_to_html(data, classes='tinytable sortable')
         #put tables in tabbed divs
         tables = web.tabbed_html(tables)
 
         form.savepath.data = savepath
-        form.cutoff.data = defaultargs['cutoff']
-        form.n.data = defaultargs['n']
-        form.view.data = view
-
-        self.render('global.html', form=form, tables=tables, msg='', status=1, savepath=savepath)
-
-class GenomeViewHandler(RequestHandler):
-    def get(self):
-        args = self.request.arguments
-        self.render('genome.html')
+        self.render('global.html', form=form, tables=tables, msg='', script=script, div=div,
+                    status=1, savepath=savepath)
 
 class SequenceViewHandler(RequestHandler):
     """Handler for main results page"""
@@ -238,11 +230,11 @@ class SequenceViewHandler(RequestHandler):
         preds = web.get_predictors(path=savepath, name=current_name)
         print (preds)
 
-        if kind == 'grid':
-            seqhtml = web.sequence_to_html_grid(preds, classes="gridtable")
-            div = '<div class="scrolled">%s</div>' %seqhtml
-            script = ''
-        elif kind == 'text':
+        #if kind == 'grid':
+        #    seqhtml = web.sequence_to_html_grid(preds, classes="gridtable")
+        #    div = '<div class="scrolled">%s</div>' %seqhtml
+        #    script = ''
+        if kind == 'text':
             seqhtml = web.create_sequence_html(preds, classes="seqtable")
             div = '<div class="scrolled">%s</div>' %seqhtml
             script = ''

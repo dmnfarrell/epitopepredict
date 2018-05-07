@@ -62,6 +62,7 @@ def get_bokeh_colors(palette='Set1'):
     return clrs
 
 def bokeh_test(height=400):
+
     from bokeh.models import ColumnDataSource
     from bokeh.plotting import figure
     data = {'x_values': np.random.random(20),
@@ -69,6 +70,61 @@ def bokeh_test(height=400):
     source = ColumnDataSource(data=data)
     p = figure(plot_height=height)
     p.circle(x='x_values', y='y_values', radius=.04, line_color='black', fill_alpha=.6, source=source)
+    return p
+
+def bokeh_summary_plot(df, savepath=None):
+    """Summary plot"""
+
+    from bokeh.plotting import figure
+    from bokeh.layouts import column
+    from bokeh.models import ColumnDataSource,Range1d,HoverTool,TapTool,CustomJS,OpenURL
+
+    TOOLS = "pan,wheel_zoom,hover,tap,reset,save"
+
+    colors = get_bokeh_colors()
+    df=df.rename(columns={'level_0':'predictor'})
+    df['color'] = [colors[x] for x in df['predictor']]
+    p = figure(title = "Summary", tools=TOOLS, width=500, height=500)
+    p.xaxis.axis_label = 'binder_density'
+    p.yaxis.axis_label = 'binders'
+
+    #make metric for point sizes
+    #df['point_size'] = df.binder_density
+    source = ColumnDataSource(data=df)
+
+    p.circle(x='binder_density', y='binders', line_color='black', fill_color='color',
+             fill_alpha=0.4, size=10, source=source, legend='predictor')
+    hover = p.select(dict(type=HoverTool))
+    hover.tooltips = OrderedDict([
+        ("name", "@name"),
+        ("length", "@length"),
+        ("binders", "@binders"),
+        ("binder_density", "@binder_density"),
+        ("top_peptide", "@top_peptide"),
+        ("max_score", "@max_score"),
+    ])
+    p.toolbar.logo = None
+    if savepath != None:
+        url = "http://localhost:8000/sequence?savepath=%s&name=@name" %savepath
+        taptool = p.select(type=TapTool)
+        taptool.callback = OpenURL(url=url)
+
+    callback = CustomJS(args=dict(source=source), code="""
+        var data = source.data;
+        var f = cb_obj.value
+
+        data['x'] = f
+        source.trigger('change');
+        source.change.emit();
+    """)
+
+    from bokeh.layouts import widgetbox
+    from bokeh.models.widgets import Select
+    menu = [(i,i) for i in df.columns]
+    select = Select(title='X', value='A', options=list(df.columns), width=8)
+    select.js_on_change('value', callback)
+
+    #layout = column(p, select, sizing_mode='scale_width')
     return p
 
 def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',
@@ -205,6 +261,68 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     plot.toolbar.logo = None
     plot.toolbar_location = "right"
     return plot
+
+def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
+    """Plot heatmap of binding results for a predictor."""
+
+    from bokeh.plotting import figure
+    from bokeh.models import (Range1d,HoverTool,FactorRange,ColumnDataSource,
+                              LinearColorMapper,LogColorMapper,callbacks,DataRange)
+    from bokeh.palettes import all_palettes
+    TOOLS = "xpan, xwheel_zoom, hover, reset, save"
+
+    if width == None:
+        sizing_mode = 'scale_width'
+        width=900
+    else:
+        sizing_mode = 'fixed'
+    P=pred
+    df = P.data
+    if df is None:
+        return
+
+    cols = ['allele','pos','peptide',P.scorekey]
+    d = df[cols].copy()
+
+    l = base.get_length(df)
+    grps = df.groupby('allele')
+    alleles = grps.groups
+    seqlen = get_seq_from_binders(P)
+    seq = base.seq_from_binders(df)
+    height = 300
+    alls = len(alleles)
+    x_range = Range1d(0,seqlen-l+1, bounds='auto')
+    #x_range = list(seq)
+    y_range = df.allele.unique()
+    val=P.scorekey
+    cut = P.cutoff
+    if P.name not in ['tepitope']:
+        d['score1'] = d[val].apply( lambda x: 1-math.log(x, 50000))
+        val='score1'
+        cut = .42
+    d[val] = d[val].clip(cut)
+
+    source = ColumnDataSource(d)
+    colors = all_palettes[palette][7]
+    mapper = LinearColorMapper(palette=colors, low=d[val].max(), high=d[val].min())
+    p = figure(title=P.name+' '+name,
+               x_range=x_range, y_range=y_range,
+               x_axis_location="above", plot_width=width, plot_height=height,
+               tools=TOOLS, toolbar_location='below', sizing_mode=sizing_mode)
+    p.rect(x="pos", y="allele", width=1, height=1,
+           source=source,
+           fill_color={'field': val,'transform':mapper},
+           line_color='gray', line_width=.2)
+    p.select_one(HoverTool).tooltips = [
+         ('allele', '@allele'),
+         (P.scorekey, '@%s{1.11}' %P.scorekey),
+         ('pos', '@pos'),
+         ('peptide', '@peptide')
+    ]
+    p.toolbar.logo = None
+    p.yaxis.major_label_text_font_size = "10pt"
+    p.yaxis.major_label_text_font_style = "bold"
+    return p
 
 def bokeh_plot_bar(preds, name=None, allele=None, title='', width=None, height=100,
                     palette='Set1', tools=True, x_range=None):

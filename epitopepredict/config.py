@@ -51,7 +51,7 @@ baseoptions['base'] = {'predictors': 'tepitope',
                 'verbose':'no',
                 'names': '', #subset of protein names
                 'overwrite': 'no',
-                'genome_analysis': 'no',
+                #'genome_analysis': 'no',
                 'cpus': 1,
                 'compression': '',
                 'fasta_header_sep': ' '}

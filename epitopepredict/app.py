@@ -8,6 +8,7 @@
 
 from __future__ import absolute_import, print_function
 import sys, os
+import numpy as np
 import shutil
 import pandas as pd
 from collections import OrderedDict
@@ -34,7 +35,7 @@ class WorkFlow(object):
             self.sequences = get_sequences(self.sequence_file, header_sep=self.fasta_header_sep)
             print ('input is %s protein sequences' %len(self.sequences))
         elif self.peptide_file is not '':
-            self.peptides = get_peptides(self.peptide_file)
+            self.peptides = read_names(self.peptide_file)
             print ('input is %s peptides' %len(self.peptides))
         if self.sequences is None and self.peptides is None:
             print ('no valid inputs found')
@@ -56,11 +57,17 @@ class WorkFlow(object):
             self.mhc2_alleles = base.get_preset_alleles(self.mhc2_alleles[0])
 
         if type(self.cutoffs) is int:
-            self.cutoffs = [self.cutoffs for p in self.predictors]
+            self.cutoffs = [self.cutoffs]
         else:
             self.cutoffs = [float(i) for i in self.cutoffs.split(',')]
-        self.names = self.names.split(',')
-        if self.names == ['']: self.names=None
+
+        if os.path.exists(self.names):
+            self.names = read_names(self.names)
+        elif self.names == '':
+            self.names=None
+        else:
+            self.names = self.names.split(',')
+
         if not os.path.exists(self.path) and self.path != '':
             os.mkdir(self.path)
         #copy input seqs to path
@@ -127,6 +134,8 @@ class WorkFlow(object):
 
         preds = self.preds
         cutoffs = self.cutoffs
+        if len(cutoffs) < len(preds) :
+            cutoffs = [cutoffs[0] for p in preds]
         cutoff_method = self.cutoff_method
         i=0
         prom_binders = []
@@ -152,15 +161,42 @@ class WorkFlow(object):
             if len(pb)>0:
                 print ('top promiscuous binders:')
                 print (pb[:10])
-            if self.genome_analysis == True and self.sequences is not None:
-                cl = analysis.find_clusters(pb, genome=self.sequences)
-                cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
+            if self.sequences is not None:
+                summary = self.get_summary(P, pb, self.sequences)
+                summary.to_csv(os.path.join(self.path,'summary_%s.csv' %p))
             print ('-----------------------------')
             i+=1
             prom_binders.append(pb)
         if len(prom_binders) >1:
             self.combine(prom_binders)
         return
+
+    def get_summary(self, P, pb, seqs):
+        """Get summary table for sequence based predictions.
+        """
+
+        rmcols = ['type','product','pseudo']
+        try:
+            seqs = seqs.drop(rmcols, 1)
+        except:
+            pass
+        x = pb.groupby('name').agg({'peptide':[base.first,np.size],
+                                    P.scorekey:base.first}).reset_index()
+        x.columns = [col[1]+'_'+col[0] if col[1]!='' else col[0] for col in x.columns.values]
+        x = x.rename(columns={'size_peptide':'binders','first_score':'max_score','first_peptide':'top_peptide'})
+        cl = analysis.find_clusters(pb)
+        cl = cl.groupby('name').size().rename('clusters').to_frame().reset_index()
+        x = x.merge(cl,on='name',how='left')
+
+        if seqs is not None:
+            if not 'length' in seqs.columns:
+                seqs['length'] = seqs.translation.str.len()
+            x = x.merge(seqs,left_on='name',right_on='locus_tag')
+            x['binder_density'] = (x.binders/x.length).round(3)
+
+        x = x.sort_values(by='binder_density',ascending=False)
+        #print (x)
+        return x
 
     def combine(self, data):
         """Combine peptide binders present in all methods"""
@@ -195,7 +231,8 @@ class WorkFlow(object):
         print ('saved plots')
         return
 
-def get_peptides(filename):
+def read_names(filename):
+    """read plain text file of items"""
     with open(filename) as f:
         p = f.readlines()
     p = [x.strip() for x in p]

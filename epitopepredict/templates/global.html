@@ -6,12 +6,6 @@
 		<form action="/global">
 			{{ form.savepath.label }}
 			{{ form.savepath }}
-			{{ form.cutoff.label }}
-			{{ form.cutoff }}
-			{{ form.n.label }}
-			{{ form.n }}
-			{{ form.view.label }}
-			{{ form.view }}
 			<!--{{ form.deletecached.label }}
 			{{ form.deletecached }} -->
 			<input type="submit" class="button">
@@ -24,6 +18,13 @@
 			{{ tables }}
 		</div>
 		{% end %}
+
+		<div class="floatright">
+		  {{ script }}
+		  {{ div }}
+
+		</div>
+
 	  </div>
 
 {% end %}
