@@ -278,8 +278,8 @@ class DownloadHandler(RequestHandler):
         filename = args['name']+'_'+args['pred']+'.csv'
         self.set_header ('Content-Type', 'text/csv')
         self.set_header ('Content-Disposition', 'attachment; filename=%s' %filename)
-        preds = web.get_predictors(args['path'], args['name'])
-        data = web.get_binder_tables(preds, **args)
+        #preds = web.get_predictors(args['savepath'], args['name'])
+        data = web.get_results_tables(args['savepath'], **args)
         out = self.get_csv(data, args['pred'])
         self.write (out)
 

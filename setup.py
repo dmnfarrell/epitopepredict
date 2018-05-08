@@ -12,7 +12,7 @@ setup(
     url='https://github.com/dmnfarrell/epitopepredict',
     license='GPL v3',
     author = 'Damien Farrell',
-    author_email = 'farrell.damien[at]gmail.com',
+    author_email = 'farrell.damien@gmail.com',
     packages = ['epitopepredict'],
     package_data={'epitopepredict': ['mhcdata/*.csv', 'presets/*.csv',
                   'tepitope/*.txt', 'tepitope/pssm/*', 'testing/*',

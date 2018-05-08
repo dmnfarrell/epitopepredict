@@ -161,7 +161,7 @@ class WorkFlow(object):
 
             pb = P.promiscuous_binders(binders=b, n=n, cutoff=cutoff, cutoff_method=cutoff_method)
             print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
-            pb.to_csv(os.path.join(self.path,'prom_binders_%s_%s.csv' %(p,n)), float_format='%g')
+            pb.to_csv(os.path.join(self.path,'final_%s_%s.csv' %(p,n)), float_format='%g')
             if len(pb)>0:
                 print ('top promiscuous binders:')
                 print (pb[:10])

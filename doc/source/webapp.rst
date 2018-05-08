@@ -14,7 +14,7 @@ The default port is 8888. You can use a different port by specifying it with the
 
 There are several ways to view a set of binding predictions, all of which allow views for whichever predictors you have used. There is currently
 
-**Global view of results**
+**Summary view**
 
 Summarizes the results for multiple sequences in one page. You can choose to view the table of all predicted binders, promiscuous binders or a summary over each sequence. These tables can be downloaded to csv files.
 
@@ -25,6 +25,10 @@ For viewing the detailed results for a single sequence, often representing a pro
 .. image:: web_app_scr1.png
 
 **Track plots** are useful for overall results over protein-length and longer sequences. The plot can be zoomed and panned using the mouse. A hover tooltip shows the particular peptide details.
+
+**Grid plots** are another way to view peptide scores across a protein sequence for each allele. A hover tooltip shows the particular peptide details.
+
+.. image:: web_app_grid_view.png
 
 **Config**
 

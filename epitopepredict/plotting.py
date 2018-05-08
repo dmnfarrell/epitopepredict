@@ -154,7 +154,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
         width=1000
         sizing_mode='scale_width'
     else:
-        sizing_mode=None
+        sizing_mode='fixed'
     alls=1
     seqlen=0
     for P in preds:

@@ -36,7 +36,7 @@ The advantage of configuration files is in avoiding long commands that have to b
     mhc2_length = 15
     n = 2
     cutoff_method = default
-    cutoffs = 4
+    cutoffs = .95
     sequence_file =
     path = results
     overwrite = no
@@ -64,21 +64,23 @@ Settings explained
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | mhc1_length      | 11                          | length of n-mers for MHC-I prediction                                        |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
-| mhc2_length      | 15                          | length of n-mers for MHC-II prediction                                       |
+| mhc2_length      | 11                          | length of n-mers for MHC-II prediction                                       |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
-| n                | 3                           | minimum number of alleles for promiscuous binders                            |
+| n                | 3                           | minimum number of alleles for counting as promiscuous binders                |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
-| cutoff_method    | score                       | cutoff method, score or rank used for getting binders                        |
+| cutoff_method    | score                       | cutoff method: default, score or rank used for getting binders (see below)   |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
-| cutoffs          | 4                           | percentile cutoff for counting promiscuous binders, i.e. top 4 percent       |
+| cutoffs          | .95                         | percentile/score/rank cutoff for counting binders                            |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | sequence_file    | zaire-ebolavirus.gb         | set of protein sequences in genbank or fasta format                          |
++------------------+-----------------------------+------------------------------------------------------------------------------+
+| peptide_file     | peptides.txt                | set of peptides in a plain text file, one per row                            |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | path             | results                     | folder to save results to, can be empty for current folder                   |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | overwrite        | no                          | overwrite the previous results                                               |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
-| names            | Rv0011c,Rv0019c             | protein/sequence/locus tag names to predict in your file, optional           |
+| names            | Rv0011c,Rv0019c             | subset of protein/sequence names to predict from your input file, optional   |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | verbose          | no                          | displays more information while running                                      |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
@@ -92,6 +94,20 @@ Settings explained
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | iedb_mhc2_method | IEDB_recommended            | predictor to use within the IEDB MHC-II tools (see below)                    |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
+
+Cutoff methods
+--------------
+
+Methods for achieving an appropriate cutoff for considering a peptide to be a binder are somewhat arbitrary. They vary with the application. There are three methods provided to select binders:
+
+* **default** - allele specific global cutoffs, this uses a percentile cutoff to select peptides using pre-calculated quantile scores for each allele. This may avoid an issue where certain alleles will dominate if using a single score cutoff. Though there is limited evidence to suggest this is more appropriate. Typical value would be .95 i.e. top 95% in each allele.
+* **rank** - Select top ranking peptides in each sequence above the cutoff. This would be useful for small numbers of sequence but for a lot of proteins might produce too many false positives.
+* **score** - Use a single score cutoff for all peptides/alleles. This is probably the standard method. Typical binding predictors produce an affinity score and a cutoff of 500 is used. However this might also produce a lot of false positives.
+
+Binding promiscuity
+-------------------
+
+Promiscuous binders are those above the cutoffs in more than n alleles. The rationale for this is that a peptide is more likely to be immunogenic in your target population if it is a binder in multiple alleles. This may not be the case in reality of course. By default the command line tool will calculate the promiscuous binders to give you a unique list of peptides and include the number of alleles in which it is a binder. The table is ranked by this value and the maximum score over the alleles tested.
 
 Preset allele lists
 -------------------
@@ -152,21 +168,41 @@ Using preset allele lists saves you the trouble of writing the alleles out. You 
 
     [base]
     predictors = tepitope
-    mhc1_alleles = human_common_mhc2
+    mhc2_alleles = human_common_mhc2
     n = 2
-    cutoffs = 5
+    cutoffs = .95
     sequence_file = zaire-ebolavirus.gb
     path = results
-    names =
-    plots = yes
-    genome_analysis = no
     cpus = 2
 
-**Defining 'promiscuous binders**
+**A small set of peptides**
 
-The cutoff in the config file is an upper percentile value above which a peptide is defined as a binder. There is no hard and fast rule for this cutoff. By default a global cutoff will be defined for each allele in all proteins loaded. Alternatively you can specify cutoff_method=rank to use the ranking within each protein/sequence, ensuring you capture e.g. the top 5% in each protein. This would be useful for small numbers of sequence but for a lot of proteins might produce too many false positives. Promiscuous binders are those above the cutoffs in more than n alleles.
+Say we want to predict for small list of peptides with multiple prediction methods and select the top 10 ranking in at least 3 alleles. Here input.txt is just simple text file with all the individual peptides. They should be of an appropriate length::
+
+    [base]
+    predictors = tepitope,mhcflurry
+    mhc1_alleles = human_common_mhc2
+    mhc2_alleles = human_common_mhc2
+    cutoff_method = rank
+    cutoffs = 10
+    n=3
+    path = results
+    peptide_file = input.txt
+
+**Strict cutoffs**
+
+For selection you can use very strict score cutoff level or high global percentile. In this example we use a score cutoff so must provide a cutoff value for each method::
+
+    [base]
+    predictors = tepitope,netmhciipan
+    mhc1_alleles = human_common_mhc2
+    cutoff_method = score
+    cutoffs = 6,50
+    n=3
+    path = results
+    peptide_file = input.txt
 
 Outputs
 -------
 
-In each results folder you will find csv files with the predictions for each sequence. This is the primary raw output. There is a separate folder for each prediction method. These folders can be re-used as input in the analysis section without re-running predictions.
+In each results folder you will find a sub-folder for each method. This has csv files with the predictions for each sequence, if using multiple protein sequences. This is the primary raw output. These folders can be re-used as input in the analysis section without re-running predictions and read by the web interface for presentation if needed. There are also files of the form final_method_n.csv which contain the promiscuous binders for each method.

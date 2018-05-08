@@ -2,7 +2,7 @@ Code Examples
 =============
 
 This page is for those using the Python API. For those wanting to use the command line application see the
-Command line interface page. General usage of this package is to provide quick access to binding prediction methods
+Command line interface page. General usage of this package is to provide convenient access to binding prediction methods
 and perform analysis on the results. There are multiple potential applications.
 
 Methodology
@@ -86,15 +86,15 @@ Analysis
 get all the binders using the current data loaded into the predictor::
 
     #default is to use percentile cutoff per allele, returns a dataframe
-    p.get_binders(cutoff=5)
+    p.get_binders(cutoff=.95)
 
 get binders for only one protein by top median rank::
 
-    p.get_binders(name=name, cutoff=20, cutoff_method='rank')
+    p.get_binders(name=name, cutoff=10, cutoff_method='rank')
 
 get all promiscuous binders, returns a dataframe::
 
-    pb = p.promiscuous_binders(n=2, cutoff=5)
+    pb = p.promiscuous_binders(n=2, cutoff=.95)
     #same using score cutoff
     pb = p.promiscuous_binders(n=2, cutoff_method='score', cutoff=500)
 
