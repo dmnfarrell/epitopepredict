@@ -187,7 +187,8 @@ class WorkFlow(object):
         x = pb.groupby('name').agg({'peptide':[base.first,np.size],
                                     P.scorekey:base.first}).reset_index()
         x.columns = [col[1]+'_'+col[0] if col[1]!='' else col[0] for col in x.columns.values]
-        x = x.rename(columns={'size_peptide':'binders','first_score':'max_score','first_peptide':'top_peptide'})
+        x = x.rename(columns={'size_peptide':'binders','first_%s' %P.scorekey:'max_score',
+                              'first_peptide':'top_peptide'})
         cl = analysis.find_clusters(pb)
         if len(cl)>0:
             cl = cl.groupby('name').size().rename('clusters').to_frame().reset_index()

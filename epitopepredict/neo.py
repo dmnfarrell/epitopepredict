@@ -50,12 +50,17 @@ class NeoEpitopeWorkFlow(object):
         elif self.mhc2_alleles[0] in base.mhc2_presets:
             self.mhc2_alleles = base.get_preset_alleles(self.mhc2_alleles[0])
 
-        if type(self.cutoffs) is int:
-            self.cutoffs = [self.cutoffs for p in self.predictors]
+        if type(self.cutoffs) is int or type(self.cutoffs) is float:
+            self.cutoffs = [self.cutoffs]
         else:
             self.cutoffs = [float(i) for i in self.cutoffs.split(',')]
-        self.names = self.names.split(',')
-        if self.names == ['']: self.names=None
+
+        if os.path.exists(self.names):
+            self.names = read_names(self.names)
+        elif self.names == '':
+            self.names=None
+        else:
+            self.names = self.names.split(',')
         if not os.path.exists(self.path) and self.path != '':
             os.mkdir(self.path)
         return True
@@ -77,8 +82,11 @@ class NeoEpitopeWorkFlow(object):
         path = self.path
         overwrite = self.overwrite
         files = self.vcf_files
+        preds = self.predictors
         labels = self.get_file_labels(files)
         cutoffs = self.cutoffs
+        if len(cutoffs) < len(preds) :
+            cutoffs = [cutoffs[0] for p in preds]
 
         for f in labels:
             print (f)

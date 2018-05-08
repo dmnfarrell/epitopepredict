@@ -282,7 +282,12 @@ def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
         return
 
     cols = ['allele','pos','peptide',P.scorekey]
-    d = df[cols].copy()
+    #d = df[cols].copy()
+    b = P.get_binders(**kwargs)
+    d = P.data.copy()
+    #mark binders
+    mask = d.index.isin(b.index)
+    d['binder'] = mask
 
     l = base.get_length(df)
     grps = df.groupby('allele')
@@ -299,8 +304,7 @@ def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
     if P.name not in ['tepitope']:
         d['score1'] = d[val].apply( lambda x: 1-math.log(x, 50000))
         val='score1'
-        cut = .42
-    d[val] = d[val].clip(cut)
+    d[val][d.binder==False] = min(d[val])
 
     source = ColumnDataSource(d)
     colors = all_palettes[palette][7]
@@ -312,7 +316,7 @@ def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
     p.rect(x="pos", y="allele", width=1, height=1,
            source=source,
            fill_color={'field': val,'transform':mapper},
-           line_color='gray', line_width=.2)
+           line_color='gray', line_width=.5)
     p.select_one(HoverTool).tooltips = [
          ('allele', '@allele'),
          (P.scorekey, '@%s{1.11}' %P.scorekey),

@@ -15,6 +15,8 @@ added neo module for neo-epitope prediction pipeline
 snap package now builds with some predictors built in
 fixed netmhciipan predictor
 default config file in home dir for paths
+changes default cutoff method for binders to use pre-defined quantiles for cutoffs
+simplified web interface
 
 ------
 0.2.0
