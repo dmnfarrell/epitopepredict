@@ -17,7 +17,7 @@ from epitopepredict import base, config, analysis, sequtils, peptutils
 defaultpath = os.getcwd()
 
 class NeoEpitopeWorkFlow(object):
-    """Class for implementing a rna/mirna workflow from a set of options"""
+    """Class for implementing a neo epitope workflow."""
     def __init__(self, opts={}):
         for i in opts:
             self.__dict__[i] = opts[i]
@@ -34,6 +34,12 @@ class NeoEpitopeWorkFlow(object):
         base.iedbmhc2path = self.iedbmhc2_path
 
         self.vcf_files = self.vcf_files.split(',')
+        f = self.vcf_files[0]
+        fileext = os.path.splitext(f)[1]
+        if fileext == '.txt' and os.path.exists(f):
+            print ('found file list')
+            self.vcf_files = read_names(f)
+
         self.mhc1_alleles = self.mhc1_alleles.split(',')
         self.mhc2_alleles = self.mhc2_alleles.split(',')
         if len(self.mhc1_alleles)==0 and len(self.mhc2_alleles)==0:
@@ -55,12 +61,8 @@ class NeoEpitopeWorkFlow(object):
         else:
             self.cutoffs = [float(i) for i in self.cutoffs.split(',')]
 
-        if os.path.exists(self.names):
-            self.names = read_names(self.names)
-        elif self.names == '':
-            self.names=None
-        else:
-            self.names = self.names.split(',')
+        self.names=None
+
         if not os.path.exists(self.path) and self.path != '':
             os.mkdir(self.path)
         return True
@@ -153,6 +155,15 @@ class NeoEpitopeWorkFlow(object):
         res=pd.concat(res)
         pd.pivot_table(res, index=['peptide'], columns=['label'], values='score')
         return
+
+def read_names(filename):
+    """read plain text file of items"""
+
+    with open(filename) as f:
+        p = f.readlines()
+    p = [x.strip() for x in p]
+    p = list(filter(None, p))
+    return p
 
 def get_variant_class(v):
     if v.is_deletion:

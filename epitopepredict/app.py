@@ -17,7 +17,7 @@ from epitopepredict import base, config, analysis, sequtils, plotting, neo
 defaultpath = os.getcwd()
 
 class WorkFlow(object):
-    """Class for implementing a rna/mirna workflow from a set of options"""
+    """Class for implementing a prediction workflow from a set of options"""
     def __init__(self, opts={}):
         for i in opts:
             self.__dict__[i] = opts[i]
