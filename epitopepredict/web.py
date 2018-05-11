@@ -67,17 +67,6 @@ def get_alleles(preds):
     a = list(set(a))
     return a
 
-'''def get_results(path, predictor, name=None):
-    """Get results from folder"""
-
-    P = base.get_predictor(predictor)
-    if name is not None:
-        filename = os.path.join(path, predictor, name)
-        P.load(filename+'.csv')
-    else:
-        P.load(path=os.path.join(path, predictor))
-    return P'''
-
 def get_predictors(path, name=None):
     """Get a set of predictors under a results path for all or a specific protein.
     """

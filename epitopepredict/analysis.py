@@ -74,7 +74,7 @@ def _center_nmer(x, n):
     #print(size, x.peptide, x.start, x.end, l, l1, start, end, seq, len(seq))
     return seq
 
-def _split_nmer(x, n, key, margin=3):
+def _split_nmer(x, n, key, margin=3, colname='peptide'):
     """Row based method to split a peptide in to multiple n-mers
         if it's too large. Returns a dataframe of 3 cols so should be
         applied using iterrows and then use concat"""
@@ -84,8 +84,7 @@ def _split_nmer(x, n, key, margin=3):
 
     if size <= n+m:
         seq = _center_nmer(x, n)
-        return pd.DataFrame({'peptide': seq,
-                             'start':x.start,'end':x.end},index=[0])
+        return pd.DataFrame({colname: seq},index=[0])
     else:
         seq = x[key]
         o=size%n
@@ -108,10 +107,10 @@ def _split_nmer(x, n, key, margin=3):
                 S.append(x.start+i)
                 E.append(x.start+i+n)
         seqs = pd.Series(seqs)
-        d = pd.DataFrame({'peptide':seqs,'start':S,'end':E})
+        d = pd.DataFrame({colname:seqs})
         return d
 
-def get_nmer(df, genome, length=20, seqkey='peptide', how='center', margin=3):
+def get_nmer(df, genome, length=20, seqkey='translation', how='center', margin=3):
     """
     Get n-mer peptide surrounding a set of sequences using the host
     protein sequence.
@@ -127,25 +126,29 @@ def get_nmer(df, genome, length=20, seqkey='peptide', how='center', margin=3):
         pandas Series with nmer values
     """
 
-    cols = ['locus_tag','gene','translation','length']
+    cols = ['locus_tag','gene','translation']
     cols = list(set(cols) & set(genome.columns))
-    #merge with genome dataframe but must keep index for re-merging!
+    #merge with genome dataframe but must keep index for re-merging
     temp = df.merge(genome[cols],left_on='name',right_on='locus_tag',
                     how='left').set_index(df.index)
     if not 'end' in list(temp.columns):
         temp = base.get_coords(temp)
-
     temp = base.get_coords(temp)
+    newcol = 'n-mer'
     if how == 'center':
-        res = temp.apply( lambda r: _center_nmer(r, length), 1)
+        temp[newcol] = temp.apply( lambda r: _center_nmer(r, length), 1)
+        res = temp
     elif how == 'split':
         res=[]
         for n,r in temp.iterrows():
-            d = _split_nmer(r, length, seqkey, margin)
+            d = _split_nmer(r, length, seqkey, margin, newcol)
             res.append(d)
             d['index']=n
             d.set_index('index',inplace=True)
+            #print d
         res = pd.concat(res)
+        res = temp.merge(res,left_index=True,right_index=True).reset_index(drop=True)
+    res=res.drop([seqkey],1)
     return res
 
 def create_nmers(df, genome, key='nmer', length=20, margin=1):
@@ -405,25 +408,11 @@ def dbscan(B=None, x=None, dist=7, minsize=4):
             return
         x = sorted(B.pos.astype('int'))
     clusts = _dbscan(x, dist, minsize)
-
-    '''from sklearn.cluster import DBSCAN
-    X = np.array(list(zip(x,np.zeros(len(x)))), dtype=np.int)
-    db = DBSCAN(eps=dist, min_samples=minsize)
-    db.fit(X)
-    labels = db.labels_
-    n_clusters_ = len(set(labels))
-    clusts=[]
-    for k in range(n_clusters_):
-        my_members = labels == k
-        #print "cluster {0}: {1}".format(k, X[my_members, 0])
-        if len(X[my_members, 0])>0:
-            clusts.append(list(X[my_members, 0]))'''
-
     #print (clusts)
     return clusts
 
 def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
-                 genome=None, colname='peptide'):
+                    genome=None, colname='peptide'):
     """
     Get clusters of binders for a set of binders.
     Args:
@@ -462,7 +451,6 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     x = x[x['length']>=min_size]
     x = x[x['length']<=max_size]
 
-    #if genome data available merge to get peptide seq
     '''cols = ['locus_tag','translation']
     if 'gene' in genome.columns:
         cols.append('gene')
@@ -505,32 +493,6 @@ def randomized_lists(df, n=94, seed=8, filename='peptide_lists'):
     #    g.sort_values(by='name')[lcols].to_excel(writer,'method'+str(i))
     plist.to_excel(writer,'original data', float_format='%.2f')
     writer.save()
-
-'''def genome_analysis(datadir,label,gname,method):
-    """this method should be made independent of web app paths etc"""
-
-    path = os.path.join(datadir, '%s/%s/%s' %(label,gname,method))
-    #path='test'
-    gfile = os.path.join(genomespath,'%s.gb' %gname)
-    g = sequtils.genbank2Dataframe(gfile, cds=True)
-    b = getAllBinders(path, method=method, n=5)
-    P = base.getPredictor(method)
-    res = b.groupby('name').agg({P.scorekey:[np.mean,np.size,np.max]}).sort()
-    res.columns = res.columns.get_level_values(1)
-    res = res.merge(g[['locus_tag','length','gene','product','order']],
-                            left_index=True,right_on='locus_tag')
-    res['perc'] = res['size']/res.length*100
-    res = res.sort('perc',ascending=False)
-
-    top = b.groupby('peptide').agg({P.scorekey:np.mean,'allele':np.max,
-                    'name': lambda x: x}).reset_index()
-    top = top.sort(P.scorekey,ascending=P.rankascending)
-    cl = findClusters(b, method, dist=9, minsize=3)
-    if cl is not None:
-        gc = cl.groupby('name').agg({'density':np.max})
-        res = res.merge(gc,left_on='locus_tag',right_index=True)
-    #print res[:10]
-    return res'''
 
 def tmhmm(fastafile=None, infile=None):
     """

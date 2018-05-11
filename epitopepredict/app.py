@@ -161,12 +161,21 @@ class WorkFlow(object):
 
             pb = P.promiscuous_binders(binders=b, n=n, cutoff=cutoff, cutoff_method=cutoff_method)
             print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
-            pb.to_csv(os.path.join(self.path,'final_%s_%s.csv' %(p,n)), float_format='%g')
+            x = analysis.get_nmer(pb, self.sequences, how='split', length=20)
+            x = analysis.peptide_properties(x, 'n-mer')
+            x.to_csv(os.path.join(self.path,'final_%s_%s.csv' %(p,n)), float_format='%g')
             if len(pb)>0:
                 print ('top promiscuous binders:')
                 print (pb[:10])
             if self.sequences is not None:
-                summary = self.get_summary(P, pb, self.sequences)
+                #do further analysis if using protein sequences
+                cl = analysis.find_clusters(pb)
+                #make peptide lists
+                cl = analysis.get_nmer(cl, self.sequences, how='split', length=20)
+                cl = analysis.peptide_properties(cl, 'n-mer')
+                cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
+                #make summary table
+                summary = self.get_summary(P, pb, self.sequences, clusters=cl)
                 summary.to_csv(os.path.join(self.path,'summary_%s.csv' %p))
             print ('-----------------------------')
             i+=1
@@ -175,7 +184,7 @@ class WorkFlow(object):
             self.combine(prom_binders)
         return
 
-    def get_summary(self, P, pb, seqs):
+    def get_summary(self, P, pb, seqs, clusters=None):
         """Get summary table for sequence based predictions.
         """
 
@@ -189,10 +198,10 @@ class WorkFlow(object):
         x.columns = [col[1]+'_'+col[0] if col[1]!='' else col[0] for col in x.columns.values]
         x = x.rename(columns={'size_peptide':'binders','first_%s' %P.scorekey:'max_score',
                               'first_peptide':'top_peptide'})
-        cl = analysis.find_clusters(pb)
-        if len(cl)>0:
-            cl = cl.groupby('name').size().rename('clusters').to_frame().reset_index()
-            x = x.merge(cl,on='name',how='left')
+        #cl = analysis.find_clusters(pb)
+        if clusters is not None and len(clusters)>0:
+            clusters = clusters.groupby('name').size().rename('clusters').to_frame().reset_index()
+            x = x.merge(clusters,on='name',how='left')
         if seqs is not None:
             if not 'length' in seqs.columns:
                 seqs['length'] = seqs.translation.str.len()
