@@ -931,9 +931,11 @@ class Predictor(object):
             path = self.path
         data = results_from_csv(path, names, compression, file_limit)
         if data is None:
-            print ('no data found')
+            print ('no data found in path %s' %path)
         else:
             self.data = data
+        if not self.scorekey in data.columns:
+            print ('WARNING. this does not look like the correct data for this predictor')
         return
 
     def save(self, prefix='_', filename=None, compression=None):
@@ -1132,7 +1134,6 @@ class NetMHCIIPanPredictor(Predictor):
             print('netmhciipan not installed?')
             return []
         alleles = temp.split('\n')#[34:]
-        #alleles =  list(set([self.convert_allele_name(i) for i in alleles]))
         return alleles
 
     def convert_allele_name(self, a):

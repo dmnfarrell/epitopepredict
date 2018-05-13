@@ -92,7 +92,7 @@ def _split_nmer(x, n, key, margin=3, colname='peptide'):
         if o<=margin:
             size=size-o
             seq = _center_nmer(x, size)
-            print (size)
+            #print (size)
         seqs=[]
         S=[];E=[]
         if x.start==0: s=1
@@ -450,7 +450,8 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     x['length'] = (x.end-x.start)
     x = x[x['length']>=min_size]
     x = x[x['length']<=max_size]
-
+    x=x.sort_values(['binders','length'],ascending=False)
+    
     '''cols = ['locus_tag','translation']
     if 'gene' in genome.columns:
         cols.append('gene')

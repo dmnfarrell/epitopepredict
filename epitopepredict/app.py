@@ -138,7 +138,7 @@ class WorkFlow(object):
             cutoffs = [cutoffs[0] for p in preds]
         cutoff_method = self.cutoff_method
         i=0
-        prom_binders = []
+        prom_binders = {}
         print ('analysing results..')
         for P in self.preds:
             p = P.name
@@ -161,13 +161,16 @@ class WorkFlow(object):
 
             pb = P.promiscuous_binders(binders=b, n=n, cutoff=cutoff, cutoff_method=cutoff_method)
             print ('found %s promiscuous binders at cutoff=%s, n=%s' %(len(pb),cutoff,n))
-            x = analysis.get_nmer(pb, self.sequences, how='split', length=20)
-            x = analysis.peptide_properties(x, 'n-mer')
-            x.to_csv(os.path.join(self.path,'final_%s_%s.csv' %(p,n)), float_format='%g')
+            pb.to_csv(os.path.join(self.path,'final_%s_%s.csv' %(p,n)), float_format='%g')
+            prom_binders[p] = pb
+
             if len(pb)>0:
                 print ('top promiscuous binders:')
                 print (pb[:10])
             if self.sequences is not None:
+                x = analysis.get_nmer(pb, self.sequences, how='split', length=20)
+                x = analysis.peptide_properties(x, 'n-mer')
+                x.to_csv(os.path.join(self.path,'final_%s_%s.csv' %(p,n)), float_format='%g')
                 #do further analysis if using protein sequences
                 cl = analysis.find_clusters(pb)
                 #make peptide lists
@@ -179,9 +182,11 @@ class WorkFlow(object):
                 summary.to_csv(os.path.join(self.path,'summary_%s.csv' %p))
             print ('-----------------------------')
             i+=1
-            prom_binders.append(pb)
-        if len(prom_binders) >1:
-            self.combine(prom_binders)
+
+        if len(prom_binders) > 1:
+            print ('finding combined list of binders')
+            comb = self.combine(prom_binders)
+            comb.to_csv(os.path.join(self.path,'combined.csv'), float_format='%g')
         return
 
     def get_summary(self, P, pb, seqs, clusters=None):
@@ -198,7 +203,7 @@ class WorkFlow(object):
         x.columns = [col[1]+'_'+col[0] if col[1]!='' else col[0] for col in x.columns.values]
         x = x.rename(columns={'size_peptide':'binders','first_%s' %P.scorekey:'max_score',
                               'first_peptide':'top_peptide'})
-        #cl = analysis.find_clusters(pb)
+
         if clusters is not None and len(clusters)>0:
             clusters = clusters.groupby('name').size().rename('clusters').to_frame().reset_index()
             x = x.merge(clusters,on='name',how='left')
@@ -213,15 +218,18 @@ class WorkFlow(object):
         return x
 
     def combine(self, data):
-        """Combine peptide binders present in all methods"""
+        """Combine peptide binders present in all methods."""
 
         cols = ['peptide','alleles','mean']
-        df1=data[0][cols]; df2=data[1][cols]
-        df = df1.merge(df2, on=['peptide'], how='inner', suffixes=['_1','_2'])
-        #print (df[:10])
-        if len(df)>1:
-            df.to_csv(os.path.join(self.path,'combined.csv'),float_format='%g')
-        return
+        keys = data.keys()
+        n1 = keys[0]
+        df = data[n1][['name']+cols]
+        for n in keys[1:]:
+            if data[n] is None:
+                continue
+            df2 = data[n][cols]
+            df = df.merge(df2, on=['peptide'], how='inner', suffixes=['_'+n1,'_'+n])
+        return df
 
     def plot_results(self):
         """Plot results of predictions"""
