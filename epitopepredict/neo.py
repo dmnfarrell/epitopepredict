@@ -107,7 +107,7 @@ class NeoEpitopeWorkFlow(object):
             else:
                 #else reload from last run
                 effects = pickle.load(open(eff_obj,'r'))
-            #save as table
+            #save effects as table
             eff_data = effects_to_dataframe(effects)
             eff_data['sample'] = f
             eff_data.to_csv(eff_csv)
@@ -320,6 +320,8 @@ def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=T
     return res
 
 def load_variants(vcf_file=None, maf_file=None, max_variants=None):
+    """Load variants from vcf file"""
+    
     import varcode
     if vcf_file is not None:
         variants = varcode.load_vcf(vcf_file, allow_extended_nucleotides=True, max_variants=max_variants)

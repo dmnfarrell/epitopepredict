@@ -34,7 +34,7 @@ config_file = config.write_default_config()
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'mhcdata')
-predictors = ['tepitope','netmhciipan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets']#,'iedbbcell']
+predictors = ['tepitope','netmhciipan','netMHCpan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets']
 iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'netmhcpan', 'smmpmbec']
 mhc1_predictors = ['iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
@@ -119,7 +119,9 @@ def get_overlapping(index, s, length=9, cutoff=25):
 def get_predictor(name='tepitope', **kwargs):
     """Get a predictor"""
 
-    if name == 'netmhciipan':
+    if name == 'netmhcpan':
+        return NetMHCPanPredictor(**kwargs)
+    elif name == 'netmhciipan':
         return NetMHCIIPanPredictor(**kwargs)
     elif name == 'iedbmhc1':
         return IEDBMHCIPredictor(**kwargs)
@@ -1046,6 +1048,74 @@ class Predictor(object):
 
         if os.path.exists(self.temppath):
             shutil.rmtree(self.temppath)
+        return
+
+class NetMHCPanPredictor(Predictor):
+    """netMHCpan predictor"""
+    def __init__(self, data=None):
+        Predictor.__init__(self, data=data)
+        self.name = 'netmhcpan'
+        self.colnames = ['pos','HLA','peptide','Identity','Pos','Core',
+                         '1-log50k(aff)','Affinity','Rank']
+        self.scorekey = 'Affinity'
+        self.cutoff = 500
+        self.operator = '<'
+        self.rankascending = 1
+
+    def read_result(self, res):
+        """Read raw results from netMHCpan output"""
+
+        data=[]
+        res = res.split('\n')[19:]
+        ignore=['Protein','pos','Number','']
+        for r in res:
+            if r.startswith('-'): continue
+            row = re.split('\s*',r.strip())[:9]
+            if len(row)!=9 or row[0] in ignore:
+                continue
+            data.append(dict(zip(self.colnames,row)))
+        return data
+
+    def predict(self, peptides, allele='HLA-A*01:01', name='temp',
+                pseudosequence=None, **kwargs):
+        """Call netMHCpan command line."""
+
+        allele = allele.replace('*','')
+
+        #write peptides to temp file
+        pepfile = tempfile.mktemp()+'.pep'
+        with open(pepfile ,'w') as f:
+            for p in peptides:
+                f.write(p+'\n')
+        f.close()
+
+        cmd = 'netMHCpan -f %s -inptype 1 -a %s' %(pepfile , allele)
+        print (cmd)
+        try:
+            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        except Exception as e:
+            #print (e)
+            return
+        rows = self.read_result(temp)
+        res = pd.DataFrame(rows)
+        if len(res)==0:
+            return res
+        self.prepare_data(res, name)
+        return self.data
+
+    def prepare_data(self, df, name):
+        """Prepare netmhciipan results as a dataframe"""
+
+        #df = df.convert_objects(convert_numeric=True)
+        df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
+        df['name'] = name
+        df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
+        df = df.drop(['Pos','Identity','Rank'],1)
+        df = df.dropna()
+        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
+        df['score'] = df['Affinity']
+        self.get_ranking(df)
+        self.data = df
         return
 
 class NetMHCIIPanPredictor(Predictor):
