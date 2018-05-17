@@ -59,7 +59,8 @@ baseoptions['iedbtools'] = {'iedbmhc1_path':'', 'iedbmhc2_path':'',
                             'iedb_mhc1_method':'IEDB_recommended',
                             'iedb_mhc2_method':'IEDB_recommended'}
 
-baseoptions['neopredict'] = {'vcf_files':'','maf_files':''}
+baseoptions['neopredict'] = {'vcf_files':'',
+                             'selection_method':'promiscuity'}
 
 def write_default_config():
     """Write a default config to users .config folder. Used to add global settings."""

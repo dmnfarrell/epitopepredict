@@ -34,7 +34,7 @@ config_file = config.write_default_config()
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'mhcdata')
-predictors = ['tepitope','netmhciipan','netMHCpan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets']
+predictors = ['tepitope','netmhciipan','netmhcpan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets']
 iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'netmhcpan', 'smmpmbec']
 mhc1_predictors = ['iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
@@ -1253,7 +1253,7 @@ class IEDBMHCIPredictor(Predictor):
             length = peptides.peptide.str.len().max()
         else:
             return
-        #print (seqfile, length)
+
         if not os.path.exists(self.iedbmhc1_path):
             print ('IEDB MHC-I tools not found, set the iedbmhc1path variable')
             return

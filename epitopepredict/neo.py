@@ -15,6 +15,7 @@ from collections import OrderedDict
 from epitopepredict import base, config, analysis, sequtils, peptutils
 
 defaultpath = os.getcwd()
+sim_matrix = tepitope.get_matrix('pmbec')
 
 class NeoEpitopeWorkFlow(object):
     """Class for implementing a neo epitope workflow."""
@@ -156,6 +157,19 @@ class NeoEpitopeWorkFlow(object):
         pd.pivot_table(res, index=['peptide'], columns=['label'], values='score')
         return
 
+mat = pd.read_csv('cov_matrix.pmbec.mat',sep='\s+').to_dict()
+
+def pbmec_score(seq1, seq2):
+    """Score with PBMEC matrix"""
+    x=0
+    try:
+        for i in seq1:
+            for j in seq2:
+                x+=sim_matrix[i][j]
+    except:
+        return -1
+    return x
+
 def read_names(filename):
     """read plain text file of items"""
 
@@ -277,8 +291,10 @@ def peptides_from_effect(eff, length=11, peptides=True):
     if len(mutpep)<length:
         return
     if peptides is True:
+        wdf = peptutils.get_fragments(seq=wt, length=length)
         df = peptutils.get_fragments(seq=mutpep, length=length)
         df['pos'] = pd.Series(range(st,end))
+        df['wt'] = wdf.peptide
     else:
         #just return the mutated protein
         df = pd.DataFrame.from_dict([{'wt_sequence':orig,'mutant_sequence': mut}])
@@ -298,7 +314,9 @@ def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=T
     """
     Get mutant proteins or peptide fragments from vcf or maf file.
     Args:
-        peptides:
+        variants: varcode variant collection
+        effects: non-synonmymous effects, alternative to variants
+        peptides: get peptide fragments around mutation
     Returns:
         pandas dataframe with mutated peptide sequence and source information
     """
@@ -314,6 +332,9 @@ def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=T
         peps = peptides_from_effect(eff, length=length, peptides=peptides)
         res.append(peps)
     res = pd.concat(res).reset_index(drop=True)
+    res['wt_similarity'] = res.apply(lambda x: pbmec_score(x.peptide, x.wt), 1)
+    #remove rows where mut same as wt peptide
+    res = res[res.peptide!=res.wt]
     if drop_duplicates == True:
         res = res.drop_duplicates('peptide')
     print ('%s sequences/peptides from %s effects' %(len(res),len(effects)))
@@ -321,7 +342,7 @@ def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=T
 
 def load_variants(vcf_file=None, maf_file=None, max_variants=None):
     """Load variants from vcf file"""
-    
+
     import varcode
     if vcf_file is not None:
         variants = varcode.load_vcf(vcf_file, allow_extended_nucleotides=True, max_variants=max_variants)
