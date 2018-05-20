@@ -12,7 +12,7 @@ import shutil
 import pickle
 import pandas as pd
 from collections import OrderedDict
-from epitopepredict import base, config, analysis, sequtils, peptutils
+from epitopepredict import base, config, analysis, sequtils, peptutils, tepitope
 
 defaultpath = os.getcwd()
 sim_matrix = tepitope.get_matrix('pmbec')

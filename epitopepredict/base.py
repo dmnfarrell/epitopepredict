@@ -94,6 +94,10 @@ def get_preset_alleles(name):
 def first(x):
     return x.iloc[0]
 
+def get_pos(x):
+    x['pos'] = np.arange(len(x))
+    return x
+
 def get_iedb_request(seq, alleles='HLA-DRB1*01:01', method='consensus3'):
     import requests
     url = 'http://tools.iedb.org/tools_api/mhcii/'
@@ -680,6 +684,11 @@ class Predictor(object):
         These are treated as individual peptides and not split into n-mers. This is
         usually called wrapped by predict_peptides. If the predict method for the class
         can only accept protein sequences this needs to be overriden.
+        Args:
+            peptides: list of peptides
+            alleles: list of alleles
+        Returns:
+            dataframe with results
         """
 
         res=[]
@@ -688,19 +697,29 @@ class Predictor(object):
             return
         if type(alleles) is str:
             alleles = [alleles]
+
+        #s = pd.DataFrame(peptides,columns=['peptide'])
+        peptides = [i for i in peptides if i is not None]
+
         for a in alleles:
             df = self.predict(peptides=peptides, allele=a, **kwargs)
             if df is None:
                 continue
+            #if keep_empty == True:
+                 #df = s.merge(df,on=['peptide'],how='left')
+                 #df['allele'] = df.allele.ffill()
+                 #df['pos'] = df.index.copy()
             res.append(df)
             if verbose == True and len(df)>0:
                 x = df.iloc[0]
-                s = self.format_row(x)
-                print (s)
+                r = self.format_row(x)
+                print (r)
+
         if len(res) == 0:
             return
 
         data = pd.concat(res)
+        #print (data)
         self.data = data
         return data
 
@@ -714,9 +733,12 @@ class Predictor(object):
             if overwrite == False and os.path.exists(fname):
                 #load the data if present and not overwriting
                 print ('results file found, not overwriting')
-                #self.load(path=fname)
                 self.path = fname
                 return
+
+        #store original peptide list as dataframe to keep order
+        s = pd.DataFrame(peptides,columns=['peptide'])
+
         if cpus == 1:
             data = self._predict_peptides(peptides, **kwargs)
         else:
@@ -726,13 +748,23 @@ class Predictor(object):
             print ('empty result returned')
             return
 
-        data = data.reset_index(drop=True)
-        data = data.groupby('allele').apply(self.get_ranking)
+        #get original peptide positions by re-merging with original peptide dataframe
+        #also allows us to keep empty rows in correct order
+        new = []
+        for i,g in data.groupby('allele'):
+            x = s.merge(g,on=['peptide'],how='left')
+            x['pos'] = x.index.copy()
+            x['allele'] = x.allele.ffill()
+            new.append(x)
+            #print (x)
+
+        data = pd.concat(new).reset_index(drop=True)
+        data = data.groupby('allele').apply(self.get_ranking) #move this to loop
         data = data.reset_index(drop=True)
         if name==None:
             name=self.name
         data['name'] = name
-
+        #print (data)
         if path is not None:
             data.to_csv(fname, float_format='%g')
             self.path = fname
