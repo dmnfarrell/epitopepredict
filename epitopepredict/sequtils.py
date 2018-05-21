@@ -144,18 +144,18 @@ def blast_sequences(database, seqs, labels=None, **kwargs):
     res = []
     if labels == None:
         labels = seqs
+    recs=[]
     for seq, name in zip(seqs,labels):
         if type(seq) is not SeqRecord:
-            rec = SeqRecord(Seq(seq),id='temp')
+            rec = SeqRecord(Seq(seq),id=name)
         else:
             rec = seq
             name = seq.id
-        SeqIO.write([rec], 'tempseq.fa', "fasta")
-        local_blast(database, 'tempseq.fa', **kwargs)
-        df = get_blast_results(filename='tempseq_blast.txt')
-        df['id'] = name
-        res.append(df)
-    return pd.concat(res)
+        recs.append(rec)
+    SeqIO.write(recs, 'tempseq.fa', "fasta")
+    local_blast(database, 'tempseq.fa', **kwargs)
+    df = get_blast_results(filename='tempseq_blast.txt')
+    return df
 
 def fasta_to_dataframe(infile, header_sep=None, key='locus_tag', seqkey='translation'):
     """Get fasta proteins into dataframe"""

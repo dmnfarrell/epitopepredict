@@ -374,6 +374,55 @@ def predict_variants(data, length=9,  predictor='tepitope', alleles=[],
     #x = self_similarity(pred, proteome="human_proteome")
     return res
 
+def combine_wt_scores(x, y, key):
+    """Combine mutant and matching wt binding scores.
+    Some wt rows are empty so we have to account for this."""
+
+    x = x.sort_values(['pos','allele']).reset_index(drop=True)
+    y = y.sort_values(['pos','allele']).reset_index(drop=True)
+    #print x
+    #print y
+    x['wt_score'] = y[key]
+    return x
+
+def self_similarity(df, proteome="human_proteome", cpus=4, verbose=False):
+    """
+    Get similarity measures for peptides to a self proteomes. Does a
+    local blast to the proteome and finds most similar matches. These
+    are then scored using the pbmec matrix.
+    Args:
+        df: dataframe of peptides
+        proteome: name of blast db for proteome
+    Returns:
+        dataframe with
+    """
+
+    if verbose==True:
+        print ('blasting %s peptides' %len(df))
+    length = df.peptide.str.len().max()
+    bl = sequtils.blast_sequences("human_proteome", df.peptide, evalue=100, cpus=cpus,
+                                  gapopen=10, gapextend=2)
+
+    if len(bl) == 0:
+        print ('no hits found!')
+        return df
+    print ('%s hits' %len(bl))
+    cols = ['qseqid','mismatch'] #'qseq','sseq','sseqid','pident','length']
+
+    #ignore any hits with gaps
+    bl = bl[(bl.length>=length) & (bl.gapopen==0)]
+    #take only most similar hit
+    bl = bl.groupby(['qseqid'],as_index=False).first()
+    #print bl
+    bl = bl[cols]
+    #merge results
+    x = df.merge(bl,left_on='peptide',right_on='qseqid', how='left')
+    x = x.sort_values(by='mismatch',ascending=True)
+
+    #x['self_score'] = x.apply(lambda x: pbmec_score(x.qseq, x.sseq), 1)
+    x['self_match'] = x.mismatch.clip(0,1).fillna(1)
+    return x
+
 def show_predictors():
     for p in base.predictors:
         print(p)
