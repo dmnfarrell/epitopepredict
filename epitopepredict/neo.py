@@ -157,8 +157,6 @@ class NeoEpitopeWorkFlow(object):
         pd.pivot_table(res, index=['peptide'], columns=['label'], values='score')
         return
 
-mat = pd.read_csv('cov_matrix.pmbec.mat',sep='\s+').to_dict()
-
 def pbmec_score(seq1, seq2):
     """Score with PBMEC matrix"""
     x=0
@@ -179,7 +177,8 @@ def read_names(filename):
     p = list(filter(None, p))
     return p
 
-def get_variant_class(v):
+def get_variant_class(effect):
+    v = effect.variant
     if v.is_deletion:
         return 'deletion'
     elif v.is_insertion:
@@ -188,6 +187,8 @@ def get_variant_class(v):
         return 'snv'
     elif v.is_indel:
         return 'indel'
+    elif type(effect) is varcode.effects.effect_classes.FrameShift:
+        return 'frameshift'
 
 def get_variant_effect(variant, verbose=False):
     """Get priority variant effects from a set of variants loaded with
@@ -257,7 +258,7 @@ def effects_to_dataframe(effects):
         vloc = eff.aa_mutation_start_offset
         d['aa_change'] = eff.short_description
         d['mutation'] = eff.variant.short_description
-        d['variant_class'] = get_variant_class(eff.variant)
+        d['variant_class'] = get_variant_class(eff)
         #d['wt_sequence'] = wt
         #d['mut_sequence'] = mut
         x.append(d)
@@ -280,21 +281,26 @@ def peptides_from_effect(eff, length=11, peptides=True):
     mut = eff.mutant_protein_sequence
     vloc = eff.aa_mutation_start_offset
     st = vloc-pad; end = vloc+pad+1
-    #print type(eff)
+
     if type(eff) is varcode.effects.effect_classes.FrameShift:
-        #mutpep = mut[vloc:]
         mutpep = eff.shifted_sequence
-        wt = ''
+        #print (mutpep)
+        wt = None
     else:
         wt = orig[st:end]
         mutpep = mut[st:end]
+    #print type(eff), wt
     if len(mutpep)<length:
         return
     if peptides is True:
-        wdf = peptutils.get_fragments(seq=wt, length=length)
         df = peptutils.get_fragments(seq=mutpep, length=length)
         df['pos'] = pd.Series(range(st,end))
-        df['wt'] = wdf.peptide
+        if wt != None:
+            wdf = peptutils.get_fragments(seq=wt, length=length)
+            df['wt'] = wdf.peptide
+        else:
+            df['wt'] = None
+        #print (df)
     else:
         #just return the mutated protein
         df = pd.DataFrame.from_dict([{'wt_sequence':orig,'mutant_sequence': mut}])
@@ -306,7 +312,7 @@ def peptides_from_effect(eff, length=11, peptides=True):
     #df['transcript_name'] = eff.transcript_name
     df['aa_change'] = eff.short_description
     df['mutation'] = eff.variant.short_description
-    df['variant_class'] = get_variant_class(eff.variant)
+    df['variant_class'] = get_variant_class(eff)
     return df
 
 def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=True,
@@ -353,25 +359,38 @@ def load_variants(vcf_file=None, maf_file=None, max_variants=None):
     print ('%s variants read from %s' %(len(variants),f))
     return variants
 
-def predict_variants(data, length=9,  predictor='tepitope', alleles=[],
+def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
                      path='', verbose=False, cpus=1, predictor_kwargs={}):
     """
-    Predict binding scores for mutated peptides from supplied variants.
+    Predict binding scores for mutated and wt peptides (if present) from supplied variants.
     Args:
-        data: pandas dataframe with peptide sequences derived from get_mutant_sequences
+        df: pandas dataframe with peptide sequences derived from get_mutant_sequences.
+    Returns:
+        dataframe of results with mutant and wt scores for all alleles plus score columns
+        for similarity to wt peptides
     """
 
     if not os.path.exists(path):
         os.mkdir(path)
-    df=data
     P = base.get_predictor(predictor)
+    print (P)
     print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
-    peps = P.predict_peptides(df.peptide, alleles=alleles, cpus=cpus, **predictor_kwargs)
-    peps = peps.drop(['pos','name'],1)
 
-    res = df.merge(peps, on='peptide')
-    #print (len(b), len(res))
-    #x = self_similarity(pred, proteome="human_proteome")
+    b = P.predict_peptides(df.peptide, alleles=alleles, cpus=cpus, path=path, **predictor_kwargs)
+    #predict wild type
+    wtpeps = list(df.wt.dropna())
+    b_wt = P.predict_peptides(wtpeps, alleles=alleles, cpus=cpus, path=path, **predictor_kwargs)
+
+    #combine mutant and wt binding predictions
+    b = combine_wt_scores(b, b_wt, P.scorekey)
+    b = b.drop(['pos','name'],1)
+    res = df.merge(b, on='peptide')
+
+    #find matches to self proteome, adds penalty score column to df
+    res = self_matches(res, cpus=cpus)
+    #get wt similarity score from either wt or closest match to proteome
+    res['wt_similarity'] = res.apply(wt_similarity,1)
+    res.to_csv(os.path.join(path, 'results_%s.csv' %predictor))
     return res
 
 def combine_wt_scores(x, y, key):
@@ -380,34 +399,38 @@ def combine_wt_scores(x, y, key):
 
     x = x.sort_values(['pos','allele']).reset_index(drop=True)
     y = y.sort_values(['pos','allele']).reset_index(drop=True)
-    #print x
-    #print y
     x['wt_score'] = y[key]
     return x
 
-def self_similarity(df, proteome="human_proteome", cpus=4, verbose=False):
+def wt_similarity(x):
+    if x.wt!=None:
+        return pbmec_score(x.peptide, x.wt)
+    elif x.sseq != None:
+        return pbmec_score(x.peptide, x.sseq)
+
+def self_matches(df, proteome="human_proteome", cpus=4, verbose=False):
     """
-    Get similarity measures for peptides to a self proteomes. Does a
+    Get similarity measures for peptides to a self proteome. Does a
     local blast to the proteome and finds most similar matches. These
-    are then scored using the pbmec matrix.
+    can then be scored.
     Args:
         df: dataframe of peptides
         proteome: name of blast db for proteome
     Returns:
-        dataframe with
+        dataframe with extra columns: 'sseq','mismatch'
     """
 
-    if verbose==True:
-        print ('blasting %s peptides' %len(df))
+    #if verbose==True:
+    print ('blasting %s peptides' %len(df))
     length = df.peptide.str.len().max()
-    bl = sequtils.blast_sequences("human_proteome", df.peptide, evalue=100, cpus=cpus,
+    bl = sequtils.blast_sequences("blastdb/human_proteome", df.peptide, evalue=100, cpus=cpus,
                                   gapopen=10, gapextend=2)
 
     if len(bl) == 0:
         print ('no hits found!')
         return df
     print ('%s hits' %len(bl))
-    cols = ['qseqid','mismatch'] #'qseq','sseq','sseqid','pident','length']
+    cols = ['qseqid','sseq','mismatch'] #'qseq','sseq','sseqid','pident','length']
 
     #ignore any hits with gaps
     bl = bl[(bl.length>=length) & (bl.gapopen==0)]
@@ -418,9 +441,8 @@ def self_similarity(df, proteome="human_proteome", cpus=4, verbose=False):
     #merge results
     x = df.merge(bl,left_on='peptide',right_on='qseqid', how='left')
     x = x.sort_values(by='mismatch',ascending=True)
-
-    #x['self_score'] = x.apply(lambda x: pbmec_score(x.qseq, x.sseq), 1)
-    x['self_match'] = x.mismatch.clip(0,1).fillna(1)
+    x = x.drop(['qseqid'],1)
+    x['exact_match'] = x.mismatch.clip(0,1).fillna(1)
     return x
 
 def show_predictors():
@@ -475,9 +497,9 @@ def test_run():
     print ('neoepitope workflow test')
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
-    options['base']['predictors'] = 'tepitope,mhcflurry'
+    options['base']['predictors'] = 'mhcflurry'
     options['base']['mhc1_alleles'] = 'HLA-A*01:01,HLA-A*02:01,HLA-A*03:01'
-    options['base']['mhc2_alleles'] = 'HLA-DRB1*01:01,HLA-DRB1*04:01,HLA-DRB1*08:01,HLA-DRB1*09:01,HLA-DRB1*11:01'
+    #options['base']['mhc2_alleles'] = 'HLA-DRB1*01:01,HLA-DRB1*04:01,HLA-DRB1*08:01,HLA-DRB1*09:01,HLA-DRB1*11:01'
     options['base']['path'] = 'neo_test'
     options['base']['mhc2_length'] = 11
     #options['base']['verbose'] = True
