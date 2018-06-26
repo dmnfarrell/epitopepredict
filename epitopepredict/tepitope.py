@@ -205,6 +205,8 @@ def similarity_score(matrix, ref, query):
         a similarity value normalized to matrix
     """
 
+    if type(ref) is not str or type(query) is not str:
+        return
     r=ref; q=query
     sim = sum([matrix[i][j] for i,j in zip(r,q) if (i!= '-' and j!='-')])
     sim1 = sum([matrix[i][j] for i,j in zip(r,r) if (i!= '-' and j!='-')])

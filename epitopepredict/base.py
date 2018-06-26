@@ -754,13 +754,14 @@ class Predictor(object):
         for i,g in data.groupby('allele'):
             x = s.merge(g,on=['peptide'],how='left')
             x['pos'] = x.index.copy()
-            x['allele'] = x.allele.ffill()
+            x['allele'] = x.allele.fillna(i)
             new.append(x)
             #print (x)
 
         data = pd.concat(new).reset_index(drop=True)
         data = data.groupby('allele').apply(self.get_ranking) #move this to loop
         data = data.reset_index(drop=True)
+
         if name==None:
             name=self.name
         data['name'] = name
