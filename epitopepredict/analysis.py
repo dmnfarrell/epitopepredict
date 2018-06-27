@@ -451,7 +451,7 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     x = x[x['length']>=min_size]
     x = x[x['length']<=max_size]
     x=x.sort_values(['binders','length'],ascending=False)
-    
+
     '''cols = ['locus_tag','translation']
     if 'gene' in genome.columns:
         cols.append('gene')

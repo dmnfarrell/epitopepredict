@@ -11,6 +11,8 @@ import sys, os, subprocess
 import shutil
 import pickle
 import pandas as pd
+pd.set_option('display.width', 120)
+pd.set_option('max_colwidth', 80)
 from collections import OrderedDict
 from epitopepredict import base, config, analysis, sequtils, peptutils, tepitope
 
@@ -206,25 +208,24 @@ def get_variant_effect(variant, verbose=False):
 
     if len(effs)>0:
         eff = effs.top_priority_effect()
-        if verbose==True:
-            print (v, v.gene_names)
-            print (get_variant_class(variant))
-            print (type(eff))
-            print (effs)
-            print()
     else:
+        if verbose == True:
+            print ('no effects')
         return
     mut = eff.mutant_protein_sequence
     #if type(eff) is varcode.effects.effect_classes.FrameShift:
-    #    print (eff, eff.shifted_sequence)
+    #    print eff, eff.shifted_sequence
     if mut is None:
         return
+
     vloc = eff.aa_mutation_start_offset
     if vloc is None or len(v.coding_genes) == 0:
         return
     if verbose==True:
+        print (v.gene_names, type(eff))
         print (eff.transcript_id, eff.short_description, eff.variant.ref)
-        print (v.contig)
+        #print v.contig
+        #print mut
         #print eff.to_dict()['variant'].to_dict()
     return eff
 
@@ -266,7 +267,7 @@ def effects_to_dataframe(effects):
     df['chr'] = df.apply(lambda x: x.mutation.split(' ')[0],1)
     return df
 
-def peptides_from_effect(eff, length=11, peptides=True):
+def peptides_from_effect(eff, length=11, peptides=True, verbose=False):
     """Get mutated peptides from an effect object.
     Returns:
         dataframe with peptides and variant info
@@ -277,24 +278,37 @@ def peptides_from_effect(eff, length=11, peptides=True):
     if eff==None:
         return
     gene = eff.gene_name
+    varclass = get_variant_class(eff)
     orig = eff.original_protein_sequence
     mut = eff.mutant_protein_sequence
     vloc = eff.aa_mutation_start_offset
     st = vloc-pad; end = vloc+pad+1
+    if st<0: st=0
 
+    #if frameshift changed sequence may be long
     if type(eff) is varcode.effects.effect_classes.FrameShift:
+        #mutpep = mut[vloc:]
         mutpep = eff.shifted_sequence
         #print (mutpep)
         wt = None
+        #print (type(eff), len(orig), len(mut), vloc, len(mutpep), mutpep, mut[vloc:], wt)
+        #print (mut)
     else:
-        wt = orig[st:end]
         mutpep = mut[st:end]
-    #print type(eff), wt
+        if varclass == 'snv':
+            wt = orig[st:end]
+        else:
+            wt = None
+    if verbose == True:
+        print (type(eff), len(orig), len(mut), vloc, st, end, len(mutpep))
     if len(mutpep)<length:
+        if verbose == True:
+            print ('peptide length too small')
         return
     if peptides is True:
         df = peptutils.get_fragments(seq=mutpep, length=length)
         df['pos'] = pd.Series(range(st,end))
+        df['prot_length_ratio'] = len(mut)/float(len(orig))
         if wt != None:
             wdf = peptutils.get_fragments(seq=wt, length=length)
             df['wt'] = wdf.peptide
@@ -312,7 +326,7 @@ def peptides_from_effect(eff, length=11, peptides=True):
     #df['transcript_name'] = eff.transcript_name
     df['aa_change'] = eff.short_description
     df['mutation'] = eff.variant.short_description
-    df['variant_class'] = get_variant_class(eff)
+    df['variant_class'] = varclass
     return df
 
 def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=True,
@@ -335,10 +349,10 @@ def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=T
         return
 
     for eff in effects:
-        peps = peptides_from_effect(eff, length=length, peptides=peptides)
+        peps = peptides_from_effect(eff, length=length, peptides=peptides, verbose=verbose)
         res.append(peps)
     res = pd.concat(res).reset_index(drop=True)
-    res['wt_similarity'] = res.apply(lambda x: pbmec_score(x.peptide, x.wt), 1)
+
     #remove rows where mut same as wt peptide
     res = res[res.peptide!=res.wt]
     if drop_duplicates == True:
@@ -360,7 +374,7 @@ def load_variants(vcf_file=None, maf_file=None, max_variants=None):
     return variants
 
 def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
-                     path='', verbose=False, cpus=1, predictor_kwargs={}):
+                     verbose=False, cpus=1, predictor_kwargs={}):
     """
     Predict binding scores for mutated and wt peptides (if present) from supplied variants.
     Args:
@@ -370,80 +384,190 @@ def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
         for similarity to wt peptides
     """
 
-    if not os.path.exists(path):
-        os.mkdir(path)
+    #if not os.path.exists(path):
+    #    os.mkdir(path)
+
+    #find matches to self proteome, adds penalty score column to df
+    #we should only blast non-duplicates....
+    print ('finding matches to self proteome')
+    df = self_matches(df, cpus=cpus)
+    print ('finding matches to viral proteomes')
+    df = virus_matches(df, cpus=cpus)
+    #get similarity scores for wt and closest match to proteome
+    df['wt_similarity'] = df.apply(wt_similarity,1)
+    df['self_similarity'] = df.apply(self_similarity,1)
+    #get closest peptide in one column, either wt or nearest self
+    df['closest'] = df.apply(get_closest_match, 1)
+
     P = base.get_predictor(predictor)
     print (P)
     print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
 
-    b = P.predict_peptides(df.peptide, alleles=alleles, cpus=cpus, path=path, **predictor_kwargs)
-    #predict wild type
-    wtpeps = list(df.wt.dropna())
-    b_wt = P.predict_peptides(wtpeps, alleles=alleles, cpus=cpus, path=path, **predictor_kwargs)
+    res = P.predict_peptides(df.peptide, alleles=alleles, cpus=cpus, **predictor_kwargs)
+    #predict closest matching peptide affinity
+
+    print ('predicting wt peptides')
+    wtpeps = list(df.closest)
+    #print wtpeps
+    b_wt = P.predict_peptides(wtpeps, alleles=alleles, cpus=cpus, **predictor_kwargs)
 
     #combine mutant and wt binding predictions
-    b = combine_wt_scores(b, b_wt, P.scorekey)
-    b = b.drop(['pos','name'],1)
-    res = df.merge(b, on='peptide')
+    res = combine_wt_scores(res, b_wt, P.scorekey)
+    res = res.drop(['pos','name'],1)
+    res = df.merge(res, on='peptide')
+    res['binding_diff'] = res[P.scorekey]/res.matched_score
+    #print (res[:10])
 
-    #find matches to self proteome, adds penalty score column to df
-    res = self_matches(res, cpus=cpus)
-    #get wt similarity score from either wt or closest match to proteome
-    res['wt_similarity'] = res.apply(wt_similarity,1)
-    res.to_csv(os.path.join(path, 'results_%s.csv' %predictor))
+    #hydrophobicity and net charge
+    res = analysis.peptide_properties(res, 'peptide')
+    #exclude exact matches to self
+    print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
+    #res = res[res.self_mismatches>0]
+
     return res
 
 def combine_wt_scores(x, y, key):
     """Combine mutant and matching wt binding scores.
-    Some wt rows are empty so we have to account for this."""
+    Some wt rows may be empty so we have to account for this."""
 
     x = x.sort_values(['pos','allele']).reset_index(drop=True)
     y = y.sort_values(['pos','allele']).reset_index(drop=True)
-    x['wt_score'] = y[key]
+    cols=['pos','peptide','allele',key]
+    #print x[cols]
+    #print y[cols]
+    #print
+    x['matched_score'] = y[key]
     return x
 
-def wt_similarity(x):
-    if x.wt!=None:
-        return pbmec_score(x.peptide, x.wt)
-    elif x.sseq != None:
-        return pbmec_score(x.peptide, x.sseq)
+def make_blastdb(url, name=None, filename=None, overwrite=False):
+    """Download protein sequences and a make blast db. Uses datacache module."""
 
-def self_matches(df, proteome="human_proteome", cpus=4, verbose=False):
+    import datacache
+    cachedir = datacache.get_data_dir()
+    blastdb = os.path.join(cachedir, name)
+    if os.path.exists(blastdb+'.phr') and overwrite==False:
+        #print ('blast files found')
+        return blastdb
+
+    filename = datacache.fetch_file(url, filename=filename, decompress=True, subdir=None)
+    #print filename
+    cmd = 'makeblastdb -dbtype prot -in %s -out %s' %(filename,blastdb)
+    #print cmd
+    tmp=subprocess.check_output(cmd, shell=True)
+    return blastdb
+
+def make_human_blastdb():
+    """Human proteome blastdb"""
+    url = 'ftp://ftp.ensembl.org/pub/release-87/fasta/homo_sapiens/pep/Homo_sapiens.GRCh38.pep.all.fa.gz'
+    filename = 'Homo_sapiens.GRCh38.pep.all.fa.gz'
+    blastdb = make_blastdb(url, name='GRCh38', filename=filename)
+    return blastdb
+
+def make_virus_blastdb():
+    """Human virus blastdb"""
+    url = 'http://www.uniprot.org/uniprot/?sort=score&desc=&compress=no&query=taxonomy:%22Viruses%20[10239]%22%20\
+    keyword:%22Reference%20proteome%20[KW-1185]%22%20host:%22Homo%20sapiens%20(Human)%20[9606]%22&fil=&force=no&preview=true&format=fasta'
+    filename = 'uniprot_human_virus_proteome.fa.gz'
+    blastdb = make_blastdb(url, name='human_virus', filename=filename)
+    return blastdb
+
+def self_matches(df, **kwargs):
+    blastdb = make_human_blastdb()
+    x = find_matches(df, blastdb, **kwargs)
+    x=x.rename(columns={'sseq':'self_match','mismatch':'self_mismatches'})
+    return x
+
+def virus_matches(df, **kwargs):
+    blastdb = make_virus_blastdb()
+    x = find_matches(df, blastdb, **kwargs)
+    x=x.rename(columns={'sseq':'virus_match','mismatch':'virus_mismatches'})
+    return x
+
+def find_matches(df, blastdb, cpus=4, verbose=False):
     """
     Get similarity measures for peptides to a self proteome. Does a
     local blast to the proteome and finds most similar matches. These
     can then be scored.
     Args:
         df: dataframe of peptides
-        proteome: name of blast db for proteome
+        blastdb: path to protein blastdb
     Returns:
         dataframe with extra columns: 'sseq','mismatch'
     """
 
-    #if verbose==True:
     print ('blasting %s peptides' %len(df))
     length = df.peptide.str.len().max()
-    bl = sequtils.blast_sequences("blastdb/human_proteome", df.peptide, evalue=100, cpus=cpus,
-                                  gapopen=10, gapextend=2)
+
+    def check_mm(x):
+        #corrected mismatches for shorter hits
+        if x.length<length:
+            return length-x.length+x.mismatch
+        else:
+            return x.mismatch
+
+    bl = sequtils.blast_sequences(blastdb, df.peptide, evalue=200000, cpus=cpus,
+                                  ungapped=True, gapopen=10, gapextend=2, qcov_hsp_perc=100,
+                                  comp_based_stats=0)
 
     if len(bl) == 0:
         print ('no hits found!')
         return df
     print ('%s hits' %len(bl))
-    cols = ['qseqid','sseq','mismatch'] #'qseq','sseq','sseqid','pident','length']
+    cols = ['qseqid','sseq','mismatch']
 
     #ignore any hits with gaps
-    bl = bl[(bl.length>=length) & (bl.gapopen==0)]
-    #take only most similar hit
+    bl = bl[(bl.gapopen==0)]# & (bl.length>=length)]
+
+    #take longest hit with lowest e-value for each query
+    bl = bl.sort_values(['qseqid','length','evalue'],ascending=(True,False,True))
     bl = bl.groupby(['qseqid'],as_index=False).first()
-    #print bl
+
+    #correct mismatches to account for shorter hits
+    bl['mismatch'] = bl.apply(check_mm, 1)
     bl = bl[cols]
     #merge results
     x = df.merge(bl,left_on='peptide',right_on='qseqid', how='left')
     x = x.sort_values(by='mismatch',ascending=True)
     x = x.drop(['qseqid'],1)
-    x['exact_match'] = x.mismatch.clip(0,1).fillna(1)
+    #x['exact_match'] = x.mismatch.clip(0,1).fillna(1)
     return x
+
+def wt_similarity(x, matrix='pbmec'):
+    x1 = x.peptide
+    x2 = x.wt
+    #print x1,x2
+    #print pbmec_score(x1, x2), pbmec_score(x1, x1), pbmec_score(x1, x2)/pbmec_score(x1, x1)
+    return tepitope.similarity_score(tepitope.blosum62,x1,x2)
+
+def self_similarity(x, matrix='pbmec'):
+    if x.self_match is None:
+        return
+    x1 = x.peptide
+    x2 = x.self_match
+    return tepitope.similarity_score(tepitope.blosum62,x1,x2)
+
+def get_closest_match(x):
+    """Create columns with closest matching peptide.
+    If no wt peptide use self match."""
+    if x.wt is None:
+        return x.self_match
+    else:
+        return x.wt
+
+def summary_plots(df):
+    """summary plots for testing results"""
+    f,axs=plt.subplots(2,2,figsize=(10,10))
+    axs=axs.flat
+    g = df.groupby(['name']).size()
+    g.plot(kind='barh',ax=axs[0],color='gray')
+    axs[0].set_title('peptide counts')
+    df.variant_class.value_counts().plot(kind='pie',autopct='%.1f',ax=axs[1])
+    axs[1].set_title('variant classes')
+    df.self_mismatches.value_counts().sort_index().plot(kind='bar',ax=axs[2])
+    axs[2].set_title('mismatches to self')
+    #df.wt_similarity.hist(ax=axs[3])
+    df.plot('wt_similarity','self_similarity',kind='scatter',ax=axs[3])
+    return
 
 def show_predictors():
     for p in base.predictors:

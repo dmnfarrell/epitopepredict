@@ -698,8 +698,10 @@ class Predictor(object):
         if type(alleles) is str:
             alleles = [alleles]
 
-        #s = pd.DataFrame(peptides,columns=['peptide'])
-        peptides = [i for i in peptides if i is not None]
+        #remove empty values
+        #print (peptides)
+        peptides = [i for i in peptides if type(i) is str or type(i) is unicode]
+        #print (peptides)
 
         for a in alleles:
             df = self.predict(peptides=peptides, allele=a, **kwargs)
@@ -1604,16 +1606,16 @@ class MHCFlurryPredictor(Predictor):
         self.scorekey = 'score'
         self.rankascending = 1
         self._check_models()
+        from mhcflurry import Class1AffinityPredictor
+        self.predictor = Class1AffinityPredictor.load()
         return
 
     def predict(self, peptides=None, length=11, overlap=1,
                       allele='HLA-A0101', name='', **kwargs):
         """Uses mhcflurry python classes for prediction"""
 
-        from mhcflurry import Class1AffinityPredictor
-        predictor = Class1AffinityPredictor.load()
         try:
-            df = predictor.predict_to_dataframe(peptides=peptides, allele=allele)
+            df = self.predictor.predict_to_dataframe(peptides=peptides, allele=allele)
         except:
             print ('failed to predict for allele %s' %allele)
             return
@@ -1628,8 +1630,8 @@ class MHCFlurryPredictor(Predictor):
         df = df.rename(columns={'Allele':'allele','Peptide':'peptide'})
         df['name'] = name
         df['pos'] = df.index
-        #df['score'] = df['prediction'].apply( lambda x: 1-math.log(x, 50000) )
         df['score'] = df.prediction
+        df = df.drop(columns=['prediction_low', 'prediction_high'])
         self.get_ranking(df)
         return df
 

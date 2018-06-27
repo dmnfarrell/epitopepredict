@@ -3,6 +3,14 @@ CHANGES
 =======
 
 ------
+0.4.0
+------
+
+major changes to neoepitope routines
+changes to app outputs
+added netmhcpan predictor
+
+------
 0.3.0
 ------
 

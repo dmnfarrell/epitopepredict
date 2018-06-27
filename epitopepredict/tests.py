@@ -77,37 +77,6 @@ class PredictorTests(unittest.TestCase):
             print ('%s binders' %len(b))
         return
 
-    '''def test_iedbmhc2(self):
-        """IEDB MHCII test"""
-
-        df = self.df
-        P = base.get_predictor('iedbmhc2')
-        base.iedbmhc2path = '/local/iedbmhc2'
-        print ()
-        print (P)
-        if not os.path.exists(base.iedbmhc1path):
-            print ('IEDB MHC-II not found')
-            return
-        alleles = ["HLA-DRB1*01:01"]
-        for m in P.methods:
-            print (m)
-            P.predictProteins(df, length=8, alleles=alleles,
-                                    method=m)
-            b = P.getBinders(data=P.data, cutoff=5)
-            #print (P.data.score)
-            print ('%s binders' %len(b))
-        return'''
-
-    '''def test_bcell(self):
-        """IEDB BCell test"""
-
-        df = self.df
-        names = ['VP24']
-        P = base.get_predictor('iedbbcell')
-        P.iedbmethod='Chou-Fasman'
-        P.predictProteins(df, names=names, path=self.testdir)
-        return'''
-
     def test_peptide_prediction(self):
 
         m2alleles = base.get_preset_alleles('mhc2_supertypes')
