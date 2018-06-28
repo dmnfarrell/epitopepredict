@@ -11,7 +11,7 @@ import sys, os, subprocess
 import shutil
 import pickle
 import pandas as pd
-pd.set_option('display.width', 120)
+pd.set_option('display.width', 150)
 pd.set_option('max_colwidth', 80)
 from collections import OrderedDict
 from epitopepredict import base, config, analysis, sequtils, peptutils, tepitope
@@ -129,17 +129,17 @@ class NeoEpitopeWorkFlow(object):
                 seqs = get_mutant_sequences(effects=effects, length=length, verbose=self.verbose)
 
                 res = predict_variants(seqs, alleles=alleles, length=length,
-                                 predictor=predictor, path=self.path, verbose=self.verbose, cpus=1)
+                                 predictor=predictor, verbose=self.verbose, cpus=1)
                 res['label'] = f
                 res.to_csv(outfile, index=False)
 
                 #gets promiscuous binders based on the cutoff
                 P = base.get_predictor(predictor)
                 P.data = res
-                pb = P.promiscuous_binders(n=1, keep_columns=True, cutoff=cutoffs[i])
+                #pb = P.promiscuous_binders(n=1, keep_columns=True, cutoff=cutoffs[i])
                 #pb['label'] = f
-                print (pb[:20])
-                pb.to_csv(os.path.join(path, 'binders_%s_%s.csv' %(f,predictor)), index=False)
+                #print (pb[:20])
+                #pb.to_csv(os.path.join(path, 'binders_%s_%s.csv' %(f,predictor)), index=False)
                 i+=1
                 #peps = self_similarity(res, proteome="human_proteome")
 
@@ -178,6 +178,30 @@ def read_names(filename):
     p = [x.strip() for x in p]
     p = list(filter(None, p))
     return p
+
+def variants_from_csv(csv_file, sample_id=None, reference=None):
+    """Variants from csv file.
+    Args:
+        csv_file: csv file with following column names-
+            chromosome, position, reference_allele, alt_allele, gene_name, transcript_id, sample_id
+        sample_id: if provided, select variants only for this id
+        reference: ref genome used for variant calling
+    """
+
+    from pyensembl import ensembl_grch38
+    import varcode
+    from varcode import Variant
+    df = pd.read_csv(csv_file)
+    variants=[]
+    if sample_id != None and 'sample_id' in df.columns:
+        df = df[df.sample_id==sample_id]
+        df = df.drop_duplicates(['POS','REF','ALT'])
+    for i,r in list(df.iterrows()):
+        #print i
+        v = Variant(contig=r.CHROM, start=r.POS, ref=r.REF, alt=r.ALT, ensembl=ensembl_grch38)
+        variants.append(v)
+    varcl = varcode.variant_collection.VariantCollection(variants)
+    return varcl
 
 def get_variant_class(effect):
     v = effect.variant
@@ -396,46 +420,50 @@ def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
     #get similarity scores for wt and closest match to proteome
     df['wt_similarity'] = df.apply(wt_similarity,1)
     df['self_similarity'] = df.apply(self_similarity,1)
-    #get closest peptide in one column, either wt or nearest self
+    #get closest peptide in another column, either wt or nearest self
     df['closest'] = df.apply(get_closest_match, 1)
 
     P = base.get_predictor(predictor)
     print (P)
     print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
 
-    res = P.predict_peptides(df.peptide, alleles=alleles, cpus=cpus, **predictor_kwargs)
-    #predict closest matching peptide affinity
+    peps = list(df.peptide)
+    res = P.predict_peptides(peps, alleles=alleles, cpus=cpus, **predictor_kwargs)
+    #rename rank column
+    res = res.rename(columns={'rank':'binding_rank'})
 
+    #predict closest matching peptide affinity
     print ('predicting wt peptides')
     wtpeps = list(df.closest)
     #print wtpeps
     b_wt = P.predict_peptides(wtpeps, alleles=alleles, cpus=cpus, **predictor_kwargs)
 
-    #combine mutant and wt binding predictions
+    #combine mutant and matching binding predictions
     res = combine_wt_scores(res, b_wt, P.scorekey)
+    #print (res[:10])
     res = res.drop(['pos','name'],1)
+
+    #combine binding results with main dataframe
     res = df.merge(res, on='peptide')
     res['binding_diff'] = res[P.scorekey]/res.matched_score
-    #print (res[:10])
 
     #hydrophobicity and net charge
     res = analysis.peptide_properties(res, 'peptide')
     #exclude exact matches to self
     print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
     #res = res[res.self_mismatches>0]
-
     return res
 
 def combine_wt_scores(x, y, key):
-    """Combine mutant and matching wt binding scores.
-    Some wt rows may be empty so we have to account for this."""
+    """Combine mutant peptide and matching wt/self binding scores from a
+    set of predictions. Assumes both dataframes were run with the same alleles.
+    Args:
+        x,y: pandas dataframes with matching prediction results
+        key:
+    """
 
     x = x.sort_values(['pos','allele']).reset_index(drop=True)
     y = y.sort_values(['pos','allele']).reset_index(drop=True)
-    cols=['pos','peptide','allele',key]
-    #print x[cols]
-    #print y[cols]
-    #print
     x['matched_score'] = y[key]
     return x
 
@@ -622,7 +650,7 @@ def test_run():
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
     options['base']['predictors'] = 'mhcflurry'
-    options['base']['mhc1_alleles'] = 'HLA-A*01:01,HLA-A*02:01,HLA-A*03:01'
+    options['base']['mhc1_alleles'] = 'HLA-A*02:01'
     #options['base']['mhc2_alleles'] = 'HLA-DRB1*01:01,HLA-DRB1*04:01,HLA-DRB1*08:01,HLA-DRB1*09:01,HLA-DRB1*11:01'
     options['base']['path'] = 'neo_test'
     options['base']['mhc2_length'] = 11

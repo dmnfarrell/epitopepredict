@@ -22,7 +22,6 @@ parts:
     plugin: python
     python-version: python2
     source: ../
-    #source: git://github.com/dmnfarrell/epitopepredict.git
     python-packages:
       [matplotlib,mhcflurry,sklearn,gtfparse==0.0.6,pyensembl==1.1,varcode==0.5.15]
     stage-packages:

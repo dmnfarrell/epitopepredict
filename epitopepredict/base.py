@@ -740,6 +740,7 @@ class Predictor(object):
 
         #store original peptide list as dataframe to keep order
         s = pd.DataFrame(peptides,columns=['peptide'])
+        s['pos'] = s.index.copy()
 
         if cpus == 1:
             data = self._predict_peptides(peptides, **kwargs)
@@ -752,12 +753,18 @@ class Predictor(object):
 
         #get original peptide positions by re-merging with original peptide dataframe
         #also allows us to keep empty rows in correct order
+        #make this optional as it could cause issues?
         new = []
         for i,g in data.groupby('allele'):
-            x = s.merge(g,on=['peptide'],how='left')
-            x['pos'] = x.index.copy()
+            #print (len(g))
+            #print (s)
+            #print (g)
+            g=g.drop('pos',1)
+            x = s.merge(g,on=['peptide'],how='left').drop_duplicates(['pos','peptide'])
+            #x['pos'] = x.index.copy()
             x['allele'] = x.allele.fillna(i)
             new.append(x)
+            #print (len(x))
             #print (x)
 
         data = pd.concat(new).reset_index(drop=True)
