@@ -1348,7 +1348,7 @@ class IEDBMHCIPredictor(Predictor):
         if self.method in ['IEDB_recommended','consensus']:
             df['ic50'] = df.filter(regex="ic50").mean(1)
         if not 'score' in df.columns:
-            df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
+            df['score'] = df.ic50#.apply( lambda x: 1-math.log(x, 50000))
         self.get_ranking(df)
         self.data = df
         #print (df[:10])

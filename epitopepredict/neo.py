@@ -429,8 +429,7 @@ def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
 
     peps = list(df.peptide)
     res = P.predict_peptides(peps, alleles=alleles, cpus=cpus, **predictor_kwargs)
-    #rename rank column
-    res = res.rename(columns={'rank':'binding_rank'})
+    pb = P.promiscuous_binders(n=1,cutoff=.95)
 
     #predict closest matching peptide affinity
     print ('predicting wt peptides')
@@ -452,6 +451,11 @@ def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
     #exclude exact matches to self
     print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
     #res = res[res.self_mismatches>0]
+    #merge promiscuity measure into results
+    #print (pb[:10])
+    res = res.merge(pb[['peptide','alleles']], on='peptide',how='left')
+    #rename some columns
+    res = res.rename(columns={'rank':'binding_rank','alleles':'promiscuity'})
     return res
 
 def combine_wt_scores(x, y, key):
@@ -586,7 +590,7 @@ def summary_plots(df):
     """summary plots for testing results"""
     f,axs=plt.subplots(2,2,figsize=(10,10))
     axs=axs.flat
-    g = df.groupby(['name']).size()
+    g = df.groupby(['name']).size().sort_values(ascending=False)[:20]
     g.plot(kind='barh',ax=axs[0],color='gray')
     axs[0].set_title('peptide counts')
     df.variant_class.value_counts().plot(kind='pie',autopct='%.1f',ax=axs[1])
@@ -594,7 +598,8 @@ def summary_plots(df):
     df.self_mismatches.value_counts().sort_index().plot(kind='bar',ax=axs[2])
     axs[2].set_title('mismatches to self')
     #df.wt_similarity.hist(ax=axs[3])
-    df.plot('wt_similarity','self_similarity',kind='scatter',ax=axs[3])
+    #df.plot('wt_similarity','self_similarity',kind='scatter',ax=axs[3])
+    df.plot('score','matched_score',kind='scatter',ax=axs[3])
     return
 
 def show_predictors():
