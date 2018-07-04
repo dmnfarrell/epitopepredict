@@ -203,6 +203,28 @@ def variants_from_csv(csv_file, sample_id=None, reference=None):
     varcl = varcode.variant_collection.VariantCollection(variants)
     return varcl
 
+def dataframe_to_vcf(df, outfile):
+    """Write a dataframe of variants to a simple vcf file. Dataframe requires
+    the following columns: #CHROM','POS','ID','REF','ALT'
+    """
+
+    f = open(outfile, 'wb')
+    f.write('##fileformat=VCFv4.0\n')
+    f.write('##reference=GRCh38.fa\n')
+    f.write('##source=csv\n')
+    f.write('##FILTER=<ID=PASS,Description="Passed all filters">\n')
+    f.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
+    df = df.rename(columns={'CHROM':'#CHROM'})
+    df['ID']='.'
+    df['FILTER']='PASS'
+    df['QUAL'] = 60
+    df['INFO'] = '.'
+    df['FORMAT'] = 'GT'
+    df['sample'] = '0/1'
+    cols = ['#CHROM','POS','ID','REF','ALT','QUAL','FILTER','INFO','FORMAT','sample']
+    df[cols].to_csv(f, sep='\t',index=False)#,align='left')
+    return
+
 def get_variant_class(effect):
     v = effect.variant
     if v.is_deletion:
@@ -636,6 +658,27 @@ def check_ensembl():
         spath = os.environ['SNAP_USER_COMMON']
         print ('checking for ref human genome')
         fetch_ensembl_release()
+    return
+
+def run_vep(vcf_file, out_format='vcf', assembly='GRCh38', cpus=4, path=None):
+    """Run ensembl VEP on a vcf file for use with pvacseq.
+    see https://www.ensembl.org/info/docs/tools/vep/script/index.html
+    """
+
+    fname = os.path.splitext(vcf_file)[0]
+    out = fname+'.vep.%s' %out_format
+    if path == None:
+        path = '/local/ensembl-vep/'
+    path = os.path.join(path,'./vep')
+    cmd = '{p} --input_file {i} --pick --force_overwrite \
+    --assembly {a} --fork {c} \
+    --symbol --terms SO --output_file {o} \
+    --plugin Downstream --plugin Wildtype \
+    --cache --offline'.format(o=out,i=vcf_file,a=assembly,c=cpus,p=path)
+    if out_format == 'vcf':
+        cmd += ' --format vcf --vcf'
+    print (cmd)
+    tmp = subprocess.check_output(cmd, shell=True)
     return
 
 def print_help():

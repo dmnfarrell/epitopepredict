@@ -772,8 +772,9 @@ class Predictor(object):
         data = data.reset_index(drop=True)
 
         if name==None:
-            name=self.name
-        data['name'] = name
+            name='temp'
+        if 'name' not in data.columns:
+            data['name'] = name
         #print (data)
         if path is not None:
             data.to_csv(fname, float_format='%g')
@@ -1097,10 +1098,10 @@ class NetMHCPanPredictor(Predictor):
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'netmhcpan'
-        self.colnames = ['pos','HLA','peptide','Identity','Pos','Core',
-                         '1-log50k(aff)','Affinity','Rank']
-        self.scorekey = 'Affinity'
-        self.cutoff = 500
+        self.colnames = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
+                         'name','score','rank','bindLevel']
+        self.scorekey = 'score'
+        self.cutoff = .5
         self.operator = '<'
         self.rankascending = 1
 
@@ -1108,15 +1109,28 @@ class NetMHCPanPredictor(Predictor):
         """Read raw results from netMHCpan output"""
 
         data=[]
-        res = res.split('\n')[19:]
-        ignore=['Protein','pos','Number','']
+        res = res.split('\n')[45:]
+        ignore = ['Pos','#','Protein','']
         for r in res:
             if r.startswith('-'): continue
-            row = re.split('\s*',r.strip())[:9]
-            if len(row)!=9 or row[0] in ignore:
+            row = re.split('\s*',r.strip())[:13]
+            if len(row)!=13 or row[0] in ignore:
                 continue
             data.append(dict(zip(self.colnames,row)))
+            #print (row)
         return data
+
+    def prepare_data(self, df, name):
+        """Prepare netmhcpan results as a dataframe"""
+
+        df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
+        df['name'] = name
+        #df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
+        df = df.dropna()
+        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
+        self.get_ranking(df)
+        self.data = df
+        return
 
     def predict(self, peptides, allele='HLA-A*01:01', name='temp',
                 pseudosequence=None, **kwargs):
@@ -1132,7 +1146,7 @@ class NetMHCPanPredictor(Predictor):
         f.close()
 
         cmd = 'netMHCpan -f %s -inptype 1 -a %s' %(pepfile , allele)
-        print (cmd)
+        #print (cmd)
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         except Exception as e:
@@ -1140,25 +1154,11 @@ class NetMHCPanPredictor(Predictor):
             return
         rows = self.read_result(temp)
         res = pd.DataFrame(rows)
+        #print (res)
         if len(res)==0:
             return res
-        self.prepare_data(res, name)
+        self.prepare_data(res, name=name)
         return self.data
-
-    def prepare_data(self, df, name):
-        """Prepare netmhciipan results as a dataframe"""
-
-        #df = df.convert_objects(convert_numeric=True)
-        df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
-        df['name'] = name
-        df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
-        df = df.drop(['Pos','Identity','Rank'],1)
-        df = df.dropna()
-        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
-        df['score'] = df['Affinity']
-        self.get_ranking(df)
-        self.data = df
-        return
 
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
