@@ -23,7 +23,7 @@ parts:
     python-version: python2
     source: ../
     python-packages:
-      [matplotlib,mhcflurry,sklearn,gtfparse==0.0.6,pyensembl==1.1,varcode==0.5.15]
+      [matplotlib,mhcflurry,sklearn,gtfparse==0.0.6,pyensembl==1.1,varcode==0.5.15,mhcnuggets]
     stage-packages:
       [tcsh,gawk,ncbi-blast+,bowtie2]
   #netmhciipan:

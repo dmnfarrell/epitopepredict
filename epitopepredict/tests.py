@@ -57,7 +57,7 @@ class PredictorTests(unittest.TestCase):
         P.getBinders(data=P.data)
         return'''
 
-    def test_iedbmhc1(self):
+    '''def test_iedbmhc1(self):
         """IEDB MHCI test"""
 
         df = self.df
@@ -75,7 +75,7 @@ class PredictorTests(unittest.TestCase):
                                     method=m)
             b = P.get_binders(data=P.data, cutoff=5, cutoff_method='rank')
             print ('%s binders' %len(b))
-        return
+        return'''
 
     def test_peptide_prediction(self):
 
@@ -113,6 +113,26 @@ class PredictorTests(unittest.TestCase):
         name = 'ZEBOVgp1'
         sequtils.dataframe_to_fasta(df)
         sequtils.check_tags(df)
+        return
+
+    def test_mhcflurry(self):
+        """Test mhcflurry predictor"""
+
+        P = base.get_predictor('mhcflurry')
+        print (P)
+        seqs = peptutils.create_random_sequences(10)
+        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
+        print (len(P.data))
+        return
+
+    def test_mhcnuggets(self):
+        """Test mhcflurry predictor"""
+
+        P = base.get_predictor('mhcnuggets')
+        print (P)
+        seqs = peptutils.create_random_sequences(10)
+        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
+        print (len(P.data))
         return
 
     def quit(self):

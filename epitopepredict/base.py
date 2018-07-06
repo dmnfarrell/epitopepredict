@@ -699,8 +699,8 @@ class Predictor(object):
             alleles = [alleles]
 
         #remove empty values
-        #print (peptides)
-        peptides = [i for i in peptides if type(i) is str or type(i) is unicode]
+        #peptides = [i for i in peptides if type(i) is str or type(i) is unicode]
+        peptides = [i for i in peptides if isinstance(i, basestring)]
         #print (peptides)
 
         for a in alleles:
@@ -759,7 +759,8 @@ class Predictor(object):
             #print (len(g))
             #print (s)
             #print (g)
-            g=g.drop('pos',1)
+            if 'pos' in g.columns:
+                g=g.drop('pos',1)
             x = s.merge(g,on=['peptide'],how='left').drop_duplicates(['pos','peptide'])
             #x['pos'] = x.index.copy()
             x['allele'] = x.allele.fillna(i)
@@ -1094,14 +1095,16 @@ class Predictor(object):
         return
 
 class NetMHCPanPredictor(Predictor):
-    """netMHCpan predictor"""
+    """netMHCpan 4.0 predictor
+    see http://www.cbs.dtu.dk/services/NetMHCpan/
+    """
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'netmhcpan'
         self.colnames = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
-                         'name','score','rank','bindLevel']
+                         'name','raw_score','ic50','rank']
         self.scorekey = 'score'
-        self.cutoff = .5
+        self.cutoff = 500
         self.operator = '<'
         self.rankascending = 1
 
@@ -1113,8 +1116,8 @@ class NetMHCPanPredictor(Predictor):
         ignore = ['Pos','#','Protein','']
         for r in res:
             if r.startswith('-'): continue
-            row = re.split('\s*',r.strip())[:13]
-            if len(row)!=13 or row[0] in ignore:
+            row = re.split('\s*',r.strip())[:14]
+            if len(row)!=14 or row[0] in ignore:
                 continue
             data.append(dict(zip(self.colnames,row)))
             #print (row)
@@ -1125,15 +1128,14 @@ class NetMHCPanPredictor(Predictor):
 
         df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
         df['name'] = name
-        #df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
+        df['score'] = df.ic50
         df = df.dropna()
-        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         self.get_ranking(df)
         self.data = df
         return
 
     def predict(self, peptides, allele='HLA-A*01:01', name='temp',
-                pseudosequence=None, **kwargs):
+                pseudosequence=None, show_cmd=False, **kwargs):
         """Call netMHCpan command line."""
 
         allele = allele.replace('*','')
@@ -1145,8 +1147,9 @@ class NetMHCPanPredictor(Predictor):
                 f.write(p+'\n')
         f.close()
 
-        cmd = 'netMHCpan -f %s -inptype 1 -a %s' %(pepfile , allele)
-        #print (cmd)
+        cmd = 'netMHCpan -BA -f %s -inptype 1 -a %s' %(pepfile , allele)
+        if show_cmd is True:
+            print (cmd)
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         except Exception as e:
@@ -1159,6 +1162,19 @@ class NetMHCPanPredictor(Predictor):
             return res
         self.prepare_data(res, name=name)
         return self.data
+
+    def get_alleles(self):
+        """Get available alleles"""
+
+        cmd = 'netMHCpan -listMHC'
+        try:
+            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+        except:
+            print('netmhcpan not installed?')
+            return []
+        s = temp.split('\n')
+        alleles = [i for i in s if not i.startswith('#') and len(i)>0]
+        return alleles
 
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
@@ -1177,13 +1193,14 @@ class NetMHCIIPanPredictor(Predictor):
         """Read raw results from netMHCIIpan output"""
 
         data=[]
-        res = res.split('\n')[19:]
-        ignore=['Protein','pos','Number','']
+        res = res.split('\n')
+        ignore=['Protein','pos','Number','#']
         for r in res:
             if r.startswith('-'): continue
             row = re.split('\s*',r.strip())[:9]
             if len(row)!=9 or row[0] in ignore:
                 continue
+            print (row)
             data.append(dict(zip(self.colnames,row)))
         return data
 
@@ -1203,7 +1220,7 @@ class NetMHCIIPanPredictor(Predictor):
         return
 
     def predict(self, peptides, allele='HLA-DRB1*0101', name='temp',
-                pseudosequence=None, **kwargs):
+                pseudosequence=None, show_cmd=False, **kwargs):
         """Call netMHCIIpan command line."""
 
         #assume allele names are in standard format HLA-DRB1*0101
@@ -1223,7 +1240,8 @@ class NetMHCIIPanPredictor(Predictor):
         f.close()
 
         cmd = 'netMHCIIpan -f %s -inptype 1 -a %s' %(pepfile , allele)
-        #print (cmd)
+        if show_cmd is True:
+            print (cmd)
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         except Exception as e:
@@ -1676,43 +1694,24 @@ class MHCNuggetsPredictor(Predictor):
         self.operator = '<'
         self.scorekey = 'ic50'
         self.rankascending = 1
-        #path should be set in future we will use API to call..
-        self.path = None
         return
 
     def predict(self, peptides=None, length=11, overlap=1,
-                      allele='HLA-A0101', name='', show_cmd=False, **kwargs):
+                      allele='HLA-A0101', name='temp', **kwargs):
         """Uses cmd line call to mhcnuggets."""
 
-        path = self.path
-        if path is None:
-            print('no path set for mhcnuggets')
-            return
-        tempf = self.write_seqs(peptides)
-        a = re.sub('[*:]', '', allele)
-        print (a)
-        #should replace cmd line call in future with API
-        cmd = 'python {p}/scripts/predict.py -m lstm -w {p}/mhcnuggets_lstm/{a}.h5 -p {t}'\
-              .format(p=path,t=tempf,a=a)
-        #if show_cmd == True:
-        print (cmd)
-        from subprocess import Popen, PIPE
-        try:
-            p = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
-            temp,error = p.communicate()
-            #print (temp)
-        except OSError as e:
-            print (e)
-            return
-
-        df = self.prepare_data(temp, name, allele)
+        from mhcnuggets.src.predict import predict
+        pepfile = self.write_seqs(peptides)
+        outfile = tempfile.mktemp()+'.txt'
+        #print(outfile)
+        predict(class_='I', peptides_path=pepfile, mhc=allele, output=outfile)
+        res = pd.read_csv(outfile)
+        df = self.prepare_data(res, name, allele)
         return df
 
-    def prepare_data(self, rows, name, allele):
+    def prepare_data(self, df, name, allele):
         """Get result into dataframe"""
 
-        df = pd.read_csv(io.BytesIO(rows),sep="\s",skiprows=2,names=['peptide','ic50'],engine='python')
-        #print (rows)
         df['name'] = name
         df['allele'] = allele
         self.get_ranking(df)
@@ -1720,8 +1719,18 @@ class MHCNuggetsPredictor(Predictor):
         return df
 
     def write_seqs(self, peptides):
-        tempf = tempfile.mktemp()+'.txt'
+        tempf = tempfile.mktemp()+'.pep'
         f = open(tempf,'w')
         for p in peptides:
             f.write("%s\n" % p)
+        f.close()
         return tempf
+
+    def get_alleles(self):
+        import mhcnuggets
+        module_path = os.path.dirname(os.path.abspath(mhcnuggets.__file__))
+        allelefile = os.path.join(module_path, 'data/production/mhcI/supported_alleles.txt')
+        with open(allelefile) as f:
+            p = f.readlines()
+        p = [x.strip() for x in p]
+        return p

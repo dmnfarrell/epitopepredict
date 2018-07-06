@@ -13,7 +13,7 @@ This software should be run on a Linux operating system. Ubuntu is recommended b
 
 **Snap package**
 
-You can install as a snap on linux which might be easier than using pip for some users. This option convenient because updates can be provided regularly and automatically. Snaps are ubuntu based but supported on most major linux distributions. Install snapd_ with your package manager and then run::
+You can install as a snap on linux which might be easier than using pip for some users. This option is convenient because updates can be provided regularly and automatically. Snaps are ubuntu based but supported on most major linux distributions. In future this will be the preferred method of installation. Install snapd_ with your package manager and then run::
 
     sudo snap install epitopepredict
 
@@ -25,7 +25,7 @@ Updating the snap is simply done using::
 
     sudo snap refresh epitopepredict
 
-*Note: Some prediction methods are not yet available with the snap, such as netMHCIIpan because of restrictions in how those programs are redistributed. This should be fixed later.*
+*Note: netMHC prediction methods are not yet available with the snap because of restrictions in how those programs are redistributed. This should be fixed later.*
 
 **Python dependencies**
 
@@ -46,22 +46,36 @@ There are now multiple MHC binding prediction algorithms available freely online
 
 +---------------------+-------------------------------------------------------------+---------------+
 | name                | description                                                 | snap package  |
++=====================+=============================================================+===============+
+| tepitope            | implements the TEPITOPEPan method, built in (MHC-II)        | yes           |
 +---------------------+-------------------------------------------------------------+---------------+
-| tepitope            | implements the TEPITOPEPan method, built in                 | yes           |
+| netMHCpan           | http://www.cbs.dtu.dk/services/NetMHCpan/  (MHC-I)          | not yet       |
 +---------------------+-------------------------------------------------------------+---------------+
-| netMHCIIpan         | http://www.cbs.dtu.dk/services/NetMHCIIpan/                 | not yet       |
+| netMHCIIpan         | http://www.cbs.dtu.dk/services/NetMHCIIpan/ (MHC-II)        | not yet       |
 +---------------------+-------------------------------------------------------------+---------------+
-| IEDB MHC-I and II   | http://tools.immuneepitope.org/mhci/download/               | not yet       |
+| mhcflurry           | https://github.com/openvax/mhcflurry (MHC-I)                | yes           |
 +---------------------+-------------------------------------------------------------+---------------+
-| mhcflurry           | MHC-I predictor https://github.com/openvax/mhcflurry        | yes           |
+| mhcnuggets          | https://github.com/KarchinLab/mhcnuggets-2.0 (MHC-I/II)     | yes           |
 +---------------------+-------------------------------------------------------------+---------------+
-| mhcnuggets          | MHC-I predictor https://github.com/KarchinLab/mhcnuggets    | not yet       |
+| IEDB MHC-I and II   | http://tools.immuneepitope.org/mhci/download/               | no            |
 +---------------------+-------------------------------------------------------------+---------------+
+
+Both mhcflurry and mhcnuggets can be installed easily with pip and are provided as part of the snap package.
+
+Installing netMHCpan and netMHCIIpan
+------------------------------------
+
+Due to license restrictions these programs must be installed separately. You can go to these respective links to fill in forms that will give you access to the install file:
+
+ * http://www.cbs.dtu.dk/cgi-bin/nph-sw_request?netMHCpan
+ * http://www.cbs.dtu.dk/cgi-bin/nph-sw_request?netMHCIIpan
+
+The install instructions can then be found in the readme files when you untar the downloaded file e.g. netMHCpan-4.0.readme. Remember to test the software is working before you use it in epitopepredict.
 
 Installing IEDB MHC tools
 -------------------------
 
-The distributions 'IEDB_MHC*.tar.gz' contain a collection of peptide binding prediction tools for Major Histocompatibility Complex (MHC) class I and II molecules. The collection is a mixture of pythons scripts and linux 32-bit environment specific binaries. Linux environment is required. Under ubuntu (if not using the snap package) you should also install tcsh and gawk::
+Note that if using the netMHC programs above you probably **do not** need to use the IEDB tools unless you have very specific requirements. The distributions 'IEDB_MHC*.tar.gz' contain a collection of peptide binding prediction tools for Major Histocompatibility Complex (MHC) class I and II molecules. The collection is a mixture of pythons scripts and linux 32-bit environment specific binaries. Linux environment is required. Under ubuntu (if not using the snap package) you should also install tcsh and gawk::
 
     sudo apt install tcsh gawk
 
