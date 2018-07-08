@@ -43,6 +43,18 @@ class PredictorTests(unittest.TestCase):
         P.get_binders(data=P.data)
         return
 
+    def test_netmhcpan(self):
+        """netMHCpan test"""
+
+        #requires netmHCpan is installed
+        df = self.df
+        P = base.get_predictor('netmhcpan')
+        print (P)
+        seqs = peptutils.create_random_sequences(10)
+        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
+        print (len(P.data))
+        return
+
     '''def test_netmhciipan(self):
         """netMHCIIpan test"""
 
@@ -131,6 +143,18 @@ class PredictorTests(unittest.TestCase):
         P = base.get_predictor('mhcnuggets')
         print (P)
         seqs = peptutils.create_random_sequences(10)
+        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
+        print (len(P.data))
+        return
+
+    def test_iedbmhc1(self):
+        """iedbmhc1 test"""
+
+        df = self.df
+        P = base.get_predictor('iedbmhc1')
+        if P.check_install() == 0:
+            return
+        seqs = peptutils.create_random_sequences(10, length=11)
         P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
         print (len(P.data))
         return

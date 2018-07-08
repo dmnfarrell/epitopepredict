@@ -17,9 +17,9 @@ import pandas as pd
 from . import base
 
 colormaps={'tepitope':'Greens','netmhciipan':'Oranges','iedbmhc2':'Pinks',
-               'threading':'Purples','iedbmhc1':'Blues'}
+            'iedbmhc1':'Blues'}
 defaultcolors = {'tepitope':'green','netmhciipan':'orange',
-           'iedbmhc1':'blue','iedbmhc2':'pink','threading':'purple'}
+                 'iedbmhc1':'blue','iedbmhc2':'pink'}
 
 def plot_heatmap(df, ax=None, figsize=(6,6), **kwargs):
     """Plot a generic heatmap """

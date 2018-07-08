@@ -84,7 +84,7 @@ class WorkFlow(object):
             savepath = os.path.join(self.path, p)
             if self.overwrite == True and os.path.exists(savepath):
                 shutil.rmtree(savepath)
-            if p in ['iedbmhc1','mhcflurry','mhcnuggets']:
+            if p in ['iedbmhc1','netmhcpan','mhcflurry','mhcnuggets']:
                 a = self.mhc1_alleles
                 length = self.mhc1_length
                 check_mhc1_length(length)
@@ -173,10 +173,11 @@ class WorkFlow(object):
                 x.to_csv(os.path.join(self.path,'final_%s_%s.csv' %(p,n)), float_format='%g')
                 #do further analysis if using protein sequences
                 cl = analysis.find_clusters(pb)
-                #make peptide lists
-                cl = analysis.get_nmer(cl, self.sequences, how='split', length=20)
-                cl = analysis.peptide_properties(cl, 'n-mer')
-                cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
+                if len(cl) > 0:
+                    #make peptide lists
+                    cl = analysis.get_nmer(cl, self.sequences, how='split', length=20)
+                    cl = analysis.peptide_properties(cl, 'n-mer')
+                    cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
                 #make summary table
                 summary = self.get_summary(P, pb, self.sequences, clusters=cl)
                 summary.to_csv(os.path.join(self.path,'summary_%s.csv' %p))

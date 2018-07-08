@@ -34,7 +34,7 @@ config_file = config.write_default_config()
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'mhcdata')
-predictors = ['tepitope','netmhciipan','netmhcpan','iedbmhc1','iedbmhc2','mhcflurry','mhcnuggets']
+predictors = ['tepitope','netmhciipan','netmhcpan','mhcflurry','mhcnuggets','iedbmhc1','iedbmhc2']
 iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'netmhcpan', 'smmpmbec']
 mhc1_predictors = ['iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
@@ -501,6 +501,8 @@ class Predictor(object):
         value = self.scorekey
         res=[]
         for a,g in data.groupby('allele'):
+            #print (cuts[a])
+            #print (g[value])
             if self.rankascending == 0:
                 b = g[g[value]>=cuts[a]]
             else:
@@ -510,7 +512,7 @@ class Predictor(object):
 
     def _ranked_binders(self, data, cutoff):
         """return binders by rank which has been calculated per sequence/allele"""
-        return data[data['rank'] < cutoff]
+        return data[data['rank'] <= cutoff]
 
     def _score_binders(self, data, cutoff):
         """return binders by global single score cutoff"""
@@ -523,13 +525,13 @@ class Predictor(object):
     def get_binders(self, cutoff=.95, cutoff_method='default', path=None, name=None, **kwargs):
         """
         Get the top scoring binders. If using default cutoffs are derived
-        from the available prediction data stored in the object. For
+        from the pre-defined percentile cutoffs for some known antigens. For
         per protein cutoffs the rank can used instead. This will give
         slightly different results.
         Args:
             path: use results in a path instead of loading at once, conserves memory
             cutoff: percentile cutoff (default), absolute score or a rank value within each sequence
-            value: 'allele', 'score' or 'rank'
+            cutoff_method: 'default', 'score' or 'rank'
             name: name of a specific protein/sequence
         Returns:
             binders above cutoff in all alleles, pandas dataframe
@@ -789,7 +791,7 @@ class Predictor(object):
         if type(recs) is str:
             recs = [recs]
         if type(recs) is list:
-            idx = range(len(recs))
+            idx = [str(i) for i in range(len(recs))]
             recs = pd.DataFrame(zip(idx,recs), columns=['locus_tag','translation'])
         return recs
 
@@ -834,7 +836,7 @@ class Predictor(object):
         return results
 
     def _predict_sequences(self, recs, path=None, overwrite=True, alleles=[], length=11, overlap=1,
-                          verbose=False, method=None, compression=None):
+                          verbose=False, compression=None, **kwargs):
         """
         Get predictions for a set of proteins and/or over multiple alleles.
         Sequences should be put into
@@ -847,7 +849,6 @@ class Predictor(object):
                 length: length of peptides to predict
                 overlap: overlap of n-mers
                 verbose: provide output per protein/sequence
-                method: IEDB method if using those predictors
             Returns: a dataframe of the results if no path is given
         """
 
@@ -881,8 +882,8 @@ class Predictor(object):
             peptides, s = peptutils.create_fragments(seq=seq, length=length, overlap=overlap)
             for a in alleles:
                 #we pass sequence, length, overlap for predictors that have to run on whole seq
-                df = self.predict(peptides=peptides, sequence=seq, allele=a, name=name, method=method,
-                                  length=length, overlap=overlap)
+                df = self.predict(peptides=peptides, sequence=seq, allele=a, name=name,
+                                  length=length, overlap=overlap, **kwargs)
                 if df is not None:
                     res.append(df)
                 else:
@@ -1129,6 +1130,7 @@ class NetMHCPanPredictor(Predictor):
         df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
         df['name'] = name
         df['score'] = df.ic50
+        df['pos'] = df.index.copy()
         df = df.dropna()
         self.get_ranking(df)
         self.data = df
@@ -1139,7 +1141,6 @@ class NetMHCPanPredictor(Predictor):
         """Call netMHCpan command line."""
 
         allele = allele.replace('*','')
-
         #write peptides to temp file
         pepfile = tempfile.mktemp()+'.pep'
         with open(pepfile ,'w') as f:
@@ -1159,6 +1160,7 @@ class NetMHCPanPredictor(Predictor):
         res = pd.DataFrame(rows)
         #print (res)
         if len(res)==0:
+            print ('empty result, check allele %s is correct' %allele)
             return res
         self.prepare_data(res, name=name)
         return self.data
@@ -1175,6 +1177,16 @@ class NetMHCPanPredictor(Predictor):
         s = temp.split('\n')
         alleles = [i for i in s if not i.startswith('#') and len(i)>0]
         return alleles
+
+    def check_install(self):
+        cmd = 'netMHCpan'
+        try:
+            temp = subprocess.check_output(cmd, shell=True)
+            print('netMHCpan appears to be installed')
+            return 1
+        except:
+            print ('netMHCpan not found')
+            return 0
 
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
@@ -1200,7 +1212,7 @@ class NetMHCIIPanPredictor(Predictor):
             row = re.split('\s*',r.strip())[:9]
             if len(row)!=9 or row[0] in ignore:
                 continue
-            print (row)
+            #print (row)
             data.append(dict(zip(self.colnames,row)))
         return data
 
@@ -1227,11 +1239,8 @@ class NetMHCIIPanPredictor(Predictor):
         try:
             allele = allele.split('-')[1].replace('*','_')
         except:
-            #print('invalid allele')
-            #return
             pass
         allele = allele.replace(':','')
-
         #write peptides to temp file
         pepfile = tempfile.mktemp()+'.pep'
         with open(pepfile ,'w') as f:
@@ -1274,8 +1283,18 @@ class NetMHCIIPanPredictor(Predictor):
         else:
             return a.replace(':','')
 
+    def check_install(self):
+        cmd = 'netMHCIIpan'
+        try:
+            temp = subprocess.check_output(cmd, shell=True)
+            print('netMHCIIpan appears to be installed')
+            return 1
+        except:
+            print ('netMHCIIpan not found')
+            return 0
+
 class IEDBMHCIPredictor(Predictor):
-    """Using IEDB tools method, requires iedb-mhc1 tools"""
+    """Using IEDB tools method, requires iedb-mhc1 tools. Tested with version 2.17"""
 
     def __init__(self, data=None, method='IEDB_recommended'):
         Predictor.__init__(self, data=data)
@@ -1354,11 +1373,9 @@ class IEDBMHCIPredictor(Predictor):
             return
         df = df.replace('-',np.nan)
         df = df.dropna(axis=1,how='all')
-        df.reset_index(inplace=True)
-        df.rename(columns={'index':'pos',
-                           'percentile_rank':'method',
-                           'method':'percentile_rank'},
+        df.rename(columns={'start':'pos'},
                            inplace=True)
+        df=df.drop(columns=['seq_num','end'])
         df['core'] = df.peptide
         df['name'] = name
         if 'method' not in df.columns:
@@ -1392,16 +1409,30 @@ class IEDBMHCIPredictor(Predictor):
             print (temp)
         return
 
+    def check_install(self):
+        path = self.iedbmhc1_path
+        if not os.path.exists(path):
+            print ('iedb mhcII tools not found')
+            return
+        cmd = os.path.join(path,'src/predict_binding.py')
+        try:
+            temp = subprocess.check_output(cmd, shell=True)
+            print('IEDB MHC-I tools appears to be installed')
+            return 1
+        except:
+            return 0
+
 class IEDBMHCIIPredictor(Predictor):
     """Using IEDB MHC-II method, requires tools to be installed locally"""
 
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'iedbmhc2'
+        #score will store ic50 value for most methods except sturniolo
         self.scorekey = 'score'
-        self.cutoff = 4
+        self.cutoff = 500
         self.operator = '<'
-        self.rankascending = 0
+        self.rankascending = 1
         self.methods = ['comblib','consensus3','IEDB_recommended',
                         'NetMHCIIpan','nn_align','smm_align','sturniolo']
         self.method = 'IEDB_recommended'
@@ -1414,12 +1445,10 @@ class IEDBMHCIIPredictor(Predictor):
         if len(rows) == 0:
             return
 
-        #print (rows)
         df = pd.read_csv(io.BytesIO(rows),sep=r'\t',engine='python',index_col=False)
-        #print (df.iloc[0])
+        #print (df.columns)
         extracols = ['Start','End','comblib_percentile','smm_percentile','nn_percentile',
                      'Sturniolo core',' Sturniolo score',' Sturniolo percentile']
-        #df = df.drop(extracols,1)
         df.reset_index(inplace=True)
         df.rename(columns={'index':'pos','Sequence': 'peptide','Allele':'allele'},
                            inplace=True)
@@ -1428,13 +1457,15 @@ class IEDBMHCIIPredictor(Predictor):
 
         if 'method' not in df.columns:
             df['method'] = self.method
-
-        if self.method in ['IEDB_recommended','consensus']:
+        #print (df.loc[0])
+        method = df.loc[0].method
+        if method == 'Sturniolo':
+            df['score'] = df.sturniolo_score
+        else:
             df['ic50'] = df.filter(regex="ic50").mean(1)
-
         if not 'score' in df.columns:
-            df['score'] = df.ic50.apply( lambda x: 1-math.log(x, 50000))
-        self.get_ranking(df)
+            df['score'] = df.ic50#.apply( lambda x: 1-math.log(x, 50000))
+
         self.get_ranking(df)
         self.data = df
         return df
@@ -1463,30 +1494,39 @@ class IEDBMHCIIPredictor(Predictor):
         path = self.iedbmhc2_path
         if method == None: method = 'IEDB_recommended'
         if not os.path.exists(path):
-            print ('iedb mhcII tools not found')
+            print ('iedb MHC-II tools not found')
             return
         cmd = os.path.join(path,'mhc_II_binding.py')
         cmd = cmd+' %s %s %s' %(method,allele,seqfile)
-        print (cmd)
-
+        if show_cmd is True:
+            print (cmd)
         try:
-            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-        except:
-            print ('allele %s not available?' %allele)
+            temp = subprocess.check_output(cmd, shell=True)
+            #print(temp)
+        except Exception as e:
+            print (e)
+            print ('check allele %s is correct.' %allele)
             return
+
         data = self.prepare_data(temp, name)
         return data
 
     def get_alleles(self):
+        alleles = list(pd.read_csv(os.path.join(datadir, 'iedb_mhc2_alleles.csv')).allele.values)
+        return alleles
+
+    def check_install(self):
         path = self.iedbmhc2_path
         if not os.path.exists(path):
-            return []
-        c = os.path.join(path,'mhc_II_binding.py')
-        for m in self.methods:
-            cmd = c + ' %s mhc' %m
-            temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-            print (temp)
-        return
+            print ('iedb mhcII tools not found')
+            return
+        cmd = os.path.join(path,'mhc_II_binding.py')
+        try:
+            temp = subprocess.check_output(cmd, shell=True)
+            print('IEDB MHC-II tools appears to be installed')
+            return 1
+        except:
+            return 0
 
 class TEpitopePredictor(Predictor):
     """Predictor using TepitopePan QM method"""
@@ -1727,10 +1767,8 @@ class MHCNuggetsPredictor(Predictor):
         return tempf
 
     def get_alleles(self):
-        import mhcnuggets
-        module_path = os.path.dirname(os.path.abspath(mhcnuggets.__file__))
-        allelefile = os.path.join(module_path, 'data/production/mhcI/supported_alleles.txt')
-        with open(allelefile) as f:
+        with open(os.path.join(datadir,'mhcnuggets_alleles.txt')) as f:
             p = f.readlines()
         p = [x.strip() for x in p]
+        p = list(filter(None, p))
         return p

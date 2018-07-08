@@ -46,16 +46,14 @@ The advantage of configuration files is in avoiding long commands that have to b
 
     [iedbtools]
     iedbmhc1_path =
-    iedbmhc2_path =
     iedb_mhc1_method = IEDB_recommended
-    iedb_mhc2_method = IEDB_recommended
 
 Settings explained
 ------------------
 
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | name             | example value               | meaning                                                                      |
-+------------------+-----------------------------+------------------------------------------------------------------------------+
++==================+=============================+==============================================================================+
 | predictors       | tepitope                    | name of predictor: e.g. tepitope, iedbmhc1, netmhciipan, mhcflurry           |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | mhc1_alleles     | HLA-A*01:01,HLA-A*03:01     | list of MHC-I alleles or preset name                                         |
@@ -88,11 +86,7 @@ Settings explained
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 | iedbmhc1_path    |                             | folder where the IEDB MHC-I tools are installed, not required unless used    |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
-| iedbmhc2_path    |                             | folder where the IEDB MHC-II tools are installed, not required unless used   |
-+------------------+-----------------------------+------------------------------------------------------------------------------+
 | iedb_mhc1_method | IEDB_recommended            | predictor to use within the IEDB MHC-I tools (see below)                     |
-+------------------+-----------------------------+------------------------------------------------------------------------------+
-| iedb_mhc2_method | IEDB_recommended            | predictor to use within the IEDB MHC-II tools (see below)                    |
 +------------------+-----------------------------+------------------------------------------------------------------------------+
 
 Cutoff methods
@@ -137,9 +131,9 @@ The current selection is:
 IEDB tool methods
 -----------------
 
-The IEDB combines multiple prediction methods into its tools. Generally it's recommended to use their consensus methods but individual methods may be preferred. You can specify these using the iedb_mhc*_method options. Remember they do not all support all alleles. See Installing IEDB MHC tools.
+The IEDB combines multiple prediction methods into its tools. Generally it's recommended to use their IEDB_recommended method but individual methods may be preferred. You can specify these using the iedb_mhc1_method option. Remember they do not all support all alleles. See Installing IEDB MHC-I tools.
 
-MHC-I::
+::
 
     ann
     comblib_sidney2008
@@ -148,16 +142,6 @@ MHC-I::
     netmhcpan
     smm
     smmpmbec
-
-MHC-II::
-
-    comblib
-    consensus3
-    IEDB_recommended
-    NetMHCIIpan
-    nn_align
-    smm_align
-    sturniolo
 
 Examples
 --------

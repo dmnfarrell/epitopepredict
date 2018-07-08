@@ -129,6 +129,8 @@ def get_nmer(df, genome, length=20, seqkey='translation', how='center', margin=3
     cols = ['locus_tag','gene','translation']
     cols = list(set(cols) & set(genome.columns))
     #merge with genome dataframe but must keep index for re-merging
+    if len(df)==0:
+        return
     temp = df.merge(genome[cols],left_on='name',right_on='locus_tag',
                     how='left').set_index(df.index)
     if not 'end' in list(temp.columns):

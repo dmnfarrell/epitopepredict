@@ -40,7 +40,7 @@ Updating the snap is simply done using::
 Prediction algorithms
 ---------------------
 
-There are now multiple MHC binding prediction algorithms available freely online. Often the problem is determining how to use them and which alleles they support. The 'state of the art' algorithms are probably those based on neural networks such as netMHC class I and II routines. These are packaged in the IEDB suite of tools. These programs can be installed freely on your system. Some of the algorithms below are included in the snap package so you don't have to install them separately.
+There are now multiple MHC binding prediction algorithms available freely online. Often the problem is determining how to use them and which alleles they support. The 'state of the art' algorithms are probably those based on neural networks such as netMHC class I and II routines. These are packaged as external tools and can be installed freely on your system. Some of the algorithms below are included in the snap package so you don't have to install them separately.
 
 **Supported algorithms**
 
@@ -57,7 +57,7 @@ There are now multiple MHC binding prediction algorithms available freely online
 +---------------------+-------------------------------------------------------------+---------------+
 | mhcnuggets          | https://github.com/KarchinLab/mhcnuggets-2.0 (MHC-I/II)     | yes           |
 +---------------------+-------------------------------------------------------------+---------------+
-| IEDB MHC-I and II   | http://tools.immuneepitope.org/mhci/download/               | no            |
+| IEDB MHC-I tools    | http://tools.immuneepitope.org/mhci/download/               | no            |
 +---------------------+-------------------------------------------------------------+---------------+
 
 Both mhcflurry and mhcnuggets can be installed easily with pip and are provided as part of the snap package.
@@ -72,19 +72,22 @@ Due to license restrictions these programs must be installed separately. You can
 
 The install instructions can then be found in the readme files when you untar the downloaded file e.g. netMHCpan-4.0.readme. Remember to test the software is working before you use it in epitopepredict.
 
-Installing IEDB MHC tools
--------------------------
+Installing IEDB MHC-I tools
+---------------------------
 
-Note that if using the netMHC programs above you probably **do not** need to use the IEDB tools unless you have very specific requirements. The distributions 'IEDB_MHC*.tar.gz' contain a collection of peptide binding prediction tools for Major Histocompatibility Complex (MHC) class I and II molecules. The collection is a mixture of pythons scripts and linux 32-bit environment specific binaries. Linux environment is required. Under ubuntu (if not using the snap package) you should also install tcsh and gawk::
+Note that if using the netMHCpan programs above you probably **do not** need to use the IEDB tools unless you have specific requirements to do so. The distributions 'IEDB_MHC*.tar.gz' contain a collection of peptide binding prediction tools for Major Histocompatibility Complex (MHC) class I and II molecules. The collection is a mixture of pythons scripts and linux 32-bit environment specific binaries. Linux environment is required. Under ubuntu (if not using the snap package) you should also install tcsh and gawk::
 
     sudo apt install tcsh gawk
 
-Download from http://tools.iedb.org/mhci/download/. Unpack the tar.gz files. Run the 'configure' script to set up path variables for trained models. e.g. For MHC-I tools::
+Download from http://tools.iedb.org/mhci/download/. Unpack the tar.gz files. Run the 'configure' script to set up path variables for trained models. This has been tested to work with version 2.17.
+
+::
 
     tar -zxvf IEDB_MHC_I-*.*.*.tar.gz
     cd mhc_i
     ./configure.py
 
+*MHC-II tools are not currently supported.*
 
 Submit Bugs
 ===========
