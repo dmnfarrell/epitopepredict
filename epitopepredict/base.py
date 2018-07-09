@@ -1737,9 +1737,10 @@ class MHCNuggetsPredictor(Predictor):
         return
 
     def predict(self, peptides=None, length=11, overlap=1,
-                      allele='HLA-A0101', name='temp', **kwargs):
+                      allele='HLA-A01:01', name='temp', **kwargs):
         """Uses cmd line call to mhcnuggets."""
 
+        allele = allele.replace('*','')
         from mhcnuggets.src.predict import predict
         pepfile = self.write_seqs(peptides)
         outfile = tempfile.mktemp()+'.txt'
@@ -1754,6 +1755,7 @@ class MHCNuggetsPredictor(Predictor):
 
         df['name'] = name
         df['allele'] = allele
+        df['pos'] = df.index.copy()
         self.get_ranking(df)
         self.data = df
         return df

@@ -251,6 +251,9 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     plot.xaxis.major_label_text_font_size = "9pt"
     plot.xaxis.major_label_text_font_style = "bold"
     plot.ygrid.grid_line_color = None
+    plot.xgrid.minor_grid_line_alpha = 0.1
+    plot.xgrid.minor_grid_line_color = 'gray'
+    #plot.xgrid.minor_grid_line_dash = [6, 4]
     plot.yaxis.major_label_text_font_size = '0pt'
     #plot.xaxis.major_label_orientation = np.pi/4
     plot.min_border = 10
