@@ -20,7 +20,7 @@ from Bio.SeqFeature import SeqFeature, FeatureLocation
 from  . import utilities
 
 featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
-               'product', 'note', 'translation','pseudo','start','end']
+               'product', 'note', 'translation','pseudo','start','end','strand']
 typecolors = ['blue','green','brown','orange','purple','lightblue','yellow','red']
 
 def draw_genome_map(infile, filename=None):
@@ -245,6 +245,7 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
         d = {}
         d['start'] = f.location.start
         d['end'] = f.location.end
+        d['strand'] = f.location.strand
         for i in featurekeys:
             if i in x:
                 if type(x[i]) is list:
