@@ -110,11 +110,14 @@ class WorkFlow(object):
                 P.load()
             else:
                 #print (savepath)
+                #data saved to disk to avoid large memory usage
                 P.predict_proteins(self.sequences, length=length, alleles=a, names=self.names,
                                 path=savepath, overwrite=self.overwrite, verbose=self.verbose,
                                 method=method, cpus=self.cpus, compression=self.compression)
                 #keep reference to path where results saved
                 P.path = savepath
+                #clear data as we will reload during analysis from disk
+                P.data = None
             #if P.data is None:
             #    print ('no results were found, did predictor run?')
             #    return
@@ -167,6 +170,8 @@ class WorkFlow(object):
             if len(pb)>0:
                 print ('top promiscuous binders:')
                 print (pb[:10])
+            else:
+                continue
             if self.sequences is not None:
                 x = analysis.get_nmer(pb, self.sequences, how='split', length=20)
                 x = analysis.peptide_properties(x, 'n-mer')
@@ -222,7 +227,7 @@ class WorkFlow(object):
         """Combine peptide binders present in all methods."""
 
         cols = ['peptide','alleles','mean']
-        keys = data.keys()
+        keys = list(data.keys())
         n1 = keys[0]
         df = data[n1][['name']+cols]
         for n in keys[1:]:

@@ -109,7 +109,7 @@ class NeoEpitopeWorkFlow(object):
                 effects_to_pickle(effects, eff_obj)
             else:
                 #else reload from last run
-                effects = pickle.load(open(eff_obj,'r'))
+                effects = pickle.load(open(eff_obj,'rb'))
             #save effects as table
             eff_data = effects_to_dataframe(effects)
             eff_data['sample'] = f
@@ -653,7 +653,7 @@ def check_ensembl():
 
     #check if running inside a snap package so we can download
     #the genome files for pyensembl
-    if os.environ.has_key('SNAP_USER_COMMON'):
+    if 'SNAP_USER_COMMON' in os.environ:
         print ('running inside snap')
         spath = os.environ['SNAP_USER_COMMON']
         print ('checking for ref human genome')
@@ -697,11 +697,10 @@ def test_run():
     print ('neoepitope workflow test')
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
-    options['base']['predictors'] = 'mhcflurry'
+    options['base']['predictors'] = 'netmhcpan' #'mhcflurry'
     options['base']['mhc1_alleles'] = 'HLA-A*02:01'
-    #options['base']['mhc2_alleles'] = 'HLA-DRB1*01:01,HLA-DRB1*04:01,HLA-DRB1*08:01,HLA-DRB1*09:01,HLA-DRB1*11:01'
     options['base']['path'] = 'neo_test'
-    options['base']['mhc2_length'] = 11
+    #options['base']['mhc2_length'] = 11
     #options['base']['verbose'] = True
     options['neopredict']['vcf_files'] = os.path.join(path, 'testing','input.vcf')
     options = config.check_options(options)

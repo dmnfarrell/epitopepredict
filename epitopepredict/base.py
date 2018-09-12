@@ -409,13 +409,16 @@ class DataFrameIterator:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         if self.current >= len(self.files):
             raise StopIteration
         else:
             df=pd.read_csv(self.files[self.current],index_col=0)
             self.current += 1
             return df
+
+    def next(self):
+        return self.__next__()
 
     def __repr__(self):
         return 'DataFrameIterator with %s files' %len(self.files)
@@ -1113,7 +1116,10 @@ class NetMHCPanPredictor(Predictor):
         """Read raw results from netMHCpan output"""
 
         data=[]
+        res = res.decode()
+        #print (res)
         res = res.split('\n')[45:]
+
         ignore = ['Pos','#','Protein','']
         for r in res:
             if r.startswith('-'): continue
@@ -1205,6 +1211,7 @@ class NetMHCIIPanPredictor(Predictor):
         """Read raw results from netMHCIIpan output"""
 
         data=[]
+        res = res.decode()
         res = res.split('\n')
         ignore=['Protein','pos','Number','#']
         for r in res:

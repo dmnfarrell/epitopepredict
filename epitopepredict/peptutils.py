@@ -6,6 +6,7 @@
     Copyright (C) Damien Farrell
 """
 
+from __future__ import absolute_import, print_function
 import os, random, csv
 import pandas as pd
 from Bio import SeqIO
@@ -119,7 +120,7 @@ def get_AAfraction(seq, amino_acids=None):
     if amino_acids == None:
         amino_acids = nonpolar
     count=0
-    for aa, i in X.count_amino_acids().iteritems():
+    for aa, i in X.count_amino_acids().items():
         if aa in amino_acids:
             count+=i
     if count == 0: return 0
@@ -132,7 +133,7 @@ def net_charge(seq):
     X = ProteinAnalysis(seq)
     ac = 0
     ba = 0
-    for aa, i in X.count_amino_acids().iteritems():
+    for aa, i in X.count_amino_acids().items():
         if aa in ['D','E']:
             ac -= i
         elif aa in ['K','R']:

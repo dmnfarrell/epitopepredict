@@ -8,7 +8,7 @@ description: |
  each method can then be processed and visualized in a consistent manner.
 
 grade: stable
-confinement: strict
+confinement: devmode
 icon: gui/icon.png
 
 apps:
@@ -20,12 +20,10 @@ apps:
 parts:
   epitopepredict:
     plugin: python
-    python-version: python2
+    python-version: python3
     source: ../
     python-packages:
-      [matplotlib,mhcflurry,sklearn,gtfparse==0.0.6,pyensembl==1.1,varcode==0.5.15,mhcnuggets]
+      [matplotlib,mhcflurry,mhcnuggets,sklearn,gtfparse==0.0.6,pyensembl==1.1.0,varcode==0.5.15]
     stage-packages:
       [tcsh,gawk,ncbi-blast+,bowtie2]
-  #netmhciipan:
-  #  plugin: autotools
-  #  source:
+

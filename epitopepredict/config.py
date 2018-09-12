@@ -94,7 +94,7 @@ def create_config_parser_from_dict(data=None, sections=['base','iedbtools'], **k
     cp = configparser.ConfigParser()
     for s in sections:
         cp.add_section(s)
-        if not data.has_key(s):
+        if not s in data:
             continue
         for name in sorted(data[s]):
             val = data[s][name]
