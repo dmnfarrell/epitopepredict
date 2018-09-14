@@ -261,6 +261,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     plot.background_fill_alpha = 0.5
     plot.legend.orientation = "horizontal"
     plot.legend.location = "bottom_right"
+    #plot.legend.label_text_font_size = 12
     plot.toolbar.logo = None
     plot.toolbar_location = "right"
     return plot

@@ -868,7 +868,10 @@ class Predictor(object):
         results = []
         if path is not None and path != '':
             if not os.path.exists(path):
-                os.mkdir(path)
+                try:
+                    os.mkdir(path)
+                except (OSError, FileExistsError):
+                    pass
 
         results = []
         self.length = length
@@ -1112,14 +1115,14 @@ class NetMHCPanPredictor(Predictor):
         self.operator = '<'
         self.rankascending = 1
 
-    def read_result(self, res):
+    def read_result(self, temp):
         """Read raw results from netMHCpan output"""
 
+        '''
+        res = pd.DataFrame(temp)
         data=[]
         res = res.decode()
-        #print (res)
         res = res.split('\n')[45:]
-
         ignore = ['Pos','#','Protein','']
         for r in res:
             if r.startswith('-'): continue
@@ -1127,17 +1130,25 @@ class NetMHCPanPredictor(Predictor):
             if len(row)!=14 or row[0] in ignore:
                 continue
             data.append(dict(zip(self.colnames,row)))
-            #print (row)
-        return data
+            #print (row)'''
+
+        ignore = ['Pos','#','Protein','']
+        cols = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
+                'Identity','Score','ic50','%Rank','BindLevel']
+        res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep='\s+',
+                          error_bad_lines=False, skiprows=45).dropna(subset=['peptide'])
+        res = res[~res.pos.isin(ignore)]
+        return res
 
     def prepare_data(self, df, name):
-        """Prepare netmhcpan results as a dataframe"""
+        """Prepare netmhcpan results"""
 
         df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
         df['name'] = name
         df['score'] = df.ic50
+        df=df.reset_index(drop=True)
         df['pos'] = df.index.copy()
-        df = df.dropna()
+        df = df.dropna(how='all')
         self.get_ranking(df)
         self.data = df
         return
@@ -1162,9 +1173,8 @@ class NetMHCPanPredictor(Predictor):
         except Exception as e:
             #print (e)
             return
-        rows = self.read_result(temp)
-        res = pd.DataFrame(rows)
-        #print (res)
+        res = self.read_result(temp)
+
         if len(res)==0:
             print ('empty result, check allele %s is correct' %allele)
             return res

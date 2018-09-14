@@ -103,7 +103,7 @@ def ete_tree(aln):
     return
 
 def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
-                    compress=False, cmd='blastp', cpus=2, **kwargs):
+                    compress=False, cmd='blastp', cpus=2, show_cmd=False, **kwargs):
     """Blast a local database"""
 
     if output == None:
@@ -114,7 +114,8 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
                                  max_target_seqs=maxseqs,
                                  outfmt=outfmt, out=output,
                                  evalue=evalue, num_threads=cpus, **kwargs)
-    #print (cline)
+    if show_cmd == True:
+        print (cline)
     stdout, stderr = cline()
     return
 

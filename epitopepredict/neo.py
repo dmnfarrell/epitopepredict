@@ -129,7 +129,7 @@ class NeoEpitopeWorkFlow(object):
                 seqs = get_mutant_sequences(effects=effects, length=length, verbose=self.verbose)
 
                 res = predict_variants(seqs, alleles=alleles, length=length,
-                                 predictor=predictor, verbose=self.verbose, cpus=1)
+                                 predictor=predictor, verbose=self.verbose, cpus=self.cpus)
                 res['label'] = f
                 res.to_csv(outfile, index=False)
 
@@ -702,6 +702,7 @@ def test_run():
     options['base']['path'] = 'neo_test'
     #options['base']['mhc2_length'] = 11
     #options['base']['verbose'] = True
+    #options['base']['cpus'] = 4
     options['neopredict']['vcf_files'] = os.path.join(path, 'testing','input.vcf')
     options = config.check_options(options)
     #print (options)
