@@ -26,6 +26,8 @@ class WorkFlow(object):
     def setup(self):
         """Setup main parameters"""
 
+        if check_snap() == True:
+            add_path()
         pd.set_option('display.width', 120)
         #override base.defaults entries if provided in conf
         set_defaults(self.__dict__)
@@ -343,6 +345,25 @@ def list_alleles():
                 print(', '.join(l))
 
         print ()
+    return
+
+def check_snap():
+    """Check if inside a snap"""
+
+    if 'SNAP_COMMON' in os.environ:
+        return True
+    return False
+
+def add_path():
+    """Add home dir to path for accessing tools from a snap"""
+
+    home = os.environ['SNAP_COMMON']
+    toolspath = os.path.join(home, 'tools')
+    binpath = os.path.join(toolspath, 'bin')
+    #if not os.path.exists(toolspath):
+    print ('you should install external tools in %s' %toolspath)
+    os.environ["PATH"] += os.pathsep + binpath
+    print (os.environ["PATH"])
     return
 
 def test_run():

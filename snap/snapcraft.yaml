@@ -23,7 +23,6 @@ parts:
     python-version: python3
     source: ../
     python-packages:
-      [matplotlib,mhcflurry,mhcnuggets,sklearn,gtfparse==0.0.6,pyensembl==1.1.0,varcode==0.5.15]
+      [mhcflurry,mhcnuggets,sklearn,gtfparse==0.0.6,pyensembl==1.1.0,varcode==0.5.15]
     stage-packages:
       [tcsh,gawk,ncbi-blast+,bowtie2]
-

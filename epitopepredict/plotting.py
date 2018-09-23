@@ -9,9 +9,12 @@
 from __future__ import absolute_import, print_function
 import sys, os, math
 from collections import OrderedDict
-import matplotlib
-matplotlib.use('agg', warn=False)
-import pylab as plt
+try:
+    import matplotlib
+    matplotlib.use('agg', warn=False)
+    import pylab as plt
+except:
+    pass
 import numpy as np
 import pandas as pd
 from . import base
@@ -20,6 +23,7 @@ colormaps={'tepitope':'Greens','netmhciipan':'Oranges','iedbmhc2':'Pinks',
             'iedbmhc1':'Blues'}
 defaultcolors = {'tepitope':'green','netmhciipan':'orange',
                  'iedbmhc1':'blue','iedbmhc2':'pink'}
+
 
 def plot_heatmap(df, ax=None, figsize=(6,6), **kwargs):
     """Plot a generic heatmap """
