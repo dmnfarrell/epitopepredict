@@ -636,6 +636,13 @@ def check_imports():
         return False
     return True
 
+def check_snap():
+    """Check if inside a snap"""
+
+    if 'SNAP_COMMON' in os.environ:
+        return True
+    return False
+    
 def fetch_ensembl_release(path=None, release='75'):
     """get pyensembl genome files"""
 
@@ -644,20 +651,22 @@ def fetch_ensembl_release(path=None, release='75'):
         os.environ['PYENSEMBL_CACHE_DIR'] = path
     #this call should download the files
     genome = EnsemblRelease(release, species='human')
-    print ('pyensembl genome files cached in %s' %genome.cache_directory_path)
     genome.download()
     genome.index()
+    #print ('pyensembl genome files cached in %s' %genome.cache_directory_path)
+    return
 
 def check_ensembl():
     """Check pyensembl ref genome cached. Needed for running in snap"""
 
     #check if running inside a snap package so we can download
     #the genome files for pyensembl
-    if 'SNAP_USER_COMMON' in os.environ:
-        print ('running inside snap')
-        spath = os.environ['SNAP_USER_COMMON']
+    if check_snap() is True:
+        #print ('running inside snap')
+        home = os.path.join('/home', os.environ['USER'])
+        cache_dir = os.path.join(home, '.cache')
         print ('checking for ref human genome')
-        fetch_ensembl_release()
+        fetch_ensembl_release(cache_dir)
     return
 
 def run_vep(vcf_file, out_format='vcf', assembly='GRCh38', cpus=4, path=None):

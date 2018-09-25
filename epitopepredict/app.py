@@ -357,13 +357,14 @@ def check_snap():
 def add_path():
     """Add home dir to path for accessing tools from a snap"""
 
-    home = os.environ['SNAP_COMMON']
-    toolspath = os.path.join(home, 'tools')
+    #toolspath = os.environ['SNAP_USER_COMMON']
+    toolspath = os.path.join('/home', os.environ['USER'])
     binpath = os.path.join(toolspath, 'bin')
-    #if not os.path.exists(toolspath):
+    if not os.path.exists(binpath):
+        os.mkdir(binpath)
     print ('you should install external tools in %s' %toolspath)
     os.environ["PATH"] += os.pathsep + binpath
-    print (os.environ["PATH"])
+    #print (os.environ["PATH"])
     return
 
 def test_run():

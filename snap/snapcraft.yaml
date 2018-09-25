@@ -15,14 +15,13 @@ apps:
   epitopepredict:
     command: bin/epitopepredict
     plugs: [home,network-bind]
-    environment:
-      PYENSEMBL_CACHE_DIR: $SNAP_USER_COMMON
+
 parts:
   epitopepredict:
     plugin: python
     python-version: python3
     source: ../
     python-packages:
-      [mhcflurry,mhcnuggets,sklearn,gtfparse==0.0.6,pyensembl==1.1.0,varcode==0.5.15]
+      [mhcflurry,mhcnuggets,gtfparse==0.0.6,pyensembl==1.1.0,varcode==0.5.15]
     stage-packages:
-      [tcsh,gawk,ncbi-blast+,bowtie2]
+      [python-setuptools,tcsh,gawk,ncbi-blast+,bowtie2]
