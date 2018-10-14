@@ -485,17 +485,17 @@ class Predictor(object):
             return df[df[key] >= value]
 
     def get_allele_cutoffs(self, cutoff=.95):
-        """Get per allele cutoffs using global reference."""
+        """Get per allele percentile cutoffs using precalculated quantile vales."""
 
         path = os.path.join(datadir, 'quantiles_%s.csv' %self.name)
         #print (path)
-        qf=pd.read_csv(path,index_col=0)
-        qf.columns=qf.columns.astype('float')
-        cutoff=round(cutoff,2)
+        qf = pd.read_csv(path,index_col=0)
+        qf.columns = qf.columns.astype('float')
+        cutoff = round(cutoff,2)
         #if self.rankascending == 1:
         #    cutoff = round(1-cutoff,2)
         if not cutoff in qf.columns:
-            print ('please use values between 0 and 1 in steps of e.g. .95 (95% cutoff)')
+            print ('please use values between 0 and 1 rounded to 2 decimal places e.g. .95 (95% cutoff)')
         return qf[cutoff]
 
     def _per_allele_binders(self, data, cuts):
@@ -525,7 +525,8 @@ class Predictor(object):
             res = data[data[self.scorekey] <= cutoff]
         return res
 
-    def get_binders(self, cutoff=.95, cutoff_method='default', path=None, name=None, **kwargs):
+    def get_binders(self, cutoff=.95, cutoff_method='default', path=None,
+                    name=None, drop_columns=False, **kwargs):
         """
         Get the top scoring binders. If using default cutoffs are derived
         from the pre-defined percentile cutoffs for some known antigens. For
@@ -581,8 +582,7 @@ class Predictor(object):
         return res
 
     def promiscuous_binders(self, binders=None, name=None, cutoff=.95,
-                           cutoff_method='default', n=1, unique_core=True,
-                           keep_columns=False, **kwargs):
+                           cutoff_method='default', n=1, unique_core=True, **kwargs):
         """
         Use params for getbinders if no binders provided?
         Args:
@@ -621,13 +621,12 @@ class Predictor(object):
                          'first':'core'}, inplace=True)
         s = s.reset_index()
 
-        #retain other non-standard cols
-        if keep_columns == True:
+        '''if keep_columns == True:
             x = binders.drop_duplicates(['name','peptide','allele'])
             s = s.merge(x, on=['name','peptide','pos'], how='inner', suffixes=('', '_y'))
             cols = s.columns[~s.columns.str.contains('_y')]
             s = s[cols]
-            s = s.drop('allele',1)
+            s = s.drop('allele',1)'''
 
         s = s.sort_values(['alleles','median_rank',self.scorekey],
                           ascending=[False,True,self.rankascending])
@@ -683,7 +682,7 @@ class Predictor(object):
         df['pos'] = range(len(seqs))
         return df
 
-    def _predict_peptides(self, peptides, alleles=[], verbose=False, **kwargs):
+    def _predict_peptides(self, peptides, alleles=[], verbose=False, drop_columns=False, **kwargs):
         """
         Predict a set of arbitary peptide sequences in a list or dataframe.
         These are treated as individual peptides and not split into n-mers. This is
@@ -691,7 +690,8 @@ class Predictor(object):
         can only accept protein sequences this needs to be overriden.
         Args:
             peptides: list of peptides
-            alleles: list of alleles
+            alleles: list of alleles to predict
+            drop_columns: only keep default columns
         Returns:
             dataframe with results
         """
@@ -726,6 +726,10 @@ class Predictor(object):
             return
 
         data = pd.concat(res)
+        #drop non-standard columns for cleaner output
+        if drop_columns == True:
+            defaultcols = ['pos','peptide',self.scorekey,'allele','rank','name']
+            data= data[defaultcols]
         #print (data)
         self.data = data
         return data

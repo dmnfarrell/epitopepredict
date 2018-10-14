@@ -18,6 +18,9 @@ from epitopepredict import base, config, analysis, sequtils, peptutils, tepitope
 
 defaultpath = os.getcwd()
 sim_matrix = tepitope.get_matrix('pmbec')
+metrics = ['self_mismatches', 'virus_mismatches', 'wt_similarity',
+          'self_similarity', 'score', 'binding_rank', 'matched_score', 'binding_diff',
+          'hydro', 'net_charge']
 
 class NeoEpitopeWorkFlow(object):
     """Class for implementing a neo epitope workflow."""
@@ -419,25 +422,28 @@ def load_variants(vcf_file=None, maf_file=None, max_variants=None):
     print ('%s variants read from %s' %(len(variants),f))
     return variants
 
-def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
-                     verbose=False, cpus=1, predictor_kwargs={}):
+def predict_variants(df, predictor='tepitope', alleles=[],
+                     verbose=False, cpus=1, cutoff=.95, cutoff_method='default'):
     """
     Predict binding scores for mutated and wt peptides (if present) from supplied variants.
     Args:
-        df: pandas dataframe with peptide sequences derived from get_mutant_sequences.
+        df: pandas dataframe with peptide sequences, requires at least 2 columns
+            'peptide' - the mutant peptide
+            'wt' - a corresponding wild type peptide
+        this data could be generated from get_mutant_sequences or from an external source
+        predictor: mhc binding prediction method
+        alleles: list of alleles
     Returns:
-        dataframe of results with mutant and wt scores for all alleles plus score columns
-        for similarity to wt peptides
+        dataframe with mutant and wt binding scores for all alleles plus other score metrics
     """
-
-    #if not os.path.exists(path):
-    #    os.mkdir(path)
 
     #find matches to self proteome, adds penalty score column to df
     #we should only blast non-duplicates....
-    print ('finding matches to self proteome')
+    if verbose == True:
+        print ('finding matches to self proteome')
     df = self_matches(df, cpus=cpus)
-    print ('finding matches to viral proteomes')
+    if verbose == True:
+        print ('finding matches to viral proteomes')
     df = virus_matches(df, cpus=cpus)
     #get similarity scores for wt and closest match to proteome
     df['wt_similarity'] = df.apply(wt_similarity,1)
@@ -446,22 +452,25 @@ def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
     df['closest'] = df.apply(get_closest_match, 1)
 
     P = base.get_predictor(predictor)
-    print (P)
-    print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
+    if verbose == True:
+        print (P)
+        print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
 
     peps = list(df.peptide)
-    res = P.predict_peptides(peps, alleles=alleles, cpus=cpus, **predictor_kwargs)
+    res = P.predict_peptides(peps, alleles=alleles, cpus=cpus,
+                             cutoff=cutoff, cutoff_method=cutoff_method, drop_columns=True)
     pb = P.promiscuous_binders(n=1,cutoff=.95)
 
     #predict closest matching peptide affinity
-    print ('predicting wt peptides')
+    if verbose == True:
+        print ('predicting wt peptides')
     wtpeps = list(df.closest)
-    #print wtpeps
-    b_wt = P.predict_peptides(wtpeps, alleles=alleles, cpus=cpus, **predictor_kwargs)
+    #print wild type peptides
+    b_wt = P.predict_peptides(wtpeps, alleles=alleles, cpus=cpus,
+                               cutoff=cutoff, cutoff_method=cutoff_method, drop_columns=True)
 
     #combine mutant and matching binding predictions
     res = combine_wt_scores(res, b_wt, P.scorekey)
-    #print (res[:10])
     res = res.drop(['pos','name'],1)
 
     #combine binding results with main dataframe
@@ -470,12 +479,16 @@ def predict_variants(df, length=9,  predictor='tepitope', alleles=[],
 
     #hydrophobicity and net charge
     res = analysis.peptide_properties(res, 'peptide')
+    #print(res)
     #exclude exact matches to self
     print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
-    #res = res[res.self_mismatches>0]
+
     #merge promiscuity measure into results
-    #print (pb[:10])
-    res = res.merge(pb[['peptide','alleles']], on='peptide',how='left')
+    if len(pb) > 0:
+        res = res.merge(pb[['peptide','alleles']], on='peptide',how='left')
+    else:
+        print ('no promiscuous binders')
+        res['alleles'] = 0
     #rename some columns
     res = res.rename(columns={'rank':'binding_rank','alleles':'promiscuity'})
     return res
@@ -642,7 +655,7 @@ def check_snap():
     if 'SNAP_COMMON' in os.environ:
         return True
     return False
-    
+
 def fetch_ensembl_release(path=None, release='75'):
     """get pyensembl genome files"""
 
