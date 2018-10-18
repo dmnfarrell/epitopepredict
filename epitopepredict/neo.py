@@ -19,7 +19,7 @@ from epitopepredict import base, config, analysis, sequtils, peptutils, tepitope
 defaultpath = os.getcwd()
 sim_matrix = tepitope.get_matrix('pmbec')
 metrics = ['self_mismatches', 'virus_mismatches', 'wt_similarity',
-          'self_similarity', 'score', 'binding_rank', 'matched_score', 'binding_diff',
+          'self_similarity', 'virus_similarity', 'score', 'binding_rank', 'matched_score', 'binding_diff',
           'hydro', 'net_charge']
 
 class NeoEpitopeWorkFlow(object):
@@ -448,6 +448,7 @@ def predict_variants(df, predictor='tepitope', alleles=[],
     #get similarity scores for wt and closest match to proteome
     df['wt_similarity'] = df.apply(wt_similarity,1)
     df['self_similarity'] = df.apply(self_similarity,1)
+    df['virus_similarity'] = df.apply(virus_similarity,1)
     #get closest peptide in another column, either wt or nearest self
     df['closest'] = df.apply(get_closest_match, 1)
 
@@ -611,6 +612,13 @@ def self_similarity(x, matrix='pbmec'):
         return
     x1 = x.peptide
     x2 = x.self_match
+    return tepitope.similarity_score(tepitope.blosum62,x1,x2)
+
+def virus_similarity(x, matrix='pbmec'):
+    if x.self_match is None:
+        return
+    x1 = x.peptide
+    x2 = x.virus_match
     return tepitope.similarity_score(tepitope.blosum62,x1,x2)
 
 def get_closest_match(x):
