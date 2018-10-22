@@ -1069,6 +1069,8 @@ class Predictor(object):
         return p
 
     def get_names(self):
+        """Get names of sequences currently stored as predictions"""
+        
         grp = self.data.groupby('name')
         return sorted(dict(list(grp)).keys())
 
@@ -1722,7 +1724,10 @@ class MHCFlurryPredictor(Predictor):
         return df
 
     def convert_allele_name(self, r):
-        return r[:5]+'*'+r[5:7]+':'+r[7:]
+        if ':' not in r:
+            return r[:5]+'*'+r[5:7]+':'+r[7:]
+        else:
+            return r[:5]+'*'+r[5:7]+r[7:]
 
     def get_alleles(self):
         with open(os.path.join(datadir,'mhcflurry_alleles.txt')) as f:

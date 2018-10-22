@@ -461,6 +461,9 @@ def predict_variants(df, predictor='tepitope', alleles=[],
     res = P.predict_peptides(peps, alleles=alleles, cpus=cpus,
                              cutoff=cutoff, cutoff_method=cutoff_method, drop_columns=True)
     pb = P.promiscuous_binders(n=1,cutoff=.95)
+    if res is None:
+        print ('no binding predictions!')
+        return
 
     #predict closest matching peptide affinity
     if verbose == True:
