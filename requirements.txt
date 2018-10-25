@@ -2,4 +2,5 @@ pandas
 numpy
 biopython
 matplotlib
+seaborn
 mhcflurry
