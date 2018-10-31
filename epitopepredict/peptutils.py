@@ -140,6 +140,17 @@ def net_charge(seq):
             ba += i
     return ac + ba
 
+def compare_anchor_positions(x1, x2):
+    """Check if anchor positions in 9-mers are mutated"""
+
+    p1 = list(get_fragments(x1, length=9).peptide)
+    p2 = list(get_fragments(x2, length=9).peptide)
+    #is mutation in anchor residue
+    for a,b in zip(p1,p2):
+        if a[1] != b[1] or a[8] != b[8]:
+            return 1
+    return 0
+
 def main():
     from optparse import OptionParser
     parser = OptionParser()

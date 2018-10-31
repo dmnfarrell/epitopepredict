@@ -18,9 +18,8 @@ from epitopepredict import base, config, analysis, sequtils, peptutils, tepitope
 
 defaultpath = os.getcwd()
 sim_matrix = tepitope.get_matrix('pmbec')
-metrics = ['self_mismatches', 'virus_mismatches', 'wt_similarity',
-          'self_similarity', 'virus_similarity', 'score', 'binding_rank', 'matched_score', 'binding_diff',
-          'hydro', 'net_charge']
+metrics = ['score', 'matched_score', 'binding_diff','wt_similarity','self_similarity', 'virus_similarity',
+          'anchor','hydro', 'net_charge']
 
 class NeoEpitopeWorkFlow(object):
     """Class for implementing a neo epitope workflow."""
@@ -446,11 +445,13 @@ def predict_variants(df, predictor='tepitope', alleles=[],
         print ('finding matches to viral proteomes')
     df = virus_matches(df, cpus=cpus)
     #get similarity scores for wt and closest match to proteome
-    df['wt_similarity'] = df.apply(wt_similarity,1)
-    df['self_similarity'] = df.apply(self_similarity,1)
-    df['virus_similarity'] = df.apply(virus_similarity,1)
+    matrix = 'pmbec'
+    df['wt_similarity'] = df.apply(lambda x: wt_similarity(x, matrix=matrix),1)
+    df['self_similarity'] = df.apply(lambda x: self_similarity(x, matrix=matrix),1)
+    df['virus_similarity'] = df.apply(lambda x: virus_similarity(x, matrix=matrix),1)
     #get closest peptide in another column, either wt or nearest self
     df['closest'] = df.apply(get_closest_match, 1)
+    df['length'] = df.peptide.str.len()
 
     P = base.get_predictor(predictor)
     if verbose == True:
@@ -481,8 +482,12 @@ def predict_variants(df, predictor='tepitope', alleles=[],
     res = df.merge(res, on='peptide')
     res['binding_diff'] = res[P.scorekey]/res.matched_score
 
+    #anchor position mutated in any 9-mers
+    res['anchor'] = res.apply(anchor_mutated, 1)
     #hydrophobicity and net charge
     res = analysis.peptide_properties(res, 'peptide')
+    #global percentile rank of peptide using precalculated scores
+    res['global_rank'] = res.apply(lambda x: P.get_global_rank(x.score,x.allele),1)
     #print(res)
     #exclude exact matches to self
     print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
@@ -603,34 +608,38 @@ def find_matches(df, blastdb, cpus=4, verbose=False):
     #x['exact_match'] = x.mismatch.clip(0,1).fillna(1)
     return x
 
-def wt_similarity(x, matrix='pbmec'):
+def wt_similarity(x, matrix='blosum62'):
     x1 = x.peptide
     x2 = x.wt
-    #print x1,x2
-    #print pbmec_score(x1, x2), pbmec_score(x1, x1), pbmec_score(x1, x2)/pbmec_score(x1, x1)
-    return tepitope.similarity_score(tepitope.blosum62,x1,x2)
+    matrix = tepitope.get_matrix(matrix)
+    return tepitope.similarity_score(matrix,x1,x2)
 
-def self_similarity(x, matrix='pbmec'):
+def self_similarity(x, matrix='blosum62'):
     if x.self_match is None:
         return
     x1 = x.peptide
     x2 = x.self_match
-    return tepitope.similarity_score(tepitope.blosum62,x1,x2)
+    matrix = tepitope.get_matrix(matrix)
+    return tepitope.similarity_score(matrix,x1,x2)
 
-def virus_similarity(x, matrix='pbmec'):
+def virus_similarity(x, matrix='blosum62'):
     if x.self_match is None:
         return
     x1 = x.peptide
     x2 = x.virus_match
-    return tepitope.similarity_score(tepitope.blosum62,x1,x2)
+    matrix = tepitope.get_matrix(matrix)
+    return tepitope.similarity_score(matrix,x1,x2)
 
 def get_closest_match(x):
     """Create columns with closest matching peptide.
-    If no wt peptide use self match."""
+    If no wt peptide use self match. vector method"""
     if x.wt is None:
         return x.self_match
     else:
         return x.wt
+
+def anchor_mutated(x):
+    return peptutils.compare_anchor_positions(x.wt, x.peptide)
 
 def summary_plots(df):
     """summary plots for testing results"""

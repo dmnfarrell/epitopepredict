@@ -484,13 +484,26 @@ class Predictor(object):
         else:
             return df[df[key] >= value]
 
+    def get_quantile_data(self):
+        """Get peptide score rank from quantile data."""
+
+        path = os.path.join(datadir, 'quantiles_%s.csv' %self.name)
+        qf = pd.read_csv(path,index_col=0)
+        qf.columns = qf.columns.astype('float')
+        return qf
+
+    def get_global_rank(self, score, allele):
+        """Get an allele specific score percentile from precalculated quantile data."""
+
+        qf = self.qf
+        s = qf.loc[allele]
+        cutoff = np.abs(s - score).idxmin()
+        return cutoff
+
     def get_allele_cutoffs(self, cutoff=.95):
         """Get per allele percentile cutoffs using precalculated quantile vales."""
 
-        path = os.path.join(datadir, 'quantiles_%s.csv' %self.name)
-        #print (path)
-        qf = pd.read_csv(path,index_col=0)
-        qf.columns = qf.columns.astype('float')
+        qf = self.qf
         cutoff = round(cutoff,2)
         #if self.rankascending == 1:
         #    cutoff = round(1-cutoff,2)
@@ -1070,7 +1083,7 @@ class Predictor(object):
 
     def get_names(self):
         """Get names of sequences currently stored as predictions"""
-        
+
         grp = self.data.groupby('name')
         return sorted(dict(list(grp)).keys())
 
@@ -1110,39 +1123,41 @@ class Predictor(object):
 class NetMHCPanPredictor(Predictor):
     """netMHCpan 4.0 predictor
     see http://www.cbs.dtu.dk/services/NetMHCpan/
+    Default scoring is ligand likelihood predictions.
+    To get older binding affinity behavious pass scoring='affinity' to constructor.
     """
-    def __init__(self, data=None):
+    def __init__(self, data=None, scoring=None):
+
         Predictor.__init__(self, data=data)
         self.name = 'netmhcpan'
         self.colnames = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
                          'name','raw_score','ic50','rank']
         self.scorekey = 'score'
-        self.cutoff = 500
-        self.operator = '<'
-        self.rankascending = 1
+        self.scoring = scoring
+        if self.scoring =='affinity':
+            self.cutoff = 500
+            self.operator = '<'
+            self.rankascending = 1
+        else:
+            self.cutoff = 0.5
+            self.operator = '>'
+            self.rankascending = 0
+        #load precalculated quantiles for sample peptides
+        self.qf = self.get_quantile_data()
 
     def read_result(self, temp):
         """Read raw results from netMHCpan output"""
 
-        '''
-        res = pd.DataFrame(temp)
-        data=[]
-        res = res.decode()
-        res = res.split('\n')[45:]
         ignore = ['Pos','#','Protein','']
-        for r in res:
-            if r.startswith('-'): continue
-            row = re.split('\s*',r.strip())[:14]
-            if len(row)!=14 or row[0] in ignore:
-                continue
-            data.append(dict(zip(self.colnames,row)))
-            #print (row)'''
-
-        ignore = ['Pos','#','Protein','']
-        cols = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
-                'Identity','Score','ic50','%Rank','BindLevel']
+        if self.scoring == 'affinity':
+            cols = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
+                    'Identity','Score','ic50','%Rank','X','BindLevel']
+        else:
+            cols = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
+                    'Identity','Score','%Rank','X','BindLevel']
         res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep='\s+',
                           error_bad_lines=False, skiprows=45).dropna(subset=['peptide'])
+        res = res.drop(columns='X')
         res = res[~res.pos.isin(ignore)]
         return res
 
@@ -1151,7 +1166,10 @@ class NetMHCPanPredictor(Predictor):
 
         df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
         df['name'] = name
-        df['score'] = df.ic50
+        if self.scoring =='affinity':
+            df['score'] = df.ic50
+        else:
+            df['score'] = df.Score
         df=df.reset_index(drop=True)
         df['pos'] = df.index.copy()
         df = df.dropna(how='all')
@@ -1161,7 +1179,7 @@ class NetMHCPanPredictor(Predictor):
 
     def predict(self, peptides, allele='HLA-A*01:01', name='temp',
                 pseudosequence=None, show_cmd=False, **kwargs):
-        """Call netMHCpan command line."""
+        """Call netMHCpan command line.  """
 
         allele = allele.replace('*','')
         #write peptides to temp file
@@ -1170,8 +1188,10 @@ class NetMHCPanPredictor(Predictor):
             for p in peptides:
                 f.write(p+'\n')
         f.close()
-
-        cmd = 'netMHCpan -BA -f %s -inptype 1 -a %s' %(pepfile , allele)
+        if self.scoring =='affinity':
+            cmd = 'netMHCpan -BA -f %s -inptype 1 -a %s' %(pepfile , allele)
+        else:
+            cmd = 'netMHCpan -f %s -inptype 1 -a %s' %(pepfile , allele)
         if show_cmd is True:
             print (cmd)
         try:
@@ -1222,6 +1242,8 @@ class NetMHCIIPanPredictor(Predictor):
         self.cutoff = 500 #.426
         self.operator = '<'
         self.rankascending = 1
+        #load precalculated quantiles for sample peptides
+        self.qf = self.get_quantile_data()
 
     def read_result(self, res):
         """Read raw results from netMHCIIpan output"""
@@ -1561,6 +1583,8 @@ class TEpitopePredictor(Predictor):
         self.cutoff = 2
         self.operator = '>'
         self.rankascending = 0
+        #load precalculated quantiles for sample peptides
+        self.qf = self.get_quantile_data()
 
     def predict(self, peptides=None, length=9, overlap=1,
                  allele='HLA-DRB1*0101', name='', pseudosequence=None,
@@ -1696,6 +1720,8 @@ class MHCFlurryPredictor(Predictor):
         self._check_models()
         from mhcflurry import Class1AffinityPredictor
         self.predictor = Class1AffinityPredictor.load()
+        #load precalculated quantiles for sample peptides
+        self.qf = self.get_quantile_data()
         return
 
     def predict(self, peptides=None, length=11, overlap=1,

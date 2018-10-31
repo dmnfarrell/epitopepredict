@@ -56,6 +56,7 @@ def get_matrix(name):
     return m
 
 blosum62 = get_matrix('blosum62')
+pmbec = get_matrix('pmbec')
 
 def get_pocket_positions():
     cr = csv.reader(open(os.path.join(tepitopedir, 'tepitope_pockets.txt')))
