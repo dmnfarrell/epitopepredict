@@ -400,6 +400,22 @@ def summarize_by_protein(pred, pb):
         x = binders_allele_summary(pred, g.peptide, values='score', name=i)
         ax=plot_summary_heatmap(x, name=i)
 
+def split_peptides(df,length=9,seqkey='sequence',newcol='peptide'):
+    """Split sequences in a dataframe into peptide fragments"""
+
+    res=[]
+    for n,r in df.iterrows():
+        seq = r[seqkey]
+        p = peptutils.get_fragments(seq,1,9)
+        p = p.rename(columns={'peptide':newcol})
+        p['name']=n
+        p[seqkey] = seq
+        p=p.set_index('name')
+        res.append(p)
+    res = pd.concat(res)
+    res = df.merge(res,on=seqkey)
+    return res
+
 class DataFrameIterator:
     """Simple iterator to get dataframes from a path out of memory"""
     def __init__(self, files):
@@ -723,7 +739,7 @@ class Predictor(object):
 
         for a in alleles:
             df = self.predict(peptides=peptides, allele=a, **kwargs)
-            if df is None:
+            if df is None or len(df) == 0:
                 continue
             #if keep_empty == True:
                  #df = s.merge(df,on=['peptide'],how='left')
@@ -990,7 +1006,8 @@ class Predictor(object):
             result = pd.concat(result)
             #print result.info()
         t=time.time()-st
-        print ('took %s seconds' %str(round(t,3)))
+        if t>10:
+            print ('took %s seconds' %str(round(t,3)))
         return result
 
     def load(self, path=None, names=None, compression='infer', file_limit=None):
@@ -1216,9 +1233,17 @@ class NetMHCPanPredictor(Predictor):
         except:
             print('netmhcpan not installed?')
             return []
-        s = temp.split('\n')
+        s = temp.decode().split('\n')
         alleles = [i for i in s if not i.startswith('#') and len(i)>0]
+        alleles = [self.convert_allele_name(i) for i in alleles]
         return alleles
+
+    def convert_allele_name(self, a):
+        """Convert allele names to internally used form"""
+
+        if not ':' in a and a.startswith('HLA'):
+            a = a[:-2]+':'+a[-2:]
+        return a
 
     def check_install(self):
         cmd = 'netMHCpan'

@@ -486,17 +486,19 @@ def predict_variants(df, predictor='tepitope', alleles=[],
     res['anchor'] = res.apply(anchor_mutated, 1)
     #hydrophobicity and net charge
     res = analysis.peptide_properties(res, 'peptide')
+    res['length'] = res.peptide.str.len()
     #global percentile rank of peptide using precalculated scores
-    res['global_rank'] = res.apply(lambda x: P.get_global_rank(x.score,x.allele),1)
+    #res['global_rank'] = res.apply(lambda x: P.get_global_rank(x.score,x.allele),1)
     #print(res)
     #exclude exact matches to self
-    print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
+    if verbose==True:
+        print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
 
     #merge promiscuity measure into results
     if len(pb) > 0:
         res = res.merge(pb[['peptide','alleles']], on='peptide',how='left')
     else:
-        print ('no promiscuous binders')
+        #print ('no promiscuous binders')
         res['alleles'] = 0
     #rename some columns
     res = res.rename(columns={'rank':'binding_rank','alleles':'promiscuity'})
@@ -550,13 +552,16 @@ def make_virus_blastdb():
 def self_matches(df, **kwargs):
     blastdb = make_human_blastdb()
     x = find_matches(df, blastdb, **kwargs)
-    x=x.rename(columns={'sseq':'self_match','mismatch':'self_mismatches'})
+    x = x.rename(columns={'sseq':'self_match','mismatch':'self_mismatches'})
     return x
 
 def virus_matches(df, **kwargs):
     blastdb = make_virus_blastdb()
     x = find_matches(df, blastdb, **kwargs)
-    x=x.rename(columns={'sseq':'virus_match','mismatch':'virus_mismatches'})
+    if 'sseq' in x.columns:
+        x = x.rename(columns={'sseq':'virus_match','mismatch':'virus_mismatches'})
+    else:
+        x['virus_match'] = None
     return x
 
 def find_matches(df, blastdb, cpus=4, verbose=False):
@@ -570,8 +575,8 @@ def find_matches(df, blastdb, cpus=4, verbose=False):
     Returns:
         dataframe with extra columns: 'sseq','mismatch'
     """
-
-    print ('blasting %s peptides' %len(df))
+    if verbose == True:
+        print ('blasting %s peptides' %len(df))
     length = df.peptide.str.len().max()
 
     def check_mm(x):
@@ -586,9 +591,11 @@ def find_matches(df, blastdb, cpus=4, verbose=False):
                                   comp_based_stats=0)
 
     if len(bl) == 0:
-        print ('no hits found!')
+        if verbose == True:
+            print ('no hits found!')
         return df
-    print ('%s hits' %len(bl))
+    if verbose == True:
+        print ('%s hits' %len(bl))
     cols = ['qseqid','sseq','mismatch']
 
     #ignore any hits with gaps
@@ -623,7 +630,7 @@ def self_similarity(x, matrix='blosum62'):
     return tepitope.similarity_score(matrix,x1,x2)
 
 def virus_similarity(x, matrix='blosum62'):
-    if x.self_match is None:
+    if x.virus_match is None:
         return
     x1 = x.peptide
     x2 = x.virus_match
