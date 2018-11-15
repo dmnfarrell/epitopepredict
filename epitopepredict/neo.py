@@ -10,6 +10,7 @@ from __future__ import absolute_import, print_function
 import sys, os, subprocess
 import shutil
 import pickle
+import numpy as np
 import pandas as pd
 pd.set_option('display.width', 150)
 pd.set_option('max_colwidth', 80)
@@ -18,8 +19,9 @@ from epitopepredict import base, config, analysis, sequtils, peptutils, tepitope
 
 defaultpath = os.getcwd()
 sim_matrix = tepitope.get_matrix('pmbec')
-metrics = ['score', 'matched_score', 'binding_diff','wt_similarity','self_similarity', 'virus_similarity',
-          'anchor','hydro', 'net_charge']
+metrics = ['score', 'matched_score', 'binding_diff','perc_rank',
+               'wt_similarity','self_similarity', 'virus_similarity',
+               'anchor','hydro', 'net_charge']
 
 class NeoEpitopeWorkFlow(object):
     """Class for implementing a neo epitope workflow."""
@@ -130,8 +132,8 @@ class NeoEpitopeWorkFlow(object):
                     length = self.mhc2_length
                 seqs = get_mutant_sequences(effects=effects, length=length, verbose=self.verbose)
 
-                res = predict_variants(seqs, alleles=alleles, length=length,
-                                 predictor=predictor, verbose=self.verbose, cpus=self.cpus)
+                res = predict_variants(seqs, alleles=alleles, predictor=predictor,
+                                       verbose=self.verbose, cpus=self.cpus)
                 res['label'] = f
                 res.to_csv(outfile, index=False)
 
@@ -487,8 +489,7 @@ def predict_variants(df, predictor='tepitope', alleles=[],
     #hydrophobicity and net charge
     res = analysis.peptide_properties(res, 'peptide')
     res['length'] = res.peptide.str.len()
-    #global percentile rank of peptide using precalculated scores
-    #res['global_rank'] = res.apply(lambda x: P.get_global_rank(x.score,x.allele),1)
+
     #print(res)
     #exclude exact matches to self
     if verbose==True:
@@ -498,11 +499,22 @@ def predict_variants(df, predictor='tepitope', alleles=[],
     if len(pb) > 0:
         res = res.merge(pb[['peptide','alleles']], on='peptide',how='left')
     else:
-        #print ('no promiscuous binders')
         res['alleles'] = 0
     #rename some columns
     res = res.rename(columns={'rank':'binding_rank','alleles':'promiscuity'})
     return res
+
+def score_peptides(df, rf=None):
+    """Score peptides with a classifier. Returns a prediction probability."""
+
+    if rf is None:
+        from sklearn.externals import joblib
+        rf = joblib.load(os.path.join(base.datadir,'rf_model.joblib'))
+    X = df[metrics]
+    X = X.fillna(X.mean())
+    X = X.replace(np.inf,.1)
+    sc = rf.predict_proba(X)[:,1]
+    return sc
 
 def combine_wt_scores(x, y, key):
     """Combine mutant peptide and matching wt/self binding scores from a

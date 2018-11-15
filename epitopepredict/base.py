@@ -406,7 +406,7 @@ def split_peptides(df,length=9,seqkey='sequence',newcol='peptide'):
     res=[]
     for n,r in df.iterrows():
         seq = r[seqkey]
-        p = peptutils.get_fragments(seq,1,9)
+        p = peptutils.get_fragments(seq,1,length)
         p = p.rename(columns={'peptide':newcol})
         p['name']=n
         p[seqkey] = seq
@@ -553,6 +553,15 @@ class Predictor(object):
         else:
             res = data[data[self.scorekey] <= cutoff]
         return res
+
+    def get_scores(self, allele):
+        """Return peptides and scores only for an allele"""
+
+        if self.data is None or len(self.data)==0:
+            return
+        df = self.data[self.data.allele==allele]
+        sc = df[['peptide','score']]
+        return sc
 
     def get_binders(self, cutoff=.95, cutoff_method='default', path=None,
                     name=None, drop_columns=False, **kwargs):
@@ -766,6 +775,12 @@ class Predictor(object):
     def predict_peptides(self, peptides, cpus=1, path=None, overwrite=True, name=None, **kwargs):
         """Predict a set of individual peptides without splitting them.
         This is a wrapper for _predict_peptides to allow multiprocessing.
+        Args:
+            peptides: list of peptides
+            alleles: list of alleles to predict
+            drop_columns: only keep default columns
+        Returns:
+            dataframe with results
         """
 
         if path is not None:
@@ -777,7 +792,7 @@ class Predictor(object):
                 return
 
         #store original peptide list as dataframe to keep order
-        s = pd.DataFrame(peptides,columns=['peptide'])
+        s = pd.DataFrame(peptides, columns=['peptide'])
         s['pos'] = s.index.copy()
 
         if cpus == 1:
@@ -1735,7 +1750,7 @@ class MHCFlurryPredictor(Predictor):
     see https://github.com/hammerlab/mhcflurry
     """
 
-    def __init__(self, data=None):
+    def __init__(self, data=None, **kwargs):
         Predictor.__init__(self, data=data)
         self.name = 'mhcflurry'
         self.cutoff = 500
