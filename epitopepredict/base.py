@@ -27,30 +27,20 @@ import pandas as pd
 from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
-from . import utilities, peptutils, sequtils, tepitope, config
+from . import utilities, peptutils, sequtils, tepitope, config, mhclearn
 
 #write a default config if not present
 config_file = config.write_default_config()
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'mhcdata')
-predictors = ['tepitope','netmhciipan','netmhcpan','mhcflurry','mhcnuggets','iedbmhc1','iedbmhc2']
+predictors = ['basicmhc1','tepitope','netmhciipan','netmhcpan','mhcflurry','mhcnuggets','iedbmhc1','iedbmhc2']
 iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'netmhcpan', 'smmpmbec']
-mhc1_predictors = ['iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
+mhc1_predictors = ['basicmhc1','netmhcpan','iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
             'output_format': 'ascii', 'sort_output': 'position_in_sequence',
             'sequence_format': 'auto', 'allele': 'HLA-DRB1*01:01', 'length':'11',
             'sequence_file': None}
-iedbkeys = {'consensus3': ['Allele','Start','End','Sequence','consensus_percentile',
-            'comblib_core','comblib_score','comblib_percentile','smm_core','smm_score',
-            'smm_percentile','nn_core','nn_score','nn_percentile','Sturniolo core',
-            'Sturniolo score','Sturniolo percentile'],
-        'IEDB_recommended': ['Allele','Start','End','Sequence','consensus_percentile',
-            'comblib_core','comblib_score','comblib_percentile','smm_core','smm_score',
-            'smm_percentile','nn_core','nn_score','nn_percentile','netMHCIIpan_core',
-            'netMHCIIpan_score','netMHCIIpan_percentile','Sturniolo core',
-            'Sturniolo score','Sturniolo percentile','methods'],
-        'NetMHCIIpan': ['Allele','Start','End','Core','Sequence','IC50']}
 
 mhc1_presets = ['mhc1_supertypes','us_caucasion_mhc1','us_african_mhc1','broad_coverage_mhc1']
 mhc2_presets = ['mhc2_supertypes','human_common_mhc2','bovine_like_mhc2']
@@ -120,27 +110,21 @@ def get_overlapping(index, s, length=9, cutoff=25):
             break
     return g
 
-def get_predictor(name='tepitope', **kwargs):
-    """Get a predictor"""
+def get_predictor_classes():
+    """Get predictor classes in this module."""
 
-    if name == 'netmhcpan':
-        return NetMHCPanPredictor(**kwargs)
-    elif name == 'netmhciipan':
-        return NetMHCIIPanPredictor(**kwargs)
-    elif name == 'iedbmhc1':
-        return IEDBMHCIPredictor(**kwargs)
-    elif name in iedbmhc1_methods:
-        return IEDBMHCIPredictor(method=name, **kwargs)
-    elif name == 'iedbmhc2':
-        return IEDBMHCIIPredictor(**kwargs)
-    elif name == 'iedbbcell':
-        return IEDBBCellPredictor(**kwargs)
-    elif name == 'tepitope':
-        return TEpitopePredictor(**kwargs)
-    elif name == 'mhcflurry':
-        return MHCFlurryPredictor(**kwargs)
-    elif name == 'mhcnuggets':
-        return MHCNuggetsPredictor(**kwargs)
+    cl={}
+    for o in Predictor.__subclasses__():
+        cl[o._get_name()] = o
+    return cl
+
+def get_predictor(name='tepitope', **kwargs):
+    """Get a predictor object using it's name. Valid predictor names
+       are held in the predictors attribute."""
+
+    cl = get_predictor_classes()
+    if name in cl:
+        return cl[name](**kwargs)
     else:
         print ('no such predictor %s' %name)
         print ('valid names are %s' %', '.join(predictors))
@@ -456,6 +440,10 @@ class Predictor(object):
         self.path = None
         return
 
+    @classmethod
+    def _get_name(self):
+        return 'base class'
+
     def __repr__(self):
 
         if (self.data is None) or len(self.data) == 0:
@@ -463,6 +451,10 @@ class Predictor(object):
         else:
             n = len(self.data.name.unique())
             return '%s predictor with results in %s sequences' %(self.name, n)
+
+    def supported_lengths(self):
+        """Return supported peptide lengths"""
+        return [9,11]
 
     def predict(self, sequence=None, peptides=None, length=9, overlap=1,
                     allele='', name=''):
@@ -627,6 +619,7 @@ class Predictor(object):
             binders: can provide a precalculated list of binders
             name: specific protein, optional
             value: to pass to get_binders
+            cutoff_method: 'default', 'score' or 'rank'
             cutoff: percentile cutoff for get_binders
             n: min number of alleles
             unique_core: removes peptides with duplicate cores and picks the most
@@ -1152,6 +1145,9 @@ class Predictor(object):
             shutil.rmtree(self.temppath)
         return
 
+    def check_install(self):
+        return True
+
 class NetMHCPanPredictor(Predictor):
     """netMHCpan 4.0 predictor
     see http://www.cbs.dtu.dk/services/NetMHCpan/
@@ -1270,6 +1266,10 @@ class NetMHCPanPredictor(Predictor):
             print ('netMHCpan not found')
             return 0
 
+    @classmethod
+    def _get_name(self):
+        return 'netmhcpan'
+
 class NetMHCIIPanPredictor(Predictor):
     """netMHCIIpan predictor"""
 
@@ -1378,6 +1378,10 @@ class NetMHCIIPanPredictor(Predictor):
             print ('netMHCIIpan not found')
             return 0
 
+    @classmethod
+    def _get_name(self):
+        return 'netmhciipan'
+
 class IEDBMHCIPredictor(Predictor):
     """Using IEDB tools method, requires iedb-mhc1 tools. Tested with version 2.17"""
 
@@ -1392,6 +1396,7 @@ class IEDBMHCIPredictor(Predictor):
         self.rankascending = 1
         self.method = method
         self.iedbmhc1_path = defaults['iedbmhc1_path']
+        self.qf = self.get_quantile_data()
         return
 
     def predict(self, sequence=None, peptides=None, length=11, overlap=1,
@@ -1507,6 +1512,10 @@ class IEDBMHCIPredictor(Predictor):
         except:
             return 0
 
+    @classmethod
+    def _get_name(self):
+        return 'iedbmhc1'
+
 class IEDBMHCIIPredictor(Predictor):
     """Using IEDB MHC-II method, requires tools to be installed locally"""
 
@@ -1522,6 +1531,7 @@ class IEDBMHCIIPredictor(Predictor):
                         'NetMHCIIpan','nn_align','smm_align','sturniolo']
         self.method = 'IEDB_recommended'
         self.iedbmhc2_path = defaults['iedbmhc2_path']
+        self.qf = self.get_quantile_data()
         return
 
     def prepare_data(self, rows, name):
@@ -1613,6 +1623,10 @@ class IEDBMHCIIPredictor(Predictor):
         except:
             return 0
 
+    @classmethod
+    def _get_name(self):
+        return 'iedbmhc2'
+
 class TEpitopePredictor(Predictor):
     """Predictor using TepitopePan QM method"""
 
@@ -1648,6 +1662,10 @@ class TEpitopePredictor(Predictor):
         #print(df[:5])
         return df
 
+    def supported_lengths(self):
+        """Return supported peptide lengths"""
+        return [9,11,13,15]
+
     def get_alleles(self):
         return tepitope.get_alleles()
 
@@ -1657,7 +1675,11 @@ class TEpitopePredictor(Predictor):
         found = list((set(a) & set(alleles)))
         return found
 
-class IEDBBCellPredictor(Predictor):
+    @classmethod
+    def _get_name(self):
+        return 'tepitope'
+
+'''class IEDBBCellPredictor(Predictor):
     """Using IEDB tools methods, requires iedb bcell tools.
        see http://tools.immuneepitope.org/bcell """
 
@@ -1741,7 +1763,7 @@ class IEDBBCellPredictor(Predictor):
                 fname = os.path.join(path, name+'.csv')
                 df.to_csv(fname)
         self.data = res = pd.concat(res)
-        return
+        return'''
 
 class MHCFlurryPredictor(Predictor):
     """
@@ -1757,6 +1779,8 @@ class MHCFlurryPredictor(Predictor):
         self.operator = '<'
         self.scorekey = 'score'
         self.rankascending = 1
+        if self.check_install == False:
+            return
         self._check_models()
         from mhcflurry import Class1AffinityPredictor
         self.predictor = Class1AffinityPredictor.load()
@@ -1764,7 +1788,7 @@ class MHCFlurryPredictor(Predictor):
         self.qf = self.get_quantile_data()
         return
 
-    def predict(self, peptides=None, length=11, overlap=1,
+    def predict(self, peptides=None, overlap=1,
                       allele='HLA-A0101', name='', **kwargs):
         """Uses mhcflurry python classes for prediction"""
 
@@ -1802,6 +1826,14 @@ class MHCFlurryPredictor(Predictor):
         p = list(filter(None, p))
         return p
 
+    def check_install(self):
+        try:
+            import mhcflurry
+            return True
+        except:
+            print ('use pip install mhcflurry to install.')
+            return False
+
     def _check_models(self):
         try:
             import mhcflurry
@@ -1811,6 +1843,10 @@ class MHCFlurryPredictor(Predictor):
             subprocess.check_output('mhcflurry-downloads fetch models_class1', shell=True)
             return True
         return False
+
+    @classmethod
+    def _get_name(self):
+        return 'mhcflurry'
 
 class MHCNuggetsPredictor(Predictor):
     """
@@ -1826,9 +1862,10 @@ class MHCNuggetsPredictor(Predictor):
         self.operator = '<'
         self.scorekey = 'ic50'
         self.rankascending = 1
+        self.qf = self.get_quantile_data()
         return
 
-    def predict(self, peptides=None, length=11, overlap=1,
+    def predict(self, peptides=None, overlap=1,
                       allele='HLA-A01:01', name='temp', **kwargs):
         """Uses cmd line call to mhcnuggets."""
 
@@ -1866,3 +1903,72 @@ class MHCNuggetsPredictor(Predictor):
         p = [x.strip() for x in p]
         p = list(filter(None, p))
         return p
+
+    @classmethod
+    def _get_name(self):
+        return 'mhcnuggets'
+
+class BasicMHCIPredictor(Predictor):
+    """Built-in basic MHC-I predictor. Should be used as a fallback if no other
+       predictors available."""
+
+    def __init__(self, data=None, scoring=None):
+        Predictor.__init__(self, data=data)
+        self.name = 'basicmhc1'
+        self.scorekey = 'score'
+        self.cutoff = 500
+        self.operator = '<'
+        self.rankascending = 1
+        self.qf = self.get_quantile_data()
+        return
+
+    def predict(self, peptides, allele='HLA-A*01:01', name='temp', **kwargs):
+        """Encode and predict peptides with daved regressor"""
+
+        encoder = mhclearn.blosum_encode
+        if type(peptides) is list:
+            s = pd.Series(peptides)
+        else:
+            s = peptides
+        #encode
+        X = s.apply(lambda x: pd.Series(encoder(x)),1)
+        reg = mhclearn.get_predictor(allele)
+        if reg is None:
+            print ('no model for this allele')
+            return
+        sc = reg.predict(X)
+        res = pd.DataFrame(np.column_stack([peptides,sc]),columns=['peptide','log50k'])
+        res['score'] = res.log50k.astype('float').apply(lambda x: mhclearn.log50k2aff(x))
+        #print(res.dtypes)
+        df = self.prepare_data(res,name,allele)
+        return df
+
+    def prepare_data(self, df, name, allele):
+        """Put raw prediction data into DataFrame and rank,
+           override for custom processing. Can be overriden for
+           custom data."""
+
+        df['name'] = name
+        df['allele'] = allele
+        self.get_ranking(df)
+        return df
+
+    def supported_lengths(self):
+        """Return supported peptide lengths"""
+        return [9]
+
+    def get_alleles(self):
+        p = mhclearn.get_allele_names()
+        return p
+
+    def check_install(self):
+
+        reg = mhclearn.get_predictor('HLA-A*01:01')
+        if reg is None:
+            return False
+        return True
+
+    @classmethod
+    def _get_name(self):
+        return 'basicmhc1'
+

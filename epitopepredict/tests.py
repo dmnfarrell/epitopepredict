@@ -10,12 +10,13 @@ from __future__ import absolute_import, print_function
 import sys, os
 import pandas as pd
 import unittest
-from . import base, analysis, sequtils, peptutils
+from . import base, analysis, sequtils, peptutils, mhclearn
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 path = os.path.dirname(os.path.abspath(__file__))
 testdir = os.path.join(path, 'testing')
+datadir = os.path.join(path, 'mhcdata')
 
 class PredictorTests(unittest.TestCase):
     """Basic tests for predictor"""
@@ -29,6 +30,27 @@ class PredictorTests(unittest.TestCase):
         self.testdir = testdir
         if not os.path.exists(self.testdir):
             os.mkdir(self.testdir)
+        return
+
+    def test_classes(self):
+        cl = base.get_predictor_classes()
+        for c in cl:
+            P=base.get_predictor(c)
+            print (P)
+
+    def test_cutoffs(self):
+        cl = base.get_predictor_classes()
+        for c in cl:
+            P=base.get_predictor(c)
+            P.get_allele_cutoffs()
+
+    def test_basicmhc1(self):
+        P=base.get_predictor('basicmhc1')
+        print (P)
+        allele='HLA-A*01:01'
+        data = mhclearn.get_training_set(allele)
+        peps = list(data.peptide)
+        P.predict_peptides(peps[:50],alleles=allele)
         return
 
     def test_tepitope(self):

@@ -9,6 +9,10 @@ CHANGES
 major changes to neoepitope routines
 changes to app outputs
 added netmhcpan predictor
+added basicmhc1 predictor
+updated notebook examples
+neoepitope scoring model
+fixes for python 3
 
 ------
 0.3.0

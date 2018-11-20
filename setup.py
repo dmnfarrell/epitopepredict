@@ -14,7 +14,7 @@ setup(
     author = 'Damien Farrell',
     author_email = 'farrell.damien@gmail.com',
     packages = ['epitopepredict'],
-    package_data={'epitopepredict': ['mhcdata/*.csv', 'presets/*.csv',
+    package_data={'epitopepredict': ['mhcdata/*.csv', 'mhcdata/*.zip', 'presets/*.csv',
                   'tepitope/*.txt', 'tepitope/pssm/*', 'testing/*',
                   'templates/*.html','static/*',
                   'description.txt']

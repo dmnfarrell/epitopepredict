@@ -463,7 +463,7 @@ def predict_variants(df, predictor='tepitope', alleles=[],
     peps = list(df.peptide)
     res = P.predict_peptides(peps, alleles=alleles, cpus=cpus,
                              cutoff=cutoff, cutoff_method=cutoff_method, drop_columns=True)
-    pb = P.promiscuous_binders(n=1,cutoff=.95)
+    #pb = P.promiscuous_binders(n=1,cutoff=.95)
     if res is None:
         print ('no binding predictions!')
         return
@@ -496,10 +496,10 @@ def predict_variants(df, predictor='tepitope', alleles=[],
         print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
 
     #merge promiscuity measure into results
-    if len(pb) > 0:
-        res = res.merge(pb[['peptide','alleles']], on='peptide',how='left')
-    else:
-        res['alleles'] = 0
+    #if len(pb) > 0:
+    #    res = res.merge(pb[['peptide','alleles']], on='peptide',how='left')
+    #else:
+    #    res['alleles'] = 0
     #rename some columns
     res = res.rename(columns={'rank':'binding_rank','alleles':'promiscuity'})
     return res

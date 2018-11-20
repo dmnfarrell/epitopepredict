@@ -86,7 +86,7 @@ class WorkFlow(object):
             savepath = os.path.join(self.path, p)
             if self.overwrite == True and os.path.exists(savepath):
                 shutil.rmtree(savepath)
-            if p in ['iedbmhc1','netmhcpan','mhcflurry','mhcnuggets']:
+            if p in base.mhc1_predictors:
                 a = self.mhc1_alleles
                 length = self.mhc1_length
                 check_mhc1_length(length)
@@ -367,16 +367,31 @@ def add_path():
     #print (os.environ["PATH"])
     return
 
+def check_installed():
+    """Check which predictors can be used"""
+
+    cl=base.get_predictor_classes()
+    found=[]
+    for i in cl:
+        P=base.get_predictor(i)
+        st = P.check_install()
+        if st is True:
+            found.append(i)
+    return found
+
 def test_run():
     """Test run for a sample file"""
 
+    #installed = ','.join(check_installed())
+    installed = 'tepitope'
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
     b=options['base']
     b['sequence_file'] = os.path.join(path, 'testing','zaire-ebolavirus.faa')
-    b['mhc1_alleles'] = 'HLA-A*02:01,HLA-A*03:01,HLA-A*23:01'
+    b['mhc1_alleles'] = 'HLA-A*02:01,HLA-A*03:01,HLA-A*02:06'
     b['mhc2_alleles'] = 'human_common_mhc2'
-    b['predictors'] = 'tepitope,mhcflurry'
+    b['mhc1_length'] = 9
+    b['predictors'] = installed
     b['path'] = 'zaire_test'
     b['verbose'] = True
     b['cutoff_method'] = 'score'

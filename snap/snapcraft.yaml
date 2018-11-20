@@ -22,6 +22,6 @@ parts:
     python-version: python3
     source: ../
     python-packages:
-      [mhcflurry,mhcnuggets,gtfparse==0.0.6,pyensembl==1.1.0,varcode==0.5.15]
+      [mhcflurry,gtfparse==0.0.6,pyensembl==1.1.0,varcode==0.5.15]
     stage-packages:
       [python-setuptools,tcsh,gawk,ncbi-blast+,bowtie2]
