@@ -1908,6 +1908,29 @@ class MHCNuggetsPredictor(Predictor):
     def _get_name(self):
         return 'mhcnuggets'
 
+class DummyPredictor(Predictor):
+    """Returns random scores. Used for testing"""
+    def __init__(self, data=None, scoring=None):
+        Predictor.__init__(self, data=data)
+        self.name = 'null'
+        self.scorekey = 'score'
+        self.cutoff = 500
+        self.operator = '<'
+        self.rankascending = 1
+
+    def predict(self, peptides, allele='HLA-A*01:01', name='temp',
+             **kwargs):
+
+        sc = np.random.randint(0,1,len(peptides))
+        res = pd.DataFrame(np.column_stack([peptides,sc]),columns=['peptide','log50k'])
+        res['score'] = res.log50k.astype('float').apply(lambda x: log50k2aff(x))
+        df = self.prepare_data(res,name,allele)
+        return df
+
+    @classmethod
+    def _get_name(self):
+        return 'dummy'
+
 class BasicMHCIPredictor(Predictor):
     """Built-in basic MHC-I predictor. Should be used as a fallback if no other
        predictors available."""
@@ -1932,7 +1955,7 @@ class BasicMHCIPredictor(Predictor):
             s = peptides
         #encode
         X = s.apply(lambda x: pd.Series(encoder(x)),1)
-        reg = mhclearn.get_predictor(allele)
+        reg = mhclearn.get_model(allele)
         if reg is None:
             print ('no model for this allele')
             return
@@ -1971,4 +1994,3 @@ class BasicMHCIPredictor(Predictor):
     @classmethod
     def _get_name(self):
         return 'basicmhc1'
-

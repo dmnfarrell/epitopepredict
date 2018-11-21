@@ -17,7 +17,7 @@ module_path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(module_path, 'mhcdata')
 modelspath = os.path.join(module_path, 'models')
 nlf = pd.read_csv(os.path.join(datadir,'NLF.csv'),index_col=0)
-blosum=pd.read_csv(os.path.join(datadir,'blosum62.csv'))
+blosum62 = pd.read_csv(os.path.join(datadir,'blosum62.csv'))
 
 def aff2log50k(a):
     return 1 - (math.log(a) / math.log(50000))
@@ -25,9 +25,12 @@ def aff2log50k(a):
 def log50k2aff(a):
     return np.power(50000,1-a)
 
+def random_encode(p):
+    return [np.random.randint(20) for i in pep]
+
 def blosum_encode(seq):
     s=list(seq)
-    x = pd.DataFrame([blosum[i] for i in seq]).reset_index(drop=True)
+    x = pd.DataFrame([blosum62[i] for i in seq]).reset_index(drop=True)
     #show_matrix(x)
     e = x.values.flatten()
     return e
@@ -38,15 +41,14 @@ def nlf_encode(seq):
     e = x.values.flatten()
     return e
 
-def simple_score(true,sc,cutoff=None):
+def auc_score(true, sc, cutoff=None):
 
+    from sklearn import metrics
     if cutoff!=None:
         true = (true<=cutoff).astype(int)
         sc = (sc<=cutoff).astype(int)
-        #print (sc.value_counts())
     fpr, tpr, thresholds = metrics.roc_curve(true, sc, pos_label=1)
     r = metrics.auc(fpr, tpr)
-    #print (r)
     return  r
 
 def get_protein_set():
@@ -54,18 +56,36 @@ def get_protein_set():
     syf = os.path.join(datadir, 'SYF_set.fasta')
     return sequtils.fasta_to_dataframe(syf)
 
-def get_training_set(allele=None):
+def get_training_set(allele=None, length=None):
+    """Get training set for MHC-I data."""
 
     b = pd.read_csv(os.path.join(datadir, 'curated_training_data.no_mass_spec.zip'))
-    df=b
+    eval1 = get_evaluation_set()
+    df = b.loc[~b.peptide.isin(eval1.peptide)].copy()
     if allele is not None:
         df = b.loc[b.allele==allele].copy()
-    #print (len(b),len(df))
+
     df['log50k'] = df.ic50.apply(lambda x: aff2log50k(x))
     df['length'] = df.peptide.str.len()
-    df = df[(df.length==9) & (df.ic50<50000) ]
-    df['binder'] = (df.ic50<500).astype(int)
+    if length != None:
+        df = df[(df.length==length)]
+    df = df[df.ic50<50000]
+    df = df[df.measurement_type=='quantitative']
+    #df['binder'] = df.loc[df.ic50<500].astype(int)
     return df
+
+def get_evaluation_set(allele=None, length=None):
+    """Get eval set of peptides"""
+
+    e = pd.read_csv(os.path.join(datadir, 'eval_set1.csv'))
+    #remove evaluation peptides
+    if allele is not None:
+        e = e[e.allele==allele]
+    e['length'] = e.peptide.str.len()
+    if length != None:
+        e = e[(e.length==length) ]
+    e['ic50'] = e.log50k.apply(log50k2aff)
+    return e
 
 def get_allele_names():
 
@@ -89,7 +109,7 @@ def build_predictor(allele):
     reg.fit(X,y)
     return reg
 
-def get_predictor(allele):
+def get_model(allele):
     """Get a regression model."""
 
     try:
