@@ -47,10 +47,16 @@ def plot_heatmap(df, ax=None, figsize=(6,6), **kwargs):
     return ax
 
 def get_seq_from_binders(P, name=None):
+    """Get sequence from binder data. Probably better to store the sequences in the object?"""
+
     if P.data is None or len(P.data)==0:
         return
-    l = len(P.data.iloc[0].peptide)
-    seqlen = P.data.pos.max()+l
+    if name is not None:
+        data=P.data[P.data.name==name]
+    else:
+        data=P.data
+    l = len(data.iloc[0].peptide)
+    seqlen = data.pos.max()+l
     return seqlen
 
 def get_bokeh_colors(palette='Set1'):
@@ -132,8 +138,7 @@ def bokeh_summary_plot(df, savepath=None):
     return p
 
 def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',
-                width=None, height=None, x_range=None, tools=True,
-                palette='Set1',
+                width=None, height=None, x_range=None, tools=True, palette='Set1',
                 seqdepot=None, exp=None):
     """
     Plot binding predictions as parallel tracks of blocks for each allele.
@@ -164,14 +169,15 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     for P in preds:
         if P.data is None or len(P.data)==0:
             continue
-        seqlen = get_seq_from_binders(P)
+        seqlen = get_seq_from_binders(P, name=name)
+        #print (seqlen)
         alls += len(P.data.groupby('allele'))
     if seqlen == 0:
         return
     if height==None:
         height = 140+10*alls
     if x_range == None:
-        x_range = Range1d(0,seqlen)
+        x_range = Range1d(0, seqlen, bounds='auto')
     yrange = Range1d(start=0, end=alls+3)
 
     plot = figure(title=title, plot_width=width, sizing_mode=sizing_mode,
@@ -181,8 +187,8 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     h=3
     #if bcell != None:
     #    plotBCell(plot, bcell, alls)
-    if seqdepot != None:
-        plotAnnotations(plot,seqdepot)
+    #if seqdepot != None:
+    #    plotAnnotations(plot,seqdepot)
     if exp is not None:
         plotExp(plot, exp)
 
@@ -199,11 +205,11 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
             continue
         if name != None:
             df = df[df.name==name]
-        sckey = pred.scorekey
 
+        sckey = pred.scorekey
         binders = pred.get_binders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
         #print (cutoff, n)
-        pb = pred.promiscuous_binders(n=n, cutoff=cutoff, cutoff_method=cutoff_method)
+        pb = pred.promiscuous_binders(n=n, name=name, cutoff=cutoff, cutoff_method=cutoff_method)
         if len(pb) == 0:
             continue
         l = base.get_length(pb)
@@ -261,7 +267,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     plot.yaxis.major_label_text_font_size = '0pt'
     #plot.xaxis.major_label_orientation = np.pi/4
     plot.min_border = 10
-    plot.background_fill_color = "beige"
+    plot.background_fill_color = "#fafaf4"
     plot.background_fill_alpha = 0.5
     plot.legend.orientation = "horizontal"
     plot.legend.location = "bottom_right"
@@ -270,7 +276,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     plot.toolbar_location = "right"
     return plot
 
-def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
+def bokeh_plot_grid(pred, name=None, width=None, palette='Blues', **kwargs):
     """Plot heatmap of binding results for a predictor."""
 
     from bokeh.plotting import figure
@@ -291,7 +297,7 @@ def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
 
     cols = ['allele','pos','peptide',P.scorekey]
     #d = df[cols].copy()
-    b = P.get_binders(**kwargs)
+    b = P.get_binders(name=name,**kwargs)
     d = P.data.copy()
     #mark binders
     mask = d.index.isin(b.index)
@@ -300,14 +306,14 @@ def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
     l = base.get_length(df)
     grps = df.groupby('allele')
     alleles = grps.groups
-    seqlen = get_seq_from_binders(P)
+    seqlen = get_seq_from_binders(P, name)
     seq = base.seq_from_binders(df)
     height = 300
     alls = len(alleles)
     x_range = Range1d(0,seqlen-l+1, bounds='auto')
     #x_range = list(seq)
     y_range = df.allele.unique()
-    val=P.scorekey
+    val = P.scorekey
     cut = P.cutoff
     if P.name not in ['tepitope']:
         d['score1'] = d[val].apply( lambda x: 1-math.log(x, 50000))
@@ -317,6 +323,7 @@ def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
     source = ColumnDataSource(d)
     colors = all_palettes[palette][7]
     mapper = LinearColorMapper(palette=colors, low=d[val].max(), high=d[val].min())
+
     p = figure(title=P.name+' '+name,
                x_range=x_range, y_range=y_range,
                x_axis_location="above", plot_width=width, plot_height=height,
@@ -324,7 +331,7 @@ def bokeh_plot_grid(pred, name, width=None, palette='Blues', **kwargs):
     p.rect(x="pos", y="allele", width=1, height=1,
            source=source,
            fill_color={'field': val,'transform':mapper},
-           line_color='gray', line_width=.5)
+           line_color='gray', line_width=.1)
     p.select_one(HoverTool).tooltips = [
          ('allele', '@allele'),
          (P.scorekey, '@%s{1.11}' %P.scorekey),
@@ -468,8 +475,8 @@ def bokeh_pie_chart(df, title='', radius=.5, width=400, height=400, palette='Spe
     #]
     return plot
 
-def plot_tracks(preds, name, n=1, cutoff=5, value='score',
-                legend=False, colormap='Paired', figsize=None, ax=None):
+def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default',
+                legend=False, colormap='Paired', figsize=None, ax=None, **kwargs):
     """
     Plot binders as bars per allele using matplotlib.
     Args:
@@ -507,13 +514,16 @@ def plot_tracks(preds, name, n=1, cutoff=5, value='score',
             print('no data to plot for %s' %m)
             continue
         if name != None:
+            if name not in df.name.unique():
+                print ('no such sequence %s' %name)
+                continue
             df = df[df.name==name]
         sckey = pred.scorekey
 
-        binders = pred.get_binders(name=name, cutoff=cutoff, value=value)
-        #binders = pred.binders
+        binders = pred.get_binders(name=name, cutoff=cutoff,
+                                   cutoff_method=cutoff_method)
         #print (binders)
-        pb = pred.promiscuous_binders(binders=binders, n=n, value=value)
+        pb = pred.promiscuous_binders(binders=binders, n=n)
 
         if len(pb) == 0:
             continue
@@ -558,7 +568,7 @@ def plot_tracks(preds, name, n=1, cutoff=5, value='score',
     if legend == True:
         ax.legend(handles, leg, bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                   ncol=3)
-    #plt.tight_layout()
+    plt.tight_layout()
     return ax
 
 def plot_regions(coords, ax, color='red', label='', alpha=0.6):
@@ -734,7 +744,7 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
     """
 
     import seaborn as sns
-    df = P.data[P.data.name==name].sort('pos')
+    df = P.data[P.data.name==name].sort_values('pos')
     w = 10
     l= base.get_length(df)
     seqlen = df.pos.max()+l

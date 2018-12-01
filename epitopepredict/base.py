@@ -123,6 +123,8 @@ def get_predictor(name='tepitope', **kwargs):
        are held in the predictors attribute."""
 
     cl = get_predictor_classes()
+    if name in iedbmhc1_methods:
+        name = 'iedbmhc1'
     if name in cl:
         return cl[name](**kwargs)
     else:
@@ -1321,11 +1323,10 @@ class NetMHCIIPanPredictor(Predictor):
         """Call netMHCIIpan command line."""
 
         #assume allele names are in standard format HLA-DRB1*0101
-        try:
-            allele = allele.split('-')[1].replace('*','_')
-        except:
-            pass
-        allele = allele.replace(':','')
+        #if allele.startswith('HLA-'):
+        #    allele=allele[4:]
+        allele = self.allele_mapping(allele)
+        #print (allele)
         #write peptides to temp file
         pepfile = tempfile.mktemp()+'.pep'
         with open(pepfile ,'w') as f:
@@ -1348,6 +1349,12 @@ class NetMHCIIPanPredictor(Predictor):
         self.prepare_data(res, name)
         return self.data
 
+    def allele_mapping(self, allele):
+        if allele.startswith('HLA-DQA'):
+            return allele.replace('*','').replace(':','')
+        else:
+            return allele.replace('*','_').replace(':','').replace('HLA-DRB','DRB')
+
     def get_alleles(self):
         """Get available alleles"""
 
@@ -1357,7 +1364,7 @@ class NetMHCIIPanPredictor(Predictor):
         except:
             print('netmhciipan not installed?')
             return []
-        alleles = temp.split('\n')#[34:]
+        alleles = temp.decode().split('\n')#[34:]
         return alleles
 
     def convert_allele_name(self, a):
@@ -1565,17 +1572,17 @@ class IEDBMHCIIPredictor(Predictor):
         self.data = df
         return df
 
-    def predict(self, peptides=None, sequence=None, length=15, overlap=None, show_cmd=False,
+    def predict(self, sequence=None, peptides=None, length=15, overlap=None, show_cmd=False,
                    allele='HLA-DRB1*01:01', method='IEDB_recommended', name='', **kwargs):
         """Use IEDB MHC-II python module to get predictions. Requires that the IEDB MHC-II
-        tools are installed locally. sequence argument must be provided since cmd line
+        tools are installed locally. A sequence argument is provided since the cmd line
         only accepts whole sequence to be fragmented.
         """
 
         self.method = method
         if sequence is not None:
-            tempf = os.path.join(self.temppath, name+'.fa')
-            seqfile = write_fasta(sequence, id=name, filename=tempf)
+            seqfile = tempfile.mktemp()+'.fa'
+            write_fasta(sequence, id=name, filename=seqfile)
         elif peptides is not None:
             if type(peptides) is not pd.DataFrame:
                 peptides = self.seqs_to_dataframe(peptides)
@@ -1596,8 +1603,11 @@ class IEDBMHCIIPredictor(Predictor):
         if show_cmd is True:
             print (cmd)
         try:
-            temp = subprocess.check_output(cmd, shell=True)
-            #print(temp)
+            #temp = subprocess.check_output(cmd, shell=True)
+            from subprocess import Popen, PIPE, STDOUT
+            p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
+            temp = p.stdout.read()
+            #print (temp)
         except Exception as e:
             print (e)
             print ('check allele %s is correct.' %allele)
@@ -1959,9 +1969,9 @@ class BasicMHCIPredictor(Predictor):
         if reg is None:
             print ('no model for this allele')
             return
-        sc = reg.predict(X)
+        sc = reg.predict(X).round(4)
         res = pd.DataFrame(np.column_stack([peptides,sc]),columns=['peptide','log50k'])
-        res['score'] = res.log50k.astype('float').apply(lambda x: mhclearn.log50k2aff(x))
+        res['score'] = res.log50k.astype('float').apply(lambda x: mhclearn.log50k2aff(x)).round(2)
         #print(res.dtypes)
         df = self.prepare_data(res,name,allele)
         return df
