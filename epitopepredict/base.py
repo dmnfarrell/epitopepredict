@@ -527,6 +527,9 @@ class Predictor(object):
         value = self.scorekey
         res=[]
         for a,g in data.groupby('allele'):
+            if a not in cuts:
+                print ('%s not in cutoffs' %a)
+                continue
             #print (cuts[a])
             #print (g[value])
             if self.rankascending == 0:
@@ -1311,9 +1314,9 @@ class NetMHCIIPanPredictor(Predictor):
         df['name'] = name
         df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
         df = df.drop(['Pos','Identity','Rank'],1)
-        df = df.dropna()
         df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
-        df['score'] = df['Affinity']
+        df['score'] = pd.to_numeric(df.Affinity,errors='coerce')
+        df = df.dropna()
         self.get_ranking(df)
         self.data = df
         return

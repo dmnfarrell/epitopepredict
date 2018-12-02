@@ -475,7 +475,7 @@ def bokeh_pie_chart(df, title='', radius=.5, width=400, height=400, palette='Spe
     #]
     return plot
 
-def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default',
+def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default', regions=None,
                 legend=False, colormap='Paired', figsize=None, ax=None, **kwargs):
     """
     Plot binders as bars per allele using matplotlib.
@@ -552,6 +552,7 @@ def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default',
                                     lw=1.5, alpha=0.6))
             y+=1
         handles.append(rect)
+
     if len(leg) == 0:
         return
     ax.set_xlim(0, seqlen)
@@ -565,6 +566,11 @@ def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default',
     ax.set_yticklabels(alleles, fontsize=fsize )
     ax.grid(b=True, which='major', alpha=0.5)
     ax.set_title(name, fontsize=16, loc='right')
+    if regions is not None:
+        r = regions[regions.name==name]
+        coords = (list(r.start),list(r.end-r.start))
+        coords = zip(*coords)
+        plot_regions(coords, ax, color='gray')
     if legend == True:
         ax.legend(handles, leg, bbox_to_anchor=(0., 1.02, 1., .102), loc=3,
                   ncol=3)
@@ -819,6 +825,7 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired',
     if type(coords) is list:
         coords = { i:coords[i] for i in range(len(coords)) }
         legend=False
+    import matplotlib as mpl
     import seaborn as sns
     #sns.reset_orig()
     cmap = mpl.cm.get_cmap(colormap)
@@ -876,7 +883,10 @@ def plot_overview(genome, coords=None, cols=2, colormap='Paired',
         ax.set_title(title, fontsize=16, loc='right')
 
     if i|2!=0 and cols>1:
-        f.delaxes(grid[i])
+        try:
+            f.delaxes(grid[i])
+        except:
+            pass
     if legend == True:
         f.legend(rects.values(), rects.keys(), loc=4)
     plt.tight_layout()
