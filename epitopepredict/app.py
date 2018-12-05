@@ -42,8 +42,8 @@ class WorkFlow(object):
         if self.sequences is None and self.peptides is None:
             print ('no valid inputs found')
             return False
-        self.mhc1_alleles = self.mhc1_alleles.split(',')
-        self.mhc2_alleles = self.mhc2_alleles.split(',')
+        self.mhc1_alleles = get_alleles(self.mhc1_alleles)
+        self.mhc2_alleles = get_alleles(self.mhc2_alleles)
         if len(self.mhc1_alleles)==0 and len(self.mhc2_alleles)==0:
             return False
         self.predictors = self.predictors.split(',')
@@ -261,8 +261,19 @@ class WorkFlow(object):
         print ('saved plots')
         return
 
+def get_alleles(f):
+    """Get input alleles as text file or list"""
+
+    fileext = os.path.splitext(f)[1]
+    if fileext == '.txt' and os.path.exists(f):
+        items = read_names(f)
+    else:
+        items = f.split(',')
+    return items
+
 def read_names(filename):
     """read plain text file of items"""
+
     with open(filename) as f:
         p = f.readlines()
     p = [x.strip() for x in p]

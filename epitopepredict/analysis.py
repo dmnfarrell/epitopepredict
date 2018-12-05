@@ -133,6 +133,7 @@ def get_nmer(df, genome, length=20, seqkey='translation', how='center', margin=3
         return
     temp = df.merge(genome[cols],left_on='name',right_on='locus_tag',
                     how='left').set_index(df.index)
+    print (temp)
     if not 'end' in list(temp.columns):
         temp = base.get_coords(temp)
     temp = base.get_coords(temp)

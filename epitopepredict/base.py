@@ -35,7 +35,7 @@ home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'mhcdata')
 predictors = ['basicmhc1','tepitope','netmhciipan','netmhcpan','mhcflurry','mhcnuggets','iedbmhc1','iedbmhc2']
-iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'netmhcpan', 'smmpmbec']
+iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'smmpmbec']
 mhc1_predictors = ['basicmhc1','netmhcpan','iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
             'output_format': 'ascii', 'sort_output': 'position_in_sequence',
@@ -576,6 +576,9 @@ class Predictor(object):
             binders above cutoff in all alleles, pandas dataframe
         """
 
+        if cutoff_method not in ['default', 'score', 'rank']:
+            print ('choose a valid cutoff method')
+            return
         cutoff = float(cutoff)
         data = self.data
         if cutoff_method in ['default','']:
@@ -946,7 +949,7 @@ class Predictor(object):
                     print (s)
             if len(res) == 0:
                 continue
-            res = pd.concat(res)
+            res = pd.concat(res, sort=True)
 
             if path is not None and len(res)>0:
                 if compression == 'gzip':
@@ -1159,7 +1162,7 @@ class NetMHCPanPredictor(Predictor):
     Default scoring is ligand likelihood predictions.
     To get older binding affinity behavious pass scoring='affinity' to constructor.
     """
-    def __init__(self, data=None, scoring=None):
+    def __init__(self, data=None, scoring='affinity'):
 
         Predictor.__init__(self, data=data)
         self.name = 'netmhcpan'

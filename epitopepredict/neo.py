@@ -174,6 +174,16 @@ def pbmec_score(seq1, seq2):
         return -1
     return x
 
+def get_alleles(f):
+    """Get input alleles"""
+
+    fileext = os.path.splitext(f)[1]
+    if fileext == '.txt' and os.path.exists(f):
+        items = read_names(f)
+    else:
+        items = f.split(',')
+    return items
+
 def read_names(filename):
     """read plain text file of items"""
 
