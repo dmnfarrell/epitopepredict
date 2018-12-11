@@ -110,7 +110,7 @@ def _split_nmer(x, n, key, margin=3, colname='peptide'):
         d = pd.DataFrame({colname:seqs})
         return d
 
-def get_nmer(df, genome, length=20, seqkey='translation', how='center', margin=3):
+def create_nmers(df, genome, length=20, seqkey='translation', key='nmer', how='split', margin=1):
     """
     Get n-mer peptide surrounding a set of sequences using the host
     protein sequence.
@@ -133,38 +133,27 @@ def get_nmer(df, genome, length=20, seqkey='translation', how='center', margin=3
         return
     temp = df.merge(genome[cols],left_on='name',right_on='locus_tag',
                     how='left').set_index(df.index)
-    print (temp)
+    print (temp[:5])
     if not 'end' in list(temp.columns):
         temp = base.get_coords(temp)
     temp = base.get_coords(temp)
-    newcol = 'n-mer'
+
     if how == 'center':
-        temp[newcol] = temp.apply( lambda r: _center_nmer(r, length), 1)
+        temp[key] = temp.apply( lambda r: _center_nmer(r, length), 1)
         res = temp
     elif how == 'split':
         res=[]
         for n,r in temp.iterrows():
-            d = _split_nmer(r, length, seqkey, margin, newcol)
-            res.append(d)
+            d = _split_nmer(r, length, seqkey, margin, key)
             d['index']=n
             d.set_index('index',inplace=True)
-            #print d
+            res.append(d)
         res = pd.concat(res)
+        #print (res)
         res = temp.merge(res,left_index=True,right_index=True).reset_index(drop=True)
+        #print (res)
     res=res.drop([seqkey],1)
     return res
-
-def create_nmers(df, genome, key='nmer', length=20, margin=1):
-    """
-    Add n-mers to a dataframe of sequences by splitting them up
-    and updating the start/end coords of each row in the dataframe
-    """
-
-    x = get_nmer(df, genome, how='split', length=length, margin=margin)
-    x = x.rename(columns={'peptide':key})
-    df = df.drop(['start','end'],1)
-    x = df.merge(x,left_index=True,right_index=True).reset_index(drop=True)
-    return x
 
 def get_overlaps(df1, df2, label='overlap', how='inside'):
     """
@@ -206,7 +195,7 @@ def get_overlaps(df1, df2, label='overlap', how='inside'):
         df[label] = df.apply(lambda r: overlap(r,found),axis=1)
         new.append(df)
     result = pd.concat(new)
-    print ('%s with overlapping sequences' %len(result[result[label]>0]))
+    #print ('%s with overlapping sequences' %len(result[result[label]>0]))
     return result
 
 def get_orthologs(seq, db=None, expect=1, hitlist_size=400, equery=None,
@@ -466,8 +455,8 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
         x = x.drop_duplicates(colname)
     x = x.sort_values(by=['binders'],ascending=False)
     x = x.reset_index(drop=True)'''
-    print ('%s clusters found in %s proteins' %(len(x),len(x.groupby('name'))))
-    print
+    #print ('%s clusters found in %s proteins' %(len(x),len(x.groupby('name'))))
+    #print
     return x
 
 def randomized_lists(df, n=94, seed=8, filename='peptide_lists'):
