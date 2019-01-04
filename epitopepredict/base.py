@@ -576,12 +576,12 @@ class Predictor(object):
             binders above cutoff in all alleles, pandas dataframe
         """
 
-        if cutoff_method not in ['default', 'score', 'rank']:
+        if cutoff_method not in ['default', 'global', 'score', 'rank']:
             print ('choose a valid cutoff method')
             return
         cutoff = float(cutoff)
         data = self.data
-        if cutoff_method in ['default','']:
+        if cutoff_method in ['default','global','']:
             #by per allele percentile cutoffs
             cuts = self.get_allele_cutoffs(cutoff)
         #print (cuts)
@@ -596,7 +596,7 @@ class Predictor(object):
             d = DataFrameIterator(files)
             res=[]
             for data in d:
-                if cutoff_method in ['default','']:
+                if cutoff_method in ['default','global','']:
                     b = self._per_allele_binders(data, cuts)
                 elif cutoff_method == 'rank':
                     b = self._ranked_binders(data, cutoff)
@@ -607,7 +607,7 @@ class Predictor(object):
         else:
             if data is None:
                 return
-            if cutoff_method in ['default','']:
+            if cutoff_method in ['default','global','']:
                 res = self._per_allele_binders(data, cuts)
             elif cutoff_method == 'rank':
                 res = self._ranked_binders(data, cutoff)
@@ -1160,7 +1160,7 @@ class NetMHCPanPredictor(Predictor):
     """netMHCpan 4.0 predictor
     see http://www.cbs.dtu.dk/services/NetMHCpan/
     Default scoring is ligand likelihood predictions.
-    To get older binding affinity behavious pass scoring='affinity' to constructor.
+    To get newer scoring behaviour pass scoring='ligand' to constructor.
     """
     def __init__(self, data=None, scoring='affinity'):
 
@@ -1174,7 +1174,7 @@ class NetMHCPanPredictor(Predictor):
             self.cutoff = 500
             self.operator = '<'
             self.rankascending = 1
-        else:
+        elif scoring == 'ligand':
             self.cutoff = 0.5
             self.operator = '>'
             self.rankascending = 0

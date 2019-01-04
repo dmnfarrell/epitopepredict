@@ -252,61 +252,14 @@ def get_variant_class(effect):
     elif type(effect) is varcode.effects.effect_classes.FrameShift:
         return 'frameshift'
 
-def get_variant_effect(variant, verbose=False):
-    """Get priority variant effects from a set of variants loaded with
-    varcode. Omits silent and noncoding effects.
-    Returns:
-        varcode variant effect object
-    """
-
-    import varcode
-    v = variant
-    if verbose==True:
-        print (v, v.gene_names)
-    effs = v.effects()
-    effs = effs.drop_silent_and_noncoding()
-
-    if len(effs)>0:
-        eff = effs.top_priority_effect()
-    else:
-        if verbose == True:
-            print ('no effects')
-        return
-    mut = eff.mutant_protein_sequence
-    #if type(eff) is varcode.effects.effect_classes.FrameShift:
-    #    print eff, eff.shifted_sequence
-    if mut is None:
-        return
-
-    vloc = eff.aa_mutation_start_offset
-    if vloc is None or len(v.coding_genes) == 0:
-        return
-    if verbose==True:
-        print (v.gene_names, type(eff))
-        print (eff.transcript_id, eff.short_description, eff.variant.ref)
-        #print v.contig
-        #print mut
-        #print eff.to_dict()['variant'].to_dict()
-    return eff
-
-def get_variant_effects(variants, verbose=False):
-    """Get priority effects from a list of variants.
-    Returns:
-        list of varcode variant effect objects"""
-
-    effects=[]
-    for v in variants:
-        eff = get_variant_effect(v, verbose=verbose)
-        effects.append(eff)
-    print ('%s effects' %len(effects))
-    return effects
-
 def effects_to_pickle(effects, filename):
     """serialize variant effects collections"""
+
     pickle.dump(effects, open(filename, "wb"), protocol=2)
     return
 
 def effects_to_dataframe(effects):
+
     x=[]
     for eff in effects:
         if eff is None:
@@ -327,8 +280,54 @@ def effects_to_dataframe(effects):
     df['chr'] = df.apply(lambda x: x.mutation.split(' ')[0],1)
     return df
 
+'''def filter_variant_effects(effects, verbose=False):
+    """Get fitered list of effects.
+       Omits silent and noncoding effects.
+       Returns:
+        list of varcode variant effect objects
+    """
+
+    effs = effects.drop_silent_and_noncoding()
+    filt = []
+    for eff in effs:
+        v = eff.variant
+        mut = eff.mutant_protein_sequence
+        #if type(eff) is varcode.effects.effect_classes.FrameShift:
+        #    print eff, eff.shifted_sequence
+        if mut is None:
+            continue
+        vloc = eff.aa_mutation_start_offset
+        if vloc is None or len(v.coding_genes) == 0:
+            continue
+        if verbose==True:
+            print (v.gene_names, type(eff))
+            print (eff.transcript_id, eff.short_description, eff.variant.ref)
+        #print v.contig
+        #print mut
+        #print eff.to_dict()['variant'].to_dict()
+        filt.append(eff)
+    return filt'''
+
+
+def get_variants_effects(variants, verbose=False, gene_expression_dict=None):
+    """Get all effects from a list of variants.
+    Returns:
+        list of varcode variant effect objects"""
+
+    from varcode.effects import Substitution, Insertion, Deletion
+    effects = variants.effects()
+    effects = effects.drop_silent_and_noncoding()
+    print (len(effects))
+
+    effects = effects.filter_by_effect_priority(Substitution)
+    if gene_expression_dict is not None:
+         effects = effects.filter_by_gene_expression(gene_expression_dict)
+
+    print ('%s effects from %s variants' %(len(effects),len(variants)))
+    return effects
+
 def peptides_from_effect(eff, length=11, peptides=True, verbose=False):
-    """Get mutated peptides from an effect object.
+    """Get mutated peptides from a single effect object.
     Returns:
         dataframe with peptides and variant info
     """
@@ -342,6 +341,8 @@ def peptides_from_effect(eff, length=11, peptides=True, verbose=False):
     orig = eff.original_protein_sequence
     mut = eff.mutant_protein_sequence
     vloc = eff.aa_mutation_start_offset
+    if vloc is None or mut is None:
+        return
     st = vloc-pad; end = vloc+pad+1
     if st<0: st=0
 
@@ -403,13 +404,16 @@ def get_mutant_sequences(variants=None, effects=None, reference=None, peptides=T
 
     res = []
     if variants is not None:
-        effects = get_variant_effects(variants, verbose)
+        effects = get_variants_effects(variants, verbose)
     if effects is None:
         print ('no variant information')
         return
 
     for eff in effects:
+        #print (eff)
         peps = peptides_from_effect(eff, length=length, peptides=peptides, verbose=verbose)
+        if peps is None:
+            continue
         res.append(peps)
     res = pd.concat(res).reset_index(drop=True)
 
@@ -433,7 +437,7 @@ def load_variants(vcf_file=None, maf_file=None, max_variants=None):
     print ('%s variants read from %s' %(len(variants),f))
     return variants
 
-def predict_variants(df, predictor='tepitope', alleles=[],
+def predict_variants(df, predictor='netmhcpan', alleles=[],
                      verbose=False, cpus=1, cutoff=.95, cutoff_method='default'):
     """
     Predict binding scores for mutated and wt peptides (if present) from supplied variants.
@@ -465,7 +469,7 @@ def predict_variants(df, predictor='tepitope', alleles=[],
     df['closest'] = df.apply(get_closest_match, 1)
     df['length'] = df.peptide.str.len()
 
-    P = base.get_predictor(predictor)
+    P = base.get_predictor(predictor, scoring='ligand')
     if verbose == True:
         print (P)
         print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
