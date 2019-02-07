@@ -72,6 +72,7 @@ class WorkFlow(object):
 
         if not os.path.exists(self.path) and self.path != '':
             os.mkdir(self.path)
+
         #copy input seqs to path
         if self.sequences is not None:
             self.sequences.to_csv(os.path.join(self.path, 'input.csv'),index=False)
@@ -175,15 +176,15 @@ class WorkFlow(object):
             else:
                 continue
             if self.sequences is not None:
-                x = analysis.get_nmer(pb, self.sequences, how='split', length=20)
-                x = analysis.peptide_properties(x, 'n-mer')
+                x = analysis.create_nmers(pb, self.sequences, how='split', length=20)
+                x = analysis.peptide_properties(x, 'nmer')
                 x.to_csv(os.path.join(self.path,'final_%s_%s.csv' %(p,n)), float_format='%g')
                 #do further analysis if using protein sequences
                 cl = analysis.find_clusters(pb)
                 if len(cl) > 0:
                     #make peptide lists
-                    cl = analysis.get_nmer(cl, self.sequences, how='split', length=20)
-                    cl = analysis.peptide_properties(cl, 'n-mer')
+                    cl = analysis.create_nmers(cl, self.sequences, how='split', length=20)
+                    cl = analysis.peptide_properties(cl, 'nmer')
                     cl.to_csv(os.path.join(self.path,'clusters_%s.csv' %p))
                 #make summary table
                 summary = self.get_summary(P, pb, self.sequences, clusters=cl)
