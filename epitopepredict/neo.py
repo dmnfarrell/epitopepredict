@@ -35,7 +35,7 @@ class NeoEpitopeWorkFlow(object):
 
         if check_imports() == False:
             return
-        check_ensembl()
+        #check_ensembl()
         pd.set_option('display.width', 120)
         base.iedbmhc1path = self.iedbmhc1_path
         base.iedbmhc2path = self.iedbmhc2_path
@@ -108,7 +108,7 @@ class NeoEpitopeWorkFlow(object):
                 variants = load_variants(vcf_file=infile)
                 labels[f]['variants'] = len(variants)
                 print ('getting variant effects')
-                effects = get_variant_effects(variants, self.verbose)
+                effects = get_variants_effects(variants, self.verbose)
                 #serialize variant effects
                 effects_to_pickle(effects, eff_obj)
             else:
@@ -360,8 +360,8 @@ def peptides_from_effect(eff, length=11, peptides=True, verbose=False):
             wt = orig[st:end]
         else:
             wt = None
-    if verbose == True:
-        print (type(eff), len(orig), len(mut), vloc, st, end, len(mutpep))
+    #if verbose == True:
+    #    print (type(eff), len(orig), len(mut), vloc, st, end, len(mutpep))
     if len(mutpep)<length:
         if verbose == True:
             print ('peptide length too small')
@@ -562,6 +562,7 @@ def make_blastdb(url, name=None, filename=None, overwrite=False):
 
 def make_human_blastdb():
     """Human proteome blastdb"""
+
     url = 'ftp://ftp.ensembl.org/pub/release-87/fasta/homo_sapiens/pep/Homo_sapiens.GRCh38.pep.all.fa.gz'
     filename = 'Homo_sapiens.GRCh38.pep.all.fa.gz'
     blastdb = make_blastdb(url, name='GRCh38', filename=filename)
@@ -569,6 +570,7 @@ def make_human_blastdb():
 
 def make_virus_blastdb():
     """Human virus blastdb"""
+
     url = 'http://www.uniprot.org/uniprot/?sort=score&desc=&compress=no&query=taxonomy:%22Viruses%20[10239]%22%20\
     keyword:%22Reference%20proteome%20[KW-1185]%22%20host:%22Homo%20sapiens%20(Human)%20[9606]%22&fil=&force=no&preview=true&format=fasta'
     filename = 'uniprot_human_virus_proteome.fa.gz'
@@ -576,12 +578,14 @@ def make_virus_blastdb():
     return blastdb
 
 def self_matches(df, **kwargs):
+
     blastdb = make_human_blastdb()
     x = find_matches(df, blastdb, **kwargs)
     x = x.rename(columns={'sseq':'self_match','mismatch':'self_mismatches'})
     return x
 
 def virus_matches(df, **kwargs):
+
     blastdb = make_virus_blastdb()
     x = find_matches(df, blastdb, **kwargs)
     if 'sseq' in x.columns:
@@ -642,12 +646,14 @@ def find_matches(df, blastdb, cpus=4, verbose=False):
     return x
 
 def wt_similarity(x, matrix='blosum62'):
+
     x1 = x.peptide
     x2 = x.wt
     matrix = tepitope.get_matrix(matrix)
     return tepitope.similarity_score(matrix,x1,x2)
 
 def self_similarity(x, matrix='blosum62'):
+
     if x.self_match is None:
         return
     x1 = x.peptide
@@ -656,6 +662,7 @@ def self_similarity(x, matrix='blosum62'):
     return tepitope.similarity_score(matrix,x1,x2)
 
 def virus_similarity(x, matrix='blosum62'):
+
     if x.virus_match is None:
         return
     x1 = x.peptide
@@ -676,6 +683,7 @@ def anchor_mutated(x):
 
 def summary_plots(df):
     """summary plots for testing results"""
+
     f,axs=plt.subplots(2,2,figsize=(10,10))
     axs=axs.flat
     g = df.groupby(['name']).size().sort_values(ascending=False)[:20]
@@ -697,42 +705,38 @@ def show_predictors():
 def check_imports():
     try:
         import varcode
-    except:
+    except Exception as e:
+        print (e)
         print ('varcode required. please run pip install varcode')
         return False
     return True
 
-def check_snap():
-    """Check if inside a snap"""
-
-    if 'SNAP_COMMON' in os.environ:
-        return True
-    return False
-
 def fetch_ensembl_release(path=None, release='75'):
-    """get pyensembl genome files"""
+    """Get pyensembl genome files"""
 
     from pyensembl import Genome,EnsemblRelease
-    if path is not None:
-        os.environ['PYENSEMBL_CACHE_DIR'] = path
     #this call should download the files
     genome = EnsemblRelease(release, species='human')
-    genome.download()
-    genome.index()
-    #print ('pyensembl genome files cached in %s' %genome.cache_directory_path)
+    genome.download(overwrite=False)
+    genome.index(overwrite=False)
+    genome.cache_directory_path = path
+    print ('pyensembl genome files cached in %s' %genome.cache_directory_path)
+    #run_pyensembl_install()
     return
 
-def check_ensembl():
+def check_ensembl(release='75'):
     """Check pyensembl ref genome cached. Needed for running in snap"""
 
     #check if running inside a snap package so we can download
     #the genome files for pyensembl
-    if check_snap() is True:
-        #print ('running inside snap')
-        home = os.path.join('/home', os.environ['USER'])
+    cache_dir=None
+    if base.check_snap() is True:
+        #home = os.path.join('/home', os.environ['USER'])
+        home = os.environ['SNAP_USER_COMMON']
         cache_dir = os.path.join(home, '.cache')
-        print ('checking for ref human genome')
-        fetch_ensembl_release(cache_dir)
+        os.environ['PYENSEMBL_CACHE_DIR'] = cache_dir
+    print ('checking for ref human genome')
+    fetch_ensembl_release(cache_dir, release)
     return
 
 def run_vep(vcf_file, out_format='vcf', assembly='GRCh38', cpus=4, path=None):
@@ -760,6 +764,7 @@ def print_help():
     print ("""use -h to get options""")
 
 def plot_variant_summary(data):
+
     from bokeh.plotting import figure
     from bokeh.charts import Donut
     d = Donut(df, label=['abbr', 'medal'], values='medal_count',
@@ -775,6 +780,7 @@ def test_run():
     options['base']['predictors'] = 'netmhcpan' #'mhcflurry'
     options['base']['mhc1_alleles'] = 'HLA-A*02:01'
     options['base']['path'] = 'neo_test'
+    options['base']['overwrite'] = True
     #options['base']['mhc2_length'] = 11
     #options['base']['verbose'] = True
     #options['base']['cpus'] = 4
@@ -782,5 +788,14 @@ def test_run():
     options = config.check_options(options)
     #print (options)
     W = NeoEpitopeWorkFlow(options)
+    check_ensembl(release='75')
     st = W.setup()
+    #check_ensembl()
     W.run()
+
+def varcode_test():
+    path = os.path.dirname(os.path.abspath(__file__))
+    infile = os.path.join(path, 'testing','input.vcf')
+    variants = load_variants(vcf_file=infile)
+    get_variants_effects(variants)
+    return

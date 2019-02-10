@@ -143,6 +143,8 @@ def net_charge(seq):
 def compare_anchor_positions(x1, x2):
     """Check if anchor positions in 9-mers are mutated"""
 
+    if x1 is None or x2 is None:
+        return 0
     p1 = list(get_fragments(x1, length=9).peptide)
     p2 = list(get_fragments(x2, length=9).peptide)
     #is mutation in anchor residue

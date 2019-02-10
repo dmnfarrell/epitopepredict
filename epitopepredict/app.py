@@ -26,8 +26,8 @@ class WorkFlow(object):
     def setup(self):
         """Setup main parameters"""
 
-        if check_snap() == True:
-            add_path()
+        #if base.check_snap() == True:
+            #add_path()
         pd.set_option('display.width', 120)
         #override base.defaults entries if provided in conf
         set_defaults(self.__dict__)
@@ -69,6 +69,8 @@ class WorkFlow(object):
             self.names=None
         else:
             self.names = self.names.split(',')
+        if self.names is not None:
+            print ('selected sequences:', self.names)
 
         if not os.path.exists(self.path) and self.path != '':
             os.mkdir(self.path)
@@ -359,13 +361,6 @@ def list_alleles():
         print ()
     return
 
-def check_snap():
-    """Check if inside a snap"""
-
-    if 'SNAP_COMMON' in os.environ:
-        return True
-    return False
-
 def add_path():
     """Add home dir to path for accessing tools from a snap"""
 
@@ -435,7 +430,9 @@ def main():
                         help="Analysis path", metavar="FILE")
     parser.add_option("-n", "--neoepitope", dest="neoepitope", action="store_true",
                         default=False, help="Neo-epitope pipeline")
-    parser.add_option("-s", "--server", dest="server",  action="store_true",
+    parser.add_option("-e", "--ensembl", dest="ensembl", action="store_true",
+                        default=False, help="Get ensembl files for a release")
+    parser.add_option("-s", "--server", dest="server",
                         default=False, help="Run web app")
     parser.add_option("-x", "--port", dest="port", default=8000,
                         help="Port for web app, default 8000")
@@ -467,7 +464,11 @@ def main():
     elif opts.neoepitope == True:
         if opts.test == True:
             neo.test_run()
+            #neo.varcode_test()
         else:
+            print (options)
+            release = options['ensembl_release']
+            neo.check_ensembl(release)
             W = neo.NeoEpitopeWorkFlow(options)
             st = W.setup()
             if st == True:

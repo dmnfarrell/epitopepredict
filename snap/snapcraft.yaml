@@ -8,20 +8,21 @@ description: |
  each method can then be processed and visualized in a consistent manner.
 
 grade: stable
-confinement: devmode
+confinement: strict
 icon: gui/icon.png
 
 apps:
   epitopepredict:
     command: bin/epitopepredict
     plugs: [home,network-bind]
-
+    environment:
+      LD_LIBRARY_PATH: $SNAP/usr/lib/ncbi-blast+  
 parts:
   epitopepredict:
     plugin: python
     python-version: python3
     source: ../
     python-packages:
-      [mhcflurry,gtfparse==0.0.6,pyensembl==1.1.0,varcode==0.5.15]
+      [mhcflurry,gtfparse==1.2,pyensembl==1.7.3,varcode==0.8.0]
     stage-packages:
-      [python-setuptools,tcsh,gawk,ncbi-blast+,bowtie2]
+      [tcsh,gawk,ncbi-blast+]

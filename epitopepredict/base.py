@@ -402,6 +402,26 @@ def split_peptides(df,length=9,seqkey='sequence',newcol='peptide'):
     res = df.merge(res,on=seqkey)
     return res
 
+def check_snap():
+    """Check if inside a snap"""
+
+    if 'SNAP_COMMON' in os.environ:
+        print ('running in a snap')
+        return True
+    return False
+
+def set_netmhcpan_cmd():
+    """Setup the netmhcpan command for using inside snap. Avoids using
+    tcsh script."""
+
+    toolspath = os.path.join('/home', os.environ['USER'], 'tools')
+    netmhcpath = os.path.join(toolspath, 'netMHCpan-4.0/Linux_x86_64')
+    os.environ['NETMHCpan']=netmhcpath
+    os.environ['TMPDIR']='/tmp'
+    cmd = os.path.join(netmhcpath, 'bin/netMHCpan')
+    print ('netmhcpan cmd set to:', cmd)
+    return cmd
+
 class DataFrameIterator:
     """Simple iterator to get dataframes from a path out of memory"""
     def __init__(self, files):
@@ -924,6 +944,8 @@ class Predictor(object):
 
         results = []
         self.length = length
+        if compression == '':
+            compression = None
         for i,row in recs.iterrows():
             seq = row.translation
             seq = clean_sequence(seq) #clean the sequence of non-aa characters
@@ -1180,6 +1202,10 @@ class NetMHCPanPredictor(Predictor):
             self.rankascending = 0
         #load precalculated quantiles for sample peptides
         self.qf = self.get_quantile_data()
+        self.basecmd = 'netMHCpan'
+        #base command needs to be to the binary directly if running snap
+        if check_snap is True:
+            self.basecmd = set_netmhcpan_cmd()
 
     def read_result(self, temp):
         """Read raw results from netMHCpan output"""
@@ -1225,9 +1251,9 @@ class NetMHCPanPredictor(Predictor):
                 f.write(p+'\n')
         f.close()
         if self.scoring =='affinity':
-            cmd = 'netMHCpan -BA -f %s -inptype 1 -a %s' %(pepfile , allele)
+            cmd = '%s -BA -f %s -inptype 1 -a %s' %(self.basecmd, pepfile , allele)
         else:
-            cmd = 'netMHCpan -f %s -inptype 1 -a %s' %(pepfile , allele)
+            cmd = '%s -f %s -inptype 1 -a %s' %(self.basecmd, pepfile , allele)
         if show_cmd is True:
             print (cmd)
         try:

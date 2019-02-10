@@ -7,7 +7,7 @@ CHANGES
 ------
 
 major changes to neoepitope routines
-changes to app outputs
+some changes to app outputs
 added netmhcpan predictor
 added basicmhc1 predictor
 updated notebook examples

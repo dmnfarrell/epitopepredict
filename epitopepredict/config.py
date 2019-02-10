@@ -59,7 +59,7 @@ baseoptions['iedbtools'] = {'iedbmhc1_path':'', 'iedbmhc2_path':'',
                             'iedb_mhc1_method':'IEDB_recommended',
                             'iedb_mhc2_method':'IEDB_recommended'}
 
-baseoptions['neopredict'] = {'vcf_files':'',
+baseoptions['neopredict'] = {'vcf_files':'', 'ensembl_release':'75',
                              'selection_method':'promiscuity'}
 
 def write_default_config():
