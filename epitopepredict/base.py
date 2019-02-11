@@ -406,20 +406,21 @@ def check_snap():
     """Check if inside a snap"""
 
     if 'SNAP_COMMON' in os.environ:
-        print ('running in a snap')
         return True
     return False
 
-def set_netmhcpan_cmd():
-    """Setup the netmhcpan command for using inside snap. Avoids using
-    tcsh script."""
+def set_netmhcpan_cmd(path=None):
+    """Setup the netmhcpan command to point directly to the binary. This is a
+    workaround for running inside snaps. Avoids using the tcsh script."""
 
     toolspath = os.path.join('/home', os.environ['USER'], 'tools')
     netmhcpath = os.path.join(toolspath, 'netMHCpan-4.0/Linux_x86_64')
+    if not os.path.exists(netmhcpath):
+        print ('you need to copy the netmhcpan files to %s' %toolspath)
     os.environ['NETMHCpan']=netmhcpath
-    os.environ['TMPDIR']='/tmp'
+    os.environ['TMPDIR']= '/tmp'
     cmd = os.path.join(netmhcpath, 'bin/netMHCpan')
-    print ('netmhcpan cmd set to:', cmd)
+    #print (os.environ)
     return cmd
 
 class DataFrameIterator:
@@ -473,6 +474,9 @@ class Predictor(object):
         else:
             n = len(self.data.name.unique())
             return '%s predictor with results in %s sequences' %(self.name, n)
+
+    def check_install(self):
+        return True
 
     def supported_lengths(self):
         """Return supported peptide lengths"""
@@ -1204,7 +1208,7 @@ class NetMHCPanPredictor(Predictor):
         self.qf = self.get_quantile_data()
         self.basecmd = 'netMHCpan'
         #base command needs to be to the binary directly if running snap
-        if check_snap is True:
+        if check_snap() is True:
             self.basecmd = set_netmhcpan_cmd()
 
     def read_result(self, temp):
@@ -1291,13 +1295,13 @@ class NetMHCPanPredictor(Predictor):
         return a
 
     def check_install(self):
-        cmd = 'netMHCpan'
+
+        cmd = '%s -h' %self.basecmd
         try:
             temp = subprocess.check_output(cmd, shell=True)
             print('netMHCpan appears to be installed')
             return 1
         except:
-            print ('netMHCpan not found')
             return 0
 
     @classmethod
@@ -1821,7 +1825,7 @@ class MHCFlurryPredictor(Predictor):
         self.operator = '<'
         self.scorekey = 'score'
         self.rankascending = 1
-        if self.check_install == False:
+        if self.check_install() == False:
             return
         self._check_models()
         from mhcflurry import Class1AffinityPredictor
@@ -1870,10 +1874,10 @@ class MHCFlurryPredictor(Predictor):
 
     def check_install(self):
         try:
-            import mhcflurry
+            from mhcflurry import Class1AffinityPredictor
             return True
         except:
-            print ('use pip install mhcflurry to install.')
+            #print ('use pip install mhcflurry to install.')
             return False
 
     def _check_models(self):

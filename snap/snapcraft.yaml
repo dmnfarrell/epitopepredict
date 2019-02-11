@@ -25,4 +25,4 @@ parts:
     python-packages:
       [mhcflurry,gtfparse==1.2,pyensembl==1.7.3,varcode==0.8.0]
     stage-packages:
-      [tcsh,gawk,ncbi-blast+]
+      [gawk,ncbi-blast+]

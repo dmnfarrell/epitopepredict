@@ -130,8 +130,8 @@ class NeoEpitopeWorkFlow(object):
                 else:
                     alleles = self.mhc2_alleles
                     length = self.mhc2_length
-                seqs = get_mutant_sequences(effects=effects, length=length, verbose=self.verbose)
 
+                seqs = get_mutant_sequences(effects=effects, length=length, verbose=self.verbose)
                 res = predict_variants(seqs, alleles=alleles, predictor=predictor,
                                        verbose=self.verbose, cpus=self.cpus)
                 res['label'] = f
@@ -470,9 +470,8 @@ def predict_variants(df, predictor='netmhcpan', alleles=[],
     df['length'] = df.peptide.str.len()
 
     P = base.get_predictor(predictor, scoring='ligand')
-    if verbose == True:
-        print (P)
-        print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
+    print (P)
+    print ('predicting mhc binding for %s peptides with %s' %(len(df), P.name))
 
     peps = list(df.peptide)
     res = P.predict_peptides(peps, alleles=alleles, cpus=cpus,

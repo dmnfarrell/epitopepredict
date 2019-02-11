@@ -20,7 +20,7 @@ setup(
                   'description.txt']
                  },
     install_requires=['numpy>=1.10',
-                      'pandas>=0.20',
+                      'pandas>=0.22',
                       'biopython>=1.5',
                       'bokeh==0.12.14',
                       'wtforms>=2.1',

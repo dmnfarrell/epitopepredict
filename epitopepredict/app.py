@@ -26,8 +26,11 @@ class WorkFlow(object):
     def setup(self):
         """Setup main parameters"""
 
-        #if base.check_snap() == True:
-            #add_path()
+        if base.check_snap() == True:
+            print ('running in a snap')
+            cmd = base.set_netmhcpan_cmd()
+            print ('netmhcpan cmd set to:', cmd)
+
         pd.set_option('display.width', 120)
         #override base.defaults entries if provided in conf
         set_defaults(self.__dict__)
@@ -86,6 +89,9 @@ class WorkFlow(object):
         preds = []
         for p in self.predictors:
             P = base.get_predictor(p)
+            if P.check_install() == False:
+                print ('%s not installed' %P.name)
+                continue
             savepath = os.path.join(self.path, p)
             if self.overwrite == True and os.path.exists(savepath):
                 shutil.rmtree(savepath)
@@ -387,10 +393,10 @@ def check_installed():
     return found
 
 def test_run():
-    """Test run for a sample file"""
+    """Test run for a sample file."""
 
     #installed = ','.join(check_installed())
-    installed = 'tepitope'
+    installed = 'tepitope,mhcflurry'
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
     b=options['base']
@@ -403,12 +409,24 @@ def test_run():
     b['verbose'] = True
     b['cutoff_method'] = 'score'
     b['cutoffs'] = '5,500'
-    #b['compression'] = 'gzip'
-    b['overwrite'] = False
+    b['overwrite'] = True
     options = config.check_options(options)
     W = WorkFlow(options)
     st = W.setup()
     W.run()
+
+def test_binary():
+
+    cmd = base.set_netmhcpan_cmd()
+    cmd = cmd + ' -a HLA-A02:01 -l 9 P170919-test.fa'
+    print (cmd)
+    import subprocess
+    tmp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    import io
+    tmp = tmp.decode()
+    for i in tmp.split('\n'):
+        print (i)
+    return
 
 def main():
     "Run the application"
@@ -432,7 +450,7 @@ def main():
                         default=False, help="Neo-epitope pipeline")
     parser.add_option("-e", "--ensembl", dest="ensembl", action="store_true",
                         default=False, help="Get ensembl files for a release")
-    parser.add_option("-s", "--server", dest="server",
+    parser.add_option("-s", "--server", dest="server", action="store_true",
                         default=False, help="Run web app")
     parser.add_option("-x", "--port", dest="port", default=8000,
                         help="Port for web app, default 8000")
@@ -479,6 +497,7 @@ def main():
         import epitopepredict.tornado_serve
         epitopepredict.tornado_serve.main(opts.port)
     elif opts.test == True:
+        #test_binary()
         test_run()
     elif opts.version == True:
         from . import __version__
