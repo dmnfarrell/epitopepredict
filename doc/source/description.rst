@@ -13,19 +13,19 @@ This software should be run on a Linux operating system. Ubuntu is recommended b
 
 **Snap package**
 
-You can install as a snap on linux which might be easier than using pip for some users. This option is convenient because updates can be provided regularly and automatically. Snaps are ubuntu based but supported on most major linux distributions. In future this will be the preferred method of installation. Install snapd_ with your package manager and then run::
+You can install as a snap on linux which might be easier than using pip for some users. This option is convenient because updates can be provided regularly and automatically. Almost everything you need is packaged in the snap. Snaps are ubuntu based but supported on most major linux distributions. Install snapd_ with your package manager and then run::
 
     sudo snap install epitopepredict
 
 .. _snapd: https://docs.snapcraft.io/core/install
 
-Or you can just go to https://snapcraft.io/epitopepredict.
+Or you can just go to https://snapcraft.io/epitopepredict and install from there.
 
-Updating the snap is simply done using::
+Updating the snap is automatic but can be done manually using::
 
     sudo snap refresh epitopepredict
 
-*Note: netMHC prediction methods are not yet available with the snap because of restrictions in how those programs are redistributed. This should be fixed later.*
+*Note: netMHC prediction methods are not packaged in the snap because of restrictions in how those programs are redistributed. This is addressed below in the section on installing netMHCpan.
 
 **Python dependencies**
 
@@ -71,6 +71,11 @@ Due to license restrictions these programs must be installed separately. You can
  * http://www.cbs.dtu.dk/cgi-bin/nph-sw_request?netMHCIIpan
 
 The install instructions can then be found in the readme files when you untar the downloaded file e.g. netMHCpan-4.0.readme. Remember to test the software is working before you use it in epitopepredict.
+
+Using netMHCpan with the snap package
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since netMHCpan can't be distributed with the snap, you have to download it separately. For snaps, netMHCpan should be installed in a folder called tools in your home directory. That is all you should have to do and the program will be found at run time.
 
 Installing IEDB MHC-I tools
 ---------------------------
