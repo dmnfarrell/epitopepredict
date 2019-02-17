@@ -104,7 +104,13 @@ def ete_tree(aln):
 
 def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
                     compress=False, cmd='blastp', cpus=2, show_cmd=False, **kwargs):
-    """Blast a local database"""
+    """Blast a local database.
+    Args:
+        database: local blast db name
+        query: sequences to query, list of strings or Bio.SeqRecords
+    Returns:
+        pandas dataframe with top blast results
+    """
 
     if output == None:
         output = os.path.splitext(query)[0]+'_blast.txt'
@@ -138,14 +144,16 @@ def blast_sequences(database, seqs, labels=None, **kwargs):
     Args:
         database: local blast db name
         seqs: sequences to query, list of strings or Bio.SeqRecords
+        labels: list of id names for sequences, optional but recommended
     Returns:
         pandas dataframe with top blast results
     """
 
     res = []
-    if labels == None:
+    if labels is None:
         labels = seqs
     recs=[]
+
     for seq, name in zip(seqs,labels):
         if type(seq) is not SeqRecord:
             rec = SeqRecord(Seq(seq),id=name)

@@ -495,7 +495,7 @@ def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default', regions=N
             w = 10
             h = round(h*.1+2)
             figsize = (w,h)
-        plt.clf()
+        #plt.clf()
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
 
@@ -529,7 +529,7 @@ def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default', regions=N
             continue
         l = base.get_length(pb)
         seqlen = df.pos.max()+l
-        print (name,m,df.pos.max(),l,seqlen)
+        #print (name,m,df.pos.max(),l,seqlen)
         grps = df.groupby('allele')
         if m in colors:
             c=colors[m]
