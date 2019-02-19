@@ -102,6 +102,20 @@ def ete_tree(aln):
     t.show(tree_style=ts)
     return
 
+def remote_blast(db, query, maxseqs=50, evalue=0.001, **kwargs):
+    """Remote blastp.
+    Args:
+        query: fasta file with sequence to blast
+        db: database to use - nr, refseq_protein, pdb, swissprot
+    """
+    from Bio.Blast.Applications import NcbiblastpCommandline
+    output = os.path.splitext(query)[0]+'_blast.txt'
+    outfmt = '"6 qseqid sseqid qseq sseq pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore stitle"'
+    cline = NcbiblastpCommandline(query=query, db=db, max_target_seqs=maxseqs, outfmt=outfmt,
+                                  evalue=evalue, out=output, remote=True)
+    stdout, stderr = cline()
+    return
+
 def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
                     compress=False, cmd='blastp', cpus=2, show_cmd=False, **kwargs):
     """Blast a local database.
@@ -115,7 +129,7 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
     if output == None:
         output = os.path.splitext(query)[0]+'_blast.txt'
     from Bio.Blast.Applications import NcbiblastxCommandline
-    outfmt = '"6 qseqid sseqid qseq sseq pident length mismatch gapopen qstart qend sstart send evalue bitscore"'
+    outfmt = '"6 qseqid sseqid qseq sseq pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore stitle"'
     cline = NcbiblastxCommandline(query=query, cmd=cmd, db=database,
                                  max_target_seqs=maxseqs,
                                  outfmt=outfmt, out=output,
@@ -132,23 +146,25 @@ def get_blast_results(filename):
         dataframe
     """
 
-    cols = ['qseqid','sseqid','qseq','sseq','pident','length','mismatch','gapopen',
-            'qstart','qend','sstart','send','evalue','bitscore']
+    cols = ['qseqid','sseqid','qseq','sseq','pident','qcovs','length','mismatch','gapopen',
+            'qstart','qend','sstart','send','evalue','bitscore','stitle']
     res = pd.read_csv(filename, names=cols, sep='\t')
     #res = res[res['pident']>=ident]
     return res
 
 def blast_sequences(database, seqs, labels=None, **kwargs):
     """
-    Blast a set of sequences to a local blast database
+    Blast a set of sequences to a local or remote blast database
     Args:
-        database: local blast db name
+        database: local or remote blast db name
+                  'nr', 'refseq_protein', 'pdb', 'swissprot' are valide remote dbs
         seqs: sequences to query, list of strings or Bio.SeqRecords
         labels: list of id names for sequences, optional but recommended
     Returns:
         pandas dataframe with top blast results
     """
 
+    remotedbs = ['nr','refseq_protein','pdb','swissprot']
     res = []
     if labels is None:
         labels = seqs
@@ -162,7 +178,10 @@ def blast_sequences(database, seqs, labels=None, **kwargs):
             name = seq.id
         recs.append(rec)
     SeqIO.write(recs, 'tempseq.fa', "fasta")
-    local_blast(database, 'tempseq.fa', **kwargs)
+    if database in remotedbs:
+        remote_blast(database, 'tempseq.fa', **kwargs)
+    else:
+        local_blast(database, 'tempseq.fa', **kwargs)
     df = get_blast_results(filename='tempseq_blast.txt')
     return df
 
