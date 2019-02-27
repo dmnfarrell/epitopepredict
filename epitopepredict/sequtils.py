@@ -112,7 +112,7 @@ def remote_blast(db, query, maxseqs=50, evalue=0.001, **kwargs):
     output = os.path.splitext(query)[0]+'_blast.txt'
     outfmt = '"6 qseqid sseqid qseq sseq pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore stitle"'
     cline = NcbiblastpCommandline(query=query, db=db, max_target_seqs=maxseqs, outfmt=outfmt,
-                                  evalue=evalue, out=output, remote=True)
+                                  evalue=evalue, out=output, remote=True, **kwargs)
     stdout, stderr = cline()
     return
 
@@ -257,12 +257,10 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
 
-def genbank_to_dataframe(infile, cds=False, quiet=True):
-    """Get genome records from a genbank file into a dataframe
+def features_to_dataframe(recs, cds=False):
+    """Get genome records from a biopython features object into a dataframe
       returns a dataframe with a row for each cds/entry"""
 
-    #genome = SeqIO.read(infile,'genbank')
-    recs = list(SeqIO.parse(infile,'genbank'))
     genome = recs[0]
     #preprocess features
     allfeat = []
@@ -286,11 +284,6 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
     df['length'] = df.translation.astype('str').str.len()
     #print (df)
     df = check_tags(df)
-    if quiet == False:
-        print('---- %s summary ----' %infile)
-        s = genbank_summary(df)
-        for i in s:
-            print (i,':',s[i])
     if cds == True:
         df = get_cds(df)
         df['order'] = range(1,len(df)+1)
@@ -298,6 +291,20 @@ def genbank_to_dataframe(infile, cds=False, quiet=True):
     if len(df) == 0:
         print ('ERROR: genbank file return empty data, check that the file contains protein sequences '\
                'in the translation qualifier of each protein feature.' )
+    return df
+
+def genbank_to_dataframe(infile, cds=False):
+    """Get genome records from a genbank file into a dataframe
+      returns a dataframe with a row for each cds/entry"""
+
+    #genome = SeqIO.read(infile,'genbank')
+    recs = list(SeqIO.parse(infile,'genbank'))
+    df = features_to_dataframe(recs, cds)
+    return df
+
+def embl_to_dataframe(infile, cds=False):
+    recs = list(SeqIO.parse(infile,'embl'))
+    df = features_to_dataframe(recs, cds)
     return df
 
 def check_tags(df):
@@ -362,11 +369,11 @@ def index_genbank_features(gb_record, feature_type, qualifier):
 
     answer = dict()
     for (index, feature) in enumerate(gb_record.features):
-        print (index, feature)
+        #print (index, feature)
         if feature.type==feature_type:
             if qualifier in feature.qualifiers:
                 values = feature.qualifiers[qualifier]
-                if not type(values) is types.ListType:
+                if not type(values) is list:
                     values = [values]
                 for value in values:
                     if value in answer:
