@@ -22,6 +22,8 @@ predictors = base.predictors
 plotkinds = ['tracks','bar','text']
 
 def get_file_lists(path):
+    """Get list of available prediction results in the given path. Tries
+       to check for each possible predictor."""
 
     names = []
     for p in predictors:

@@ -257,11 +257,12 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
 
-def features_to_dataframe(recs, cds=False):
-    """Get genome records from a biopython features object into a dataframe
-      returns a dataframe with a row for each cds/entry"""
+def features_to_dataframe(rec, cds=False):
+    """Get a genome record from a biopython features object into a dataframe
+       returns a dataframe with a row for each cds/entry.
+      """
 
-    genome = recs[0]
+    genome = rec
     #preprocess features
     allfeat = []
     for (item, f) in enumerate(genome.features):
@@ -293,14 +294,18 @@ def features_to_dataframe(recs, cds=False):
                'in the translation qualifier of each protein feature.' )
     return df
 
-def genbank_to_dataframe(infile, cds=False):
+def genbank_to_dataframe(infile, cds=False, recs='all'):
     """Get genome records from a genbank file into a dataframe
-      returns a dataframe with a row for each cds/entry"""
+      returns a dataframe with a row for each cds/entry
+      """
 
-    #genome = SeqIO.read(infile,'genbank')
     recs = list(SeqIO.parse(infile,'genbank'))
-    df = features_to_dataframe(recs, cds)
-    return df
+    result=[]
+    for rec in recs:
+        df = features_to_dataframe(rec, cds)
+        result.append(df)
+    result = pd.concat(result).reset_index()
+    return result
 
 def embl_to_dataframe(infile, cds=False):
     recs = list(SeqIO.parse(infile,'embl'))

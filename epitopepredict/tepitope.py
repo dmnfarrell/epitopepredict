@@ -24,6 +24,7 @@ from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import PDB
+from Bio.Alphabet import IUPAC, _verify_alphabet
 from . import peptutils, utilities
 
 refalleles = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0402',
@@ -209,6 +210,10 @@ def similarity_score(matrix, ref, query):
     if type(ref) is not str or type(query) is not str:
         return
     r=ref; q=query
+    s = Seq(q, alphabet=IUPAC.IUPACProtein)
+    #check protein sequence of query
+    if _verify_alphabet(s) is False:
+        return
     sim = sum([matrix[i][j] for i,j in zip(r,q) if (i!= '-' and j!='-')])
     sim1 = sum([matrix[i][j] for i,j in zip(r,r) if (i!= '-' and j!='-')])
     sim2 = sum([matrix[i][j] for i,j in zip(q,q) if (i!= '-' and j!='-')])

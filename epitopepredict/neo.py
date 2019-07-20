@@ -8,7 +8,7 @@
 
 from __future__ import absolute_import, print_function
 import sys, os, subprocess
-import shutil
+import time
 import pickle
 import numpy as np
 import pandas as pd
@@ -51,13 +51,14 @@ class NeoEpitopeWorkFlow(object):
         self.mhc2_alleles = self.mhc2_alleles.split(',')
         if len(self.mhc1_alleles)==0 and len(self.mhc2_alleles)==0:
             return False
-        self.predictors = self.predictors.split(',')
 
+        self.predictors = self.predictors.split(',')
         for p in self.predictors:
             if p not in base.predictors:
                 print ('unknown predictor in config file. Use:')
                 show_predictors()
                 return False
+
         if self.mhc1_alleles[0] in base.mhc1_presets:
             self.mhc1_alleles = base.get_preset_alleles(self.mhc1_alleles[0])
         elif self.mhc2_alleles[0] in base.mhc2_presets:
@@ -88,6 +89,7 @@ class NeoEpitopeWorkFlow(object):
         """Run workflow for multiple samples and prediction methods."""
 
         print ('running neoepitope predictions')
+        start = time.time()
         path = self.path
         overwrite = self.overwrite
         files = self.vcf_files
@@ -98,7 +100,7 @@ class NeoEpitopeWorkFlow(object):
             cutoffs = [cutoffs[0] for p in preds]
 
         for f in labels:
-            print (f)
+            print ('sample name: %s' %f)
             infile = labels[f]['filename']
             #file to save variants to, if present we can skip
             eff_csv = os.path.join(path, 'variant_effects_%s.csv' %f)
@@ -119,6 +121,11 @@ class NeoEpitopeWorkFlow(object):
             eff_data['sample'] = f
             eff_data.to_csv(eff_csv)
 
+            #get mutated peptides
+            seqs = get_mutant_sequences(effects=effects, length=self.mhc1_length, verbose=self.verbose)
+            #get similarities
+            df = get_closest_matches(seqs, self.verbose, cpus=self.cpus)
+
             i=0
             for predictor in self.predictors:
                 outfile = os.path.join(path, 'results_%s_%s.csv' %(f,predictor))
@@ -126,33 +133,38 @@ class NeoEpitopeWorkFlow(object):
                     continue
                 if predictor in base.mhc1_predictors:
                     alleles = self.mhc1_alleles
-                    length = self.mhc1_length
+                    #length = self.mhc1_length
                 else:
                     alleles = self.mhc2_alleles
-                    length = self.mhc2_length
+                    #length = self.mhc2_length
 
-                seqs = get_mutant_sequences(effects=effects, length=length, verbose=self.verbose)
-                res = predict_variants(seqs, alleles=alleles, predictor=predictor,
+                res = predict_binding(df, alleles=alleles, predictor=predictor,
                                        verbose=self.verbose, cpus=self.cpus)
                 res['label'] = f
                 res.to_csv(outfile, index=False)
 
                 #gets promiscuous binders based on the cutoff
-                P = base.get_predictor(predictor)
-                P.data = res
+                #P = base.get_predictor(predictor)
+                #P.data = res
                 #pb = P.promiscuous_binders(n=1, keep_columns=True, cutoff=cutoffs[i])
                 #pb['label'] = f
                 #print (pb[:20])
                 #pb.to_csv(os.path.join(path, 'binders_%s_%s.csv' %(f,predictor)), index=False)
                 i+=1
-                #peps = self_similarity(res, proteome="human_proteome")
 
-        #combine results for multiple samples
+            #combine results if multiple predictors?
+            #combine_results()
+
+        #combine results for multiple samples?
+
+        #save sample labels
         pd.DataFrame(labels).T.to_csv(os.path.join(path, 'sample_labels.csv'))
         print ('finished, results saved to %s' %path)
+        end = round(time.time()-start,1)
+        print ('took %s seconds' %end)
         return
 
-    def combine_results(self, labels):
+    def combine_samples(self, labels):
         """Put peptides from multiple files in one table"""
 
         res=[]
@@ -222,7 +234,7 @@ def dataframe_to_vcf(df, outfile):
     the following columns: #CHROM','POS','ID','REF','ALT'
     """
 
-    f = open(outfile, 'wb')
+    f = open(outfile, 'w')
     f.write('##fileformat=VCFv4.0\n')
     f.write('##reference=GRCh38.fa\n')
     f.write('##source=csv\n')
@@ -240,6 +252,7 @@ def dataframe_to_vcf(df, outfile):
     return
 
 def get_variant_class(effect):
+    import varcode
     v = effect.variant
     if v.is_deletion:
         return 'deletion'
@@ -317,7 +330,7 @@ def get_variants_effects(variants, verbose=False, gene_expression_dict=None):
     from varcode.effects import Substitution, Insertion, Deletion
     effects = variants.effects()
     effects = effects.drop_silent_and_noncoding()
-    print (len(effects))
+    #print (len(effects))
 
     effects = effects.filter_by_effect_priority(Substitution)
     if gene_expression_dict is not None:
@@ -363,8 +376,8 @@ def peptides_from_effect(eff, length=11, peptides=True, verbose=False):
     #if verbose == True:
     #    print (type(eff), len(orig), len(mut), vloc, st, end, len(mutpep))
     if len(mutpep)<length:
-        if verbose == True:
-            print ('peptide length too small')
+        #if verbose == True:
+        #    print ('peptide length too small')
         return
     if peptides is True:
         df = peptutils.get_fragments(seq=mutpep, length=length)
@@ -437,25 +450,15 @@ def load_variants(vcf_file=None, maf_file=None, max_variants=None):
     print ('%s variants read from %s' %(len(variants),f))
     return variants
 
-def predict_variants(df, predictor='netmhcpan', alleles=[],
-                     verbose=False, cpus=1, cutoff=.95, cutoff_method='default'):
+def get_closest_matches(df, verbose=False, cpus=1):
     """
-    Predict binding scores for mutated and wt peptides (if present) from supplied variants.
-    Args:
-        df: pandas dataframe with peptide sequences, requires at least 2 columns
-            'peptide' - the mutant peptide
-            'wt' - a corresponding wild type peptide
-        this data could be generated from get_mutant_sequences or from an external source
-        predictor: mhc binding prediction method
-        alleles: list of alleles
-    Returns:
-        dataframe with mutant and wt binding scores for all alleles plus other score metrics
+    Find peptide similarity metrics
     """
 
-    #find matches to self proteome, adds penalty score column to df
-    #we should only blast non-duplicates....
     if verbose == True:
         print ('finding matches to self proteome')
+    #find matches to self proteome, adds penalty score column to df
+    #we should only blast non-duplicates....
     df = self_matches(df, cpus=cpus)
     if verbose == True:
         print ('finding matches to viral proteomes')
@@ -468,6 +471,25 @@ def predict_variants(df, predictor='netmhcpan', alleles=[],
     #get closest peptide in another column, either wt or nearest self
     df['closest'] = df.apply(get_closest_match, 1)
     df['length'] = df.peptide.str.len()
+    #exclude exact matches to self?
+    if verbose==True:
+        print ('%s peptides with exact matches to self' %len(df[df.self_mismatches==0]))
+    return df
+
+def predict_binding(df, predictor='netmhcpan', alleles=[],
+                     verbose=False, cpus=1, cutoff=.95, cutoff_method='default'):
+    """
+    Predict binding scores for mutated and wt peptides (if present) from supplied variants.
+    Args:
+        df: pandas dataframe with peptide sequences, requires at least 2 columns
+            'peptide' - the mutant peptide
+            'wt' - a corresponding wild type peptide
+        this data could be generated from get_mutant_sequences or from an external program
+        predictor: mhc binding prediction method
+        alleles: list of alleles
+    Returns:
+        dataframe with mutant and wt binding scores for all alleles
+    """
 
     P = base.get_predictor(predictor, scoring='ligand')
     print (P)
@@ -476,7 +498,7 @@ def predict_variants(df, predictor='netmhcpan', alleles=[],
     peps = list(df.peptide)
     res = P.predict_peptides(peps, alleles=alleles, cpus=cpus,
                              cutoff=cutoff, cutoff_method=cutoff_method, drop_columns=True)
-    #pb = P.promiscuous_binders(n=1,cutoff=.95)
+
     if res is None:
         print ('no binding predictions!')
         return
@@ -503,11 +525,6 @@ def predict_variants(df, predictor='netmhcpan', alleles=[],
     res = analysis.peptide_properties(res, 'peptide')
     res['length'] = res.peptide.str.len()
 
-    #print(res)
-    #exclude exact matches to self
-    if verbose==True:
-        print ('%s peptides with exact matches to self' %len(res[res.self_mismatches==0]))
-
     #merge promiscuity measure into results
     #if len(pb) > 0:
     #    res = res.merge(pb[['peptide','alleles']], on='peptide',how='left')
@@ -515,6 +532,7 @@ def predict_variants(df, predictor='netmhcpan', alleles=[],
     #    res['alleles'] = 0
     #rename some columns
     res = res.rename(columns={'rank':'binding_rank','alleles':'promiscuity'})
+    res = res.sort_values('binding_rank', ascending=True)
     return res
 
 def score_peptides(df, rf=None):
@@ -648,6 +666,7 @@ def wt_similarity(x, matrix='blosum62'):
 
     x1 = x.peptide
     x2 = x.wt
+    #print(x1,x2)
     matrix = tepitope.get_matrix(matrix)
     return tepitope.similarity_score(matrix,x1,x2)
 
@@ -776,14 +795,15 @@ def test_run():
     print ('neoepitope workflow test')
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
-    options['base']['predictors'] = 'netmhcpan' #'mhcflurry'
+    options['base']['predictors'] = 'netmhcpan,tepitope'
     options['base']['mhc1_alleles'] = 'HLA-A*02:01'
     options['base']['path'] = 'neo_test'
     options['base']['overwrite'] = True
     #options['base']['mhc2_length'] = 11
     #options['base']['verbose'] = True
-    #options['base']['cpus'] = 4
+    options['base']['cpus'] = 2
     options['neopredict']['vcf_files'] = os.path.join(path, 'testing','input.vcf')
+    options['neopredict']['release'] = '75'
     options = config.check_options(options)
     #print (options)
     W = NeoEpitopeWorkFlow(options)

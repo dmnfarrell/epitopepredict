@@ -1185,7 +1185,7 @@ class Predictor(object):
 class NetMHCPanPredictor(Predictor):
     """netMHCpan 4.0 predictor
     see http://www.cbs.dtu.dk/services/NetMHCpan/
-    Default scoring is ligand likelihood predictions.
+    Default scoring is affinity predictions.
     To get newer scoring behaviour pass scoring='ligand' to constructor.
     """
     def __init__(self, data=None, scoring='affinity'):
@@ -1676,7 +1676,7 @@ class IEDBMHCIIPredictor(Predictor):
 class TEpitopePredictor(Predictor):
     """Predictor using TepitopePan QM method"""
 
-    def __init__(self, data=None):
+    def __init__(self, data=None, **kwargs):
         Predictor.__init__(self, data=data)
         self.name = 'tepitope'
         self.pssms = tepitope.get_pssms()
