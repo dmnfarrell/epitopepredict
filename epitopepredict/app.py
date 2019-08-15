@@ -396,7 +396,7 @@ def test_run():
     """Test run for a sample file."""
 
     #installed = ','.join(check_installed())
-    installed = 'tepitope,mhcflurry'
+    installed = 'tepitope,mhcflurry,netmhcpan'
     path = os.path.dirname(os.path.abspath(__file__))
     options = config.baseoptions
     b=options['base']

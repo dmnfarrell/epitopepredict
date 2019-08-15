@@ -16,6 +16,7 @@ import pprint
 import pandas as pd
 import numpy as np
 from epitopepredict import base, web, analysis, plotting, config
+from . import __version__
 
 import tornado.ioloop
 import tornado.web
@@ -149,7 +150,7 @@ class MainHandler(RequestHandler):
     def get(self):
         args = self.request.arguments
         buttons = ''
-        self.render('index.html', buttons=buttons, savepath='')
+        self.render('index.html', buttons=buttons, savepath='', version=__version__)
 
 class GlobalViewHandler(RequestHandler):
     """Handler for showing multiple sequences in a results folder"""
@@ -168,7 +169,8 @@ class GlobalViewHandler(RequestHandler):
 
         if not os.path.exists(savepath):
             msg = help_msg()
-            self.render('global.html', form=form, msg=msg, savepath=savepath, status=0)
+            self.render('global.html', form=form, msg=msg, savepath=savepath,
+                        version=__version__, status=0)
 
         data = web.get_summary_tables(savepath, **defaultargs)
 
@@ -192,7 +194,7 @@ class GlobalViewHandler(RequestHandler):
 
         form.savepath.data = savepath
         self.render('global.html', form=form, tables=tables, msg='', script=script, div=div,
-                    status=1, savepath=savepath)
+                    version=__version__, status=1, savepath=savepath)
 
 class SequenceViewHandler(RequestHandler):
     """Handler for main results page"""
@@ -254,7 +256,8 @@ class SequenceViewHandler(RequestHandler):
             links.append(self.get_url(defaultargs, link=k))
 
         self.render('sequence.html', script=script, div=div, form=form, tables=tables,
-                    msg='', info=info, name=current_name, status=1, links=links, savepath=savepath)
+                    msg='', info=info, name=current_name, status=1, links=links,
+                    version=__version__, savepath=savepath)
 
     def get_url(self, args, link='download'):
         """Get url from current args"""

@@ -20,7 +20,7 @@ from Bio.SeqFeature import SeqFeature, FeatureLocation
 from  . import utilities
 
 featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
-               'product', 'note', 'translation','pseudo','start','end','strand']
+               'product', 'note', 'translation','pseudo','pseudogene','start','end','strand']
 typecolors = ['blue','green','brown','orange','purple','lightblue','yellow','red']
 
 def draw_genome_map(infile, filename=None):
@@ -257,55 +257,63 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
 
-def features_to_dataframe(rec, cds=False):
-    """Get a genome record from a biopython features object into a dataframe
-       returns a dataframe with a row for each cds/entry.
-      """
+def features_to_dataframe(recs, cds=False, select='all'):
+    """Get genome records from a biopython features object into a dataframe
+      returns a dataframe with a row for each cds/entry.
+      Args:
+        recs:  seqrecords object
+        cds: only return cds
+        select: 'first' record or 'all'
+    """
 
-    genome = rec
-    #preprocess features
-    allfeat = []
-    for (item, f) in enumerate(genome.features):
-        x = f.__dict__
-        q = f.qualifiers
-        x.update(q)
-        d = {}
-        d['start'] = f.location.start
-        d['end'] = f.location.end
-        d['strand'] = f.location.strand
-        for i in featurekeys:
-            if i in x:
-                if type(x[i]) is list:
-                    d[i] = x[i][0]
-                else:
-                    d[i] = x[i]
-        allfeat.append(d)
+    if select == 'first':
+        recs = [recs[0]]
 
-    df = pd.DataFrame(allfeat,columns=featurekeys)
-    df['length'] = df.translation.astype('str').str.len()
-    #print (df)
-    df = check_tags(df)
+    res = []
+    for rec in recs:
+        feats=[]
+        for (item, f) in enumerate(rec.features):
+            x = f.__dict__
+            q = f.qualifiers
+            #featurekeys = list(q.keys()) + ['type']
+            #print (featurekeys)
+            x.update(q)
+            d = {}
+            d['locus'] = rec.name
+            d['start'] = f.location.start
+            d['end'] = f.location.end
+            d['strand'] = f.location.strand
+            for i in featurekeys:
+                if i in x:
+                    if type(x[i]) is list:
+                        d[i] = x[i][0]
+                    else:
+                        d[i] = x[i]
+            feats.append(d)
+
+        df = pd.DataFrame(feats, columns=featurekeys)
+        #print (df.columns)
+        res.append(df)
+
+    final = pd.concat(res)
+    final['length'] = final.translation.astype('str').str.len()
+    final = check_tags(final)
     if cds == True:
-        df = get_cds(df)
-        df['order'] = range(1,len(df)+1)
-    #print (df)
-    if len(df) == 0:
+        final = get_cds(final)
+        final['order'] = range(1,len(final)+1)
+
+    if len(final) == 0:
         print ('ERROR: genbank file return empty data, check that the file contains protein sequences '\
                'in the translation qualifier of each protein feature.' )
-    return df
+    return final
 
-def genbank_to_dataframe(infile, cds=False, recs='all'):
+def genbank_to_dataframe(infile, cds=False):
     """Get genome records from a genbank file into a dataframe
-      returns a dataframe with a row for each cds/entry
-      """
+      returns a dataframe with a row for each cds/entry"""
 
     recs = list(SeqIO.parse(infile,'genbank'))
-    result=[]
-    for rec in recs:
-        df = features_to_dataframe(rec, cds)
-        result.append(df)
-    result = pd.concat(result).reset_index()
-    return result
+    df = features_to_dataframe(recs, cds)
+    return df
 
 def embl_to_dataframe(infile, cds=False):
     recs = list(SeqIO.parse(infile,'embl'))
@@ -323,7 +331,7 @@ def check_tags(df):
     df['locus_tag'] = df.apply(replace,1)
     return df
 
-def genbank_summary(df):
+def features_summary(df):
     """Genbank dataframe summary"""
 
     def hypo(val):
@@ -339,7 +347,7 @@ def genbank_summary(df):
     products = coding[coding['product'].notnull()]
     cdstrans = coding[coding.translation.notnull()]
     hypo = products[products['product'].apply(hypo)]
-    pseudo = df[(df.type=='gene') & (df.pseudo.notnull())]
+    pseudo = df[ (df.type == 'gene') & (df.pseudo.notnull())]
     notags = df[df.locus_tag.isnull()]
     s = {}
     s['total features'] = len(df)
