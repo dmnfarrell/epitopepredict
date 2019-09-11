@@ -51,7 +51,9 @@ def peptide_properties(df, colname='peptide'):
 def _center_nmer(x, n):
     """Get n-mer sequence for a peptide centered in the middle.
     This should be applied to a dataframe per row.
-    Returns: a single sequence centred on the peptide"""
+    Returns: a single sequence centred on the peptide
+    
+    """
 
     seq = x['translation']
     size = x.end-x.start
@@ -77,7 +79,13 @@ def _center_nmer(x, n):
 def _split_nmer(x, n, key, margin=3, colname='peptide'):
     """Row based method to split a peptide in to multiple n-mers
         if it's too large. Returns a dataframe of 3 cols so should be
-        applied using iterrows and then use concat"""
+        applied using iterrows and then use concat.
+
+    Args:
+        x: row item
+        n: length to split on
+        key:
+    """
 
     size = x.end-x.start
     m = margin
@@ -457,33 +465,27 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     #print
     return x
 
-def randomized_lists(df, n=94, seed=8, filename='peptide_lists'):
-    """
-    Return a randomized lists of sequences from a dataframe. Used for
-    providing peptide lists for assaying etc.
-    """
+def randomize_dataframe(df, seed=8):
+    """Randomize order of dataframe"""
 
-    #cols for excel file
-    lcols=['label','peptide']
-    #nb always use same seed
     np.random.seed(seed=seed)
-    plist = df.reset_index(drop=True)
-    plist = plist.reindex(np.random.permutation(plist.index))
-    plist['label'] = plist['name']+'_'+plist.index.astype(str)
-    plist.to_csv('%s.csv' %filename)
+    new = df.reset_index(drop=True)
+    new = new.reindex(np.random.permutation(new.index))
+    return new
+
+def save_to_excel(df, n=94, filename='peptide_lists'):
+    """
+    Save a dataframe to excel with option of writing in chunks.
+    """
 
     writer = pd.ExcelWriter('%s.xls' %filename)
-    #chunks = np.array_split(plist.index, groups)
     i=1
-    chunks = plist.groupby(np.arange(len(plist)) // n)
+    chunks = df.groupby(np.arange(len(df)) // n)
     for g,c in chunks:
-        c[lcols].to_excel(writer,'list'+str(i))
+        c.to_excel(writer,'list'+str(i))
         i+=1
-    #also save by method for easy reference
-    #for i,g in plist.groupby('method'):
-    #    g.sort_values(by='name')[lcols].to_excel(writer,'method'+str(i))
-    plist.to_excel(writer,'original data', float_format='%.2f')
     writer.save()
+    return
 
 def tmhmm(fastafile=None, infile=None):
     """
