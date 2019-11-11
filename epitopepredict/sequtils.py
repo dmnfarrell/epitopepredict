@@ -349,6 +349,7 @@ def features_summary(df):
     hypo = products[products['product'].apply(hypo)]
     pseudo = df[ (df.type == 'gene') & (df.pseudo.notnull())]
     notags = df[df.locus_tag.isnull()]
+    repeats = df[ (df.type == 'repeat_region')]
     s = {}
     s['total features'] = len(df)
     s['coding sequences'] = len(coding)
@@ -357,6 +358,7 @@ def features_summary(df):
     s['hypothetical'] = len(hypo)
     s['pseudogenes'] = len(pseudo)
     s['trna'] = len(trna)
+    s['repeat_region'] = len(repeats)
     s['no locus tags'] =  len(notags)
     if len(cdstrans)>0:
         avlength = int(np.mean([len(i) for i in cdstrans.translation]))
