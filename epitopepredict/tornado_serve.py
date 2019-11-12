@@ -208,7 +208,7 @@ class SequenceViewHandler(RequestHandler):
 
         if not os.path.exists(savepath):
             msg = help_msg()
-            self.render('sequence.html', form=form, status=0, name='', msg=msg, savepath=savepath)
+            self.render('sequence.html', form=form, status=0, name='', msg=msg, savepath=savepath, version='1')
             return
 
         names = web.get_file_lists(savepath)

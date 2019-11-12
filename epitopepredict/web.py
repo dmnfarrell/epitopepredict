@@ -4,6 +4,17 @@
     epitopepredict, methods for supporting web app
     Created Sep 2017
     Copyright (C) Damien Farrell
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 3
+    of the License, or (at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 from __future__ import absolute_import, print_function
@@ -20,6 +31,11 @@ from bokeh.embed import components
 path = 'results'
 predictors = base.predictors
 plotkinds = ['tracks','bar','text']
+
+def get_readme():
+    f=os.path.join(base.module_path,'readme.md')
+    lines=open(f,'r')
+    return ''.join(lines.readlines())
 
 def get_file_lists(path):
     """Get list of available prediction results in the given path. Tries

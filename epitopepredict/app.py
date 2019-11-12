@@ -4,6 +4,17 @@
     MHC prediction command line script
     Created March 2016
     Copyright (C) Damien Farrell
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 3
+    of the License, or (at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 from __future__ import absolute_import, print_function
@@ -452,6 +463,8 @@ def main():
                         default=False, help="Get ensembl files for a release")
     parser.add_option("-s", "--server", dest="server", action="store_true",
                         default=False, help="Run web app")
+    parser.add_option("-i", "--results", dest="results",
+                        help="Results folder", metavar="FILE")    
     parser.add_option("-x", "--port", dest="port", default=8000,
                         help="Port for web app, default 8000")
     parser.add_option("-v", "--version", dest="version", action="store_true",
@@ -492,10 +505,10 @@ def main():
             if st == True:
                 W.run()
     elif opts.server == True:
-        #from epitopepredict.server import webapp
-        #webapp.run(port=5000, debug=True)
-        import epitopepredict.tornado_serve
-        epitopepredict.tornado_serve.main(opts.port)
+        #import epitopepredict.tornado_serve
+        #epitopepredict.tornado_serve.main(opts.port)
+        cmd = 'panel serve epitopepredict/dashboard.py --show'
+        
     elif opts.test == True:
         #test_binary()
         test_run()

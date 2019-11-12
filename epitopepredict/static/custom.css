@@ -73,7 +73,7 @@ div.scrollableContainer {
 }
 div.scrollingArea {
     border:1px solid #b2a7a7;
-    height: 450px;
+    height: 400px;
     overflow: auto;
     margin: 10px;
 }
@@ -239,16 +239,21 @@ div.floatright {
 
 .divheader {
     font-family: "open sans";
-	font-style: bold;
-	font-size: 16px;
-	background-color: #F1F1F1;
-	padding: 4px;
-    margin-bottom: 4px;
+    font-style: bold;
+    font-size: 16px;
+    background-color: #F1F1F1;
+    padding: 4px;
+    border-spacing: 1;
+    margin-bottom: 3px;
     background-image:url('pattern1.png');
 }
 
 .divheader h3{
     font-size:2.00em;
+    font-family: "open sans";
+}
+.divheader h2{
+    font-size:1.80em;
     font-family: "open sans";
 }
 .divheader img {
@@ -417,5 +422,12 @@ select {
     valign: top;
 }
 .configform input{
+    background:  #F1F1F1;
     width: 200px;
+}
+
+.widget-box {
+  background: #f0f0f0;
+  border-radius: 5px;
+  border: 1px black solid;
 }
