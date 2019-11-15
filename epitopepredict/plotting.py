@@ -115,7 +115,7 @@ def bokeh_summary_plot(df, savepath=None):
     source = ColumnDataSource(data=df)
 
     p.circle(x='binder_density', y='binders', line_color='black', fill_color='color',
-             fill_alpha=0.4, size=10, source=source, legend='predictor')
+             fill_alpha=0.4, size=10, source=source, legend_group='predictor')
     hover = p.select(dict(type=HoverTool))
     hover.tooltips = OrderedDict([
         ("name", "@name"),
@@ -258,7 +258,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
                 predictor=predictor,position=position,score=score)
     source = ColumnDataSource(data=data)
     plot.rect(x='x',y='y', source=source, width='width', height=0.8,
-             legend='predictor',
+             legend_group='predictor',
              color='color',line_color='gray',alpha=0.7)
 
     hover = plot.select(dict(type=HoverTool))

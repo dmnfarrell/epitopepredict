@@ -7,6 +7,7 @@ description: |
  programmatic interface for executing several MHC binding prediction methods. The results from
  each method can then be processed and visualized in a consistent manner.
 
+base: core18
 grade: stable
 confinement: strict
 icon: gui/icon.png

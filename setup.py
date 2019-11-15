@@ -22,9 +22,10 @@ setup(
     install_requires=['numpy>=1.10',
                       'pandas>=0.22',
                       'biopython>=1.5',
-                      'bokeh==0.12.14',
-                      'wtforms>=2.1',
-                      'wtforms_tornado',
+                      'bokeh==1.4.0',
+                      'panel>=0.6.4',
+                      #'wtforms>=2.1',
+                      #'wtforms_tornado',
                       'future'],
     entry_points = {
         'console_scripts': [
