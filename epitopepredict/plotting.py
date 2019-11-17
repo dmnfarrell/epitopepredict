@@ -83,15 +83,19 @@ def get_bokeh_colors(palette='Set1'):
         i+=1
     return clrs
 
-def bokeh_test(height=400):
+def bokeh_test(n=20,height=400):
 
     from bokeh.models import ColumnDataSource
     from bokeh.plotting import figure
-    data = {'x_values': np.random.random(20),
-            'y_values': np.random.random(20)}
+    from bokeh.models.glyphs import Text, Rect, Circle
+    data = {'x_values': np.random.random(n),
+            'y_values': np.random.random(n)}
     source = ColumnDataSource(data=data)
-    p = figure(plot_height=height)
-    p.circle(x='x_values', y='y_values', radius=.04, line_color='black', fill_alpha=.6, source=source)
+    tools = "pan,wheel_zoom,hover,tap,reset,save"
+    p = figure(plot_height=height,tools=tools)
+    c = Circle(x='x_values', y='y_values', radius=.02, line_color='black', fill_color='blue', fill_alpha=.6)
+    #p.circle(x='x_values', y='y_values', radius=.02, line_color='black', fill_color='blue', fill_alpha=.6, source=source)
+    p.add_glyph(source, c)
     return p
 
 def bokeh_summary_plot(df, savepath=None):

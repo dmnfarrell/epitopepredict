@@ -24,6 +24,6 @@ parts:
     python-version: python3
     source: ../
     python-packages:
-      [mhcflurry,gtfparse==1.2,pyensembl==1.7.3,varcode==0.8.0]
+      [mhcflurry]#,gtfparse==1.2,pyensembl==1.7.3,varcode==0.8.0]
     stage-packages:
       [gawk,ncbi-blast+]
