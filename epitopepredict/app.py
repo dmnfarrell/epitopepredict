@@ -18,7 +18,7 @@
 """
 
 from __future__ import absolute_import, print_function
-import sys, os
+import sys, os, subprocess
 import numpy as np
 import shutil
 import pandas as pd
@@ -463,7 +463,7 @@ def main():
                         default=False, help="Get ensembl files for a release")
     parser.add_option("-s", "--server", dest="server", action="store_true",
                         default=False, help="Run web app")
-    parser.add_option("-i", "--results", dest="results",
+    parser.add_option("-o", "--output", dest="output",
                         help="Results folder", metavar="FILE")    
     parser.add_option("-x", "--port", dest="port", default=8000,
                         help="Port for web app, default 8000")
@@ -505,12 +505,10 @@ def main():
             if st == True:
                 W.run()
     elif opts.server == True:
-        #import epitopepredict.tornado_serve
-        #epitopepredict.tornado_serve.main(opts.port)
-        cmd = 'panel serve epitopepredict/dashboard.py --show'
+        from . import dashboard
+        dashboard.run_server(opts.output, opts.port)
         
-    elif opts.test == True:
-        #test_binary()
+    elif opts.test == True:        
         test_run()
     elif opts.version == True:
         from . import __version__

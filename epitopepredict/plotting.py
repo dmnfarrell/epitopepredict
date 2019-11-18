@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    MHCpredict plotting
+    epitopepredict plotting
     Created February 2016
     Copyright (C) Damien Farrell
     This program is free software; you can redistribute it and/or

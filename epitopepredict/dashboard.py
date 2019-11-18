@@ -1,6 +1,7 @@
+#!/usr/bin/env python
 
 """
-    dashboard app with panel for epitopepredict
+    Dashboard app with Bokeh/Panel for epitopepredict
     Created Sep 2019
     Copyright (C) Damien Farrell
     This program is free software; you can redistribute it and/or
@@ -153,6 +154,31 @@ def predictions_dashboard(path):
     app = pn.Column(banner,tabs, sizing_mode='stretch_width')
     return app
 
-path = 'zaire_test'
-app = predictions_dashboard(path)
-app.servable()
+def run_server(path, port):
+    
+    app = predictions_dashboard(path)    
+    from bokeh.server.server import Server
+    def modify_doc(doc):               
+        return app.server_doc(doc=doc, title='epitopepredict %s' %path)
+    
+    print('Opening application on http://localhost:%s/' %port)
+    server = Server({'/': modify_doc}, port=port)
+    server.start()
+    server.show('/')
+    server.run_until_shutdown()
+    return
+
+if __name__ == '__main__':
+    import sys, os
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option("-i", "--results", dest="results",
+                        help="Results folder", metavar="FILE")    
+    parser.add_option("-x", "--port", dest="port", default=8000,
+                        help="Port for web app, default 8000")
+        
+    opts, remainder = parser.parse_args()
+    if opts.results == None:
+        print ('please provide a results folder')
+        sys.exit()
+    run_server(opts.results, opts.port)
