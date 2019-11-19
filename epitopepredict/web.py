@@ -302,6 +302,7 @@ def get_summary_tables(path, limit=None, **kwargs):
             continue
 
         summ = pd.read_csv(sfile, index_col=0)
+        summ = summ.drop(columns=['translation','note'])
         data[pred] = summ
     return data
 

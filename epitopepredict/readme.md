@@ -1,4 +1,4 @@
-<img align="right" src=https://raw.githubusercontent.com/dmnfarrell/epitopepredict/master/img/logo.png width=150px>
+<img src=https://raw.githubusercontent.com/dmnfarrell/epitopepredict/master/img/logo.png width=150px>
 
 [![PyPI version shields.io](https://img.shields.io/pypi/v/epitopepredict.svg)](https://pypi.python.org/pypi/epitopepredict/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
