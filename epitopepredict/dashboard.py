@@ -27,8 +27,10 @@ import panel as pn
 import panel.widgets as pnw
 helppage = 'http://epitopepredict.readthedocs.io/en/latest/webapp.html'
 css_file=(os.path.join(base.module_path,'static/custom.css'))
+js_files = {'sortable': os.path.join(base.module_path,'static/sorttable.js')}
 css=''.join(open(css_file,'r').readlines())
 pn.extension(raw_css=[css])
+pn.config.js_files=js_files
 
 def predictions_dashboard(path):
     """Dashboard for viewing results from epitopepredict runs."""
@@ -41,22 +43,25 @@ def predictions_dashboard(path):
         return
     preds = web.get_predictors(path,name=names[0])
     print (preds)
-    seqname = pn.widgets.Select(name='name', value=names[0], options=names)
-    cutoff_slider = pn.widgets.FloatSlider(name='cutoff', value=.95,start=.75,end=.99,step=0.01)
-    cutoff_method = pn.widgets.Select(name='cutoff method', value='default', options=['default','rank'])
-    n_select = pn.widgets.FloatSlider(name='n',value=1,start=1,end=8,step=1)
-    plot_select = pn.widgets.Select(name='plot view', value='tracks', options=['tracks', 'grid', 'text'])
-    table_select = pn.widgets.Select(name='table view', value='promiscuous', options=['promiscuous','binders'])
+    seqname = pnw.Select(name='name', value=names[0], options=names)
+    cutoff_slider = pnw.FloatSlider(name='cutoff', value=.95,start=.75,end=.99,step=0.01)
+    cutoff_method = pnw.Select(name='cutoff method', value='default', options=['default','rank'])
+    n_select = pnw.FloatSlider(name='n',value=1,start=1,end=8,step=1)
+    plot_select = pnw.Select(name='plot view', value='tracks', options=['tracks', 'grid', 'text'])
+    table_select = pnw.Select(name='table view', value='promiscuous', options=['promiscuous','binders'])
     header = pn.pane.Markdown('__total sequences: %s__' %len(names), css_classes=['main'])
     tables = pn.Tabs(width=900)
     plot = pn.pane.Bokeh(width=800)
     debug = pn.pane.Markdown('test',style={'font-size': '10pt','background-color':'yellow'})
-    summary_pane = pn.pane.Bokeh()
+    summary_plot = pn.pane.Bokeh()
     summary_table_tabs = pn.Tabs()
+    recalc_button = pnw.Button(name='recalculate',width=200)
     
     def update_banner():
         """Update the banner"""
-        banner = pn.Row(pn.pane.Markdown('<h4>epitopepredict</h4> [help](%s) version %s' %(helppage,__version__),
+        
+        fullpath = os.path.abspath(path)
+        banner = pn.Row(pn.pane.Markdown('<h4>epitopepredict: %s</h4> [help](%s) version %s' %(fullpath,helppage,__version__),
                                          css_classes=['divheader'],
                                          sizing_mode='stretch_width'))
         return banner
@@ -102,7 +107,7 @@ def predictions_dashboard(path):
             res = df.to_html(classes="tinytable sortable")
             div = '<div class="scrollingArea">%s</div>' %res
             tables.append((P.name, div))
-            #tables.append((P.name,pn.pane.HTML('<p>hddsadsadsasda</p>',width=700)))
+            #tables.append((P.name,pn.pane.HTML('<p>hddsadsadsasda</p>',width=700))) 
         return 
 
     def update(event):
@@ -123,10 +128,12 @@ def predictions_dashboard(path):
         
         data = web.get_summary_tables(path)
         df = pd.concat(data, sort=True).reset_index()
-        plot = plotting.bokeh_summary_plot(df)   
-        summary_pane.object = plot
-        
+        #plot = plotting.bokeh_summary_plot(df)   
+        #summary_plot.object = plot        
         summary_table_tabs.clear()
+        a = web.aggregate_summary(data)
+        div = web.get_scrollable_table(a)
+        summary_table_tabs.append(('all', div))
         names = list(data.keys())
         for n in names:
             df = data[n]
@@ -162,9 +169,9 @@ def predictions_dashboard(path):
     center = pn.Row(left,right)
     #bottom = pn.Row(table)
     main = pn.Column(top,center)
-    summary = pn.Row(summary_table_tabs,summary_pane)
-    tabs = pn.Tabs(('summary', summary),('sequence',main),('about',info))
-    #tabs.append()    
+    summarypane = pn.Column(recalc_button,(pn.Row(summary_table_tabs)))
+    tabs = pn.Tabs(('summary', summarypane),('sequence',main),('about',info))
+    #tabs.append()
     app = pn.Column(banner,tabs, sizing_mode='stretch_width')
     return app
 
@@ -173,7 +180,7 @@ def run_server(path, port):
     app = predictions_dashboard(path)    
     from bokeh.server.server import Server
     def modify_doc(doc):               
-        return app.server_doc(doc=doc, title='epitopepredict %s' %path)
+        return app.server_doc(doc=doc, title='epitopepredict: %s' %path)
     
     print('Opening application on http://localhost:%s/' %port)
     server = Server({'/': modify_doc}, port=port)

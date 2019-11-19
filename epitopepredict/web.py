@@ -302,9 +302,25 @@ def get_summary_tables(path, limit=None, **kwargs):
             continue
 
         summ = pd.read_csv(sfile, index_col=0)
-        summ = summ.drop(columns=['translation','note'])
+        for c in ['translation','note']:
+            if c in summ.columns:
+                summ = summ.drop(columns=c)
         data[pred] = summ
     return data
+
+def aggregate_summary(data):
+    X = pd.concat(data).reset_index().rename(columns={'level_0':'predictor'})
+    a = pd.pivot_table(X,index=['locus_tag','length'],columns=['predictor'],values=['clusters','binders'])
+    a = a.fillna('-').reset_index()
+    return a
+
+def get_scrollable_table(df):
+    """Return a scrollable table as a div element to be placed in
+    web page"""
+    
+    res = df.to_html(classes="tinytable sortable")
+    div = '<div class="scrollingArea">%s</div>' %res    
+    return div
 
 def dataframes_to_html(data, classes=''):
     """Convert dictionary of dataframes to html tables"""
