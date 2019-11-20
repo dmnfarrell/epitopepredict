@@ -153,7 +153,7 @@ def bokeh_summary_plot(df, savepath=None):
     #layout = column(p, select, sizing_mode='scale_width')
     return p
 
-def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='default',
+def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=.95, cutoff_method='default',
                 width=None, height=None, x_range=None, tools=True, palette='Set1',
                 seqdepot=None, exp=None):
     """
@@ -295,6 +295,97 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     plot.toolbar.logo = None
     plot.toolbar_location = "right"
     return plot
+
+def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='default',
+                        width=1000, title=''):
+    """Plot sequence view of binders """
+
+    from bokeh.plotting import figure
+    from bokeh.models import ColumnDataSource, LinearAxis, Grid, Range1d, Text, Rect, CustomJS, Slider
+    from bokeh.layouts import gridplot, column
+    
+    colors = []    
+    seqs = []
+    text = []
+    alleles = []
+    pcolors = get_bokeh_colors()
+    
+    for P in preds:
+        print (P.name)
+        df = P.data
+        #get sequence from results dataframe
+        seq = base.sequence_from_peptides(df)
+        l = base.get_length(df)
+        b = P.get_binders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
+        pb = P.promiscuous_binders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
+        b = b[b.pos.isin(pb.pos)] #only promiscuous
+        
+        grps = b.groupby('allele')
+        al = list(grps.groups)
+        alleles.extend(al)
+        currseq=[seq for i in al]
+        seqs.extend(currseq)
+        t = [i for s in currseq for i in s]          
+        text.extend(t)
+        print (len(seqs),len(text))
+        for a in al:
+            pos=[]
+            f = list(b[b.allele==a].pos)         
+            for i in f: 
+                pos.extend(np.arange(i,i+l))
+            c = ['white' for i in seq]
+     
+            for i in pos:
+                c[i] = pcolors[P.name]               
+            colors.extend(c)
+        
+    #put into columndatasource for plotting    
+    N = len(seqs[0])
+    S = len(alleles)    
+    x = np.arange(1, N+1)
+    y = np.arange(0,S,1)
+    xx, yy = np.meshgrid(x, y)
+    gx = xx.ravel()
+    gy = yy.flatten()    
+    recty = gy+.5
+    
+    source = ColumnDataSource(dict(x=gx, y=gy, recty=recty, text=text, colors=colors))
+    plot_height = len(seqs)*15+60
+    x_range = Range1d(0,N+1, bounds='auto')
+    view_range = (0,100)
+    viewlen = 100
+    #entire sequence view (no text, with zoom)
+    p1 = figure(title=None, plot_width=width, plot_height=50, x_range=x_range, y_range=(0,S), tools=[],
+                    min_border=0)
+    rects = Rect(x="x", y="recty",  width=1, height=1, fill_color="colors", line_color=None, fill_alpha=0.6)
+    p1.add_glyph(source, rects)
+    #p.xaxis.visible = False
+    p1.yaxis.visible = False
+    p1.grid.visible = False    
+    
+    fontsize="9pt"
+    tools="xpan, xwheel_zoom, reset, save"
+    p = figure(title=title, plot_width=width, plot_height=plot_height, x_range=view_range, y_range=alleles, tools=tools,
+                    min_border=0)
+    glyph = Text(x="x", y="y", text="text", text_align='center',text_color="black", text_font="monospace",text_font_size=fontsize)
+    
+    rects = Rect(x="x", y="recty", width=1, height=1, fill_color="colors", line_color='gray', fill_alpha=0.6)
+    p.add_glyph(source, rects)
+    p.add_glyph(source, glyph)
+    p.xaxis.major_label_text_font_style = "bold"
+    p.grid.visible = False
+    p.toolbar.logo = None    
+    
+    jscode="""
+    var start = cb_obj.value;
+    x_range.setv({"start": start, "end": start+l})
+    """
+    callback = CustomJS(
+        args=dict(x_range=p.x_range,l=viewlen), code=jscode)
+    slider = Slider (start=0, end=N, value=1, step=10)
+    slider.js_on_change('value', callback)    
+    p = gridplot([[p1],[p],[slider]])
+    return p
 
 def bokeh_plot_grid(pred, name=None, width=None, palette='Blues', **kwargs):
     """Plot heatmap of binding results for a predictor."""
