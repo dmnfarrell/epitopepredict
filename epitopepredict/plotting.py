@@ -168,7 +168,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     """
 
     from collections import OrderedDict
-    from bokeh.models import Range1d,HoverTool,FactorRange,ColumnDataSource
+    from bokeh.models import Range1d, HoverTool, FactorRange, ColumnDataSource, Text, Rect
     from bokeh.plotting import figure
 
     if tools == True:
@@ -201,21 +201,19 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
                     y_axis_label='allele',
                     tools=tools)
     h=3
-    #if bcell != None:
-    #    plotBCell(plot, bcell, alls)
-    #if seqdepot != None:
-    #    plotAnnotations(plot,seqdepot)
+
     if exp is not None:
         plotExp(plot, exp)
 
     colors = get_bokeh_colors(palette)
     x=[];y=[];allele=[];widths=[];clrs=[];peptide=[]
-    predictor=[];position=[];score=[];leg=[]
+    predictor=[];position=[];score=[];leg=[];seqs=[];text=[]
     l=80
     i=0
     for pred in preds:
         m = pred.name
         df = pred.data
+        seq = base.sequence_from_peptides(df)
         if df is None or len(df) == 0:
             print('no data to plot for %s' %m)
             continue
@@ -231,6 +229,9 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
         l = base.get_length(pb)
         grps = df.groupby('allele')
         alleles = grps.groups.keys()
+        #seqs.extend([seq for i in alleles])
+        #t = [i for s in list(seqs) for i in s]
+        #text.extend(t)
         if len(pb)==0:
             continue
         c = colors[m]
@@ -238,8 +239,7 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
         leg.append(m)
         seqlen = df.pos.max()+l
 
-        for a,g in grps:
-            #b = pred.getBinders(data=g, cutoff=cutoff)
+        for a,g in grps:            
             b = binders[binders.allele==a]
             b = b[b.pos.isin(pb.pos)] #only promiscuous
             b.sort_values('pos',inplace=True)
@@ -261,10 +261,14 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=5, cutoff_method='
     data = dict(x=x,y=y,allele=allele,peptide=peptide,width=widths,color=clrs,
                 predictor=predictor,position=position,score=score)
     source = ColumnDataSource(data=data)
-    plot.rect(x='x',y='y', source=source, width='width', height=0.8,
+    plot.rect(x='x', y='y', source=source, width='width', height=0.8,
              legend_group='predictor',
              color='color',line_color='gray',alpha=0.7)
 
+    #glyph = Text(x="x", y="y", text="text", text_align='center', text_color="black", 
+    #             text_font="monospace", text_font_size="10pt")
+    #plot.add_glyph(source, glyph)
+    
     hover = plot.select(dict(type=HoverTool))
     hover.tooltips = OrderedDict([
         ("allele", "@allele"),

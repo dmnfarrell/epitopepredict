@@ -61,17 +61,6 @@ def get_results_info(P):
     l = len(seq)
     return {'length':l}
 
-def sequence_from_peptides(df):
-    """Derive sequence from set of peptides"""
-
-    l = base.get_length(df)
-    df = df.drop_duplicates('pos').sort_values('pos')
-    x = df.peptide.str[0]
-    last = df.iloc[-1].peptide[1:]
-    x = ''.join(x)
-    x = x + last
-    return x
-
 def get_alleles(preds):
     """get available alleles"""
 

@@ -160,6 +160,17 @@ def get_coords(df):
     df['end'] = ( df.pos + df.peptide.str.len() ).astype(int)
     return df
 
+def sequence_from_peptides(df):
+    """Derive sequence from set of peptides"""
+
+    l = get_length(df)
+    df = df.drop_duplicates('pos').sort_values('pos')
+    x = df.peptide.str[0]
+    last = df.iloc[-1].peptide[1:]
+    x = ''.join(x)
+    x = x + last
+    return x
+
 def seq_from_binders(df):
     x = pd.Series(df.sort_values('pos').peptide.unique())
     return ''.join(x.str[0])

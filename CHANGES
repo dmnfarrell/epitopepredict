@@ -3,6 +3,12 @@ CHANGES
 =======
 
 ------
+0.5.0
+------
+
+replaced tornado web app with panel dashboard
+
+------
 0.4.0
 ------
 
