@@ -83,6 +83,24 @@ def get_bokeh_colors(palette='Set1'):
         i+=1
     return clrs
 
+def get_sequence_colors(seq):
+    """Get colors for a sequence"""
+
+    from bokeh.palettes import brewer, viridis
+    from Bio.PDB.Polypeptide import aa1
+    pal = viridis(20)
+    pal.append('white')
+    aa1 = list(aa1)
+    aa1.append('-')
+    pcolors = {i:j for i,j in zip(aa1,pal)}
+    text = list(seq)
+    clrs =  {'A':'red','T':'green','G':'orange','C':'blue','-':'white'}
+    try:
+        colors = [clrs[i] for i in text]
+    except:
+        colors = [pcolors[i] for i in text]
+    return colors
+
 def bokeh_test(n=20,height=400):
 
     from bokeh.models import ColumnDataSource
@@ -374,16 +392,25 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     p.add_glyph(source, glyph)
     p.xaxis.major_label_text_font_style = "bold"
     p.grid.visible = False
-    p.toolbar.logo = None    
+    p.toolbar.logo = None
     
+    #callback for slider move
     jscode="""
-    var start = cb_obj.value;
-    x_range.setv({"start": start, "end": start+l})
+        var start = cb_obj.value;
+        x_range.setv({"start": start, "end": start+l})
     """
     callback = CustomJS(
         args=dict(x_range=p.x_range,l=viewlen), code=jscode)
     slider = Slider (start=0, end=N, value=1, step=10)
-    slider.js_on_change('value', callback)    
+    slider.js_on_change('value', callback)
+    #callback fro plot drag
+    jscode="""        
+        var start = range.start;        
+        slider.value = parseInt(start);
+    """ 
+    p.x_range.callback = CustomJS(
+        args=dict(slider=slider, range=p.x_range), code=jscode)
+    
     p = gridplot([[p1],[p],[slider]])
     return p
 
