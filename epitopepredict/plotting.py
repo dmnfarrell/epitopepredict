@@ -86,9 +86,9 @@ def get_bokeh_colors(palette='Set1'):
 def get_sequence_colors(seq):
     """Get colors for a sequence"""
 
-    from bokeh.palettes import brewer, viridis
-    from Bio.PDB.Polypeptide import aa1
-    pal = viridis(20)
+    from bokeh.palettes import brewer, viridis, plasma
+    from Bio.PDB.Polypeptide import aa1   
+    pal = plasma(20)
     pal.append('white')
     aa1 = list(aa1)
     aa1.append('-')
@@ -315,11 +315,11 @@ def bokeh_plot_tracks(preds, title='', n=2, name=None, cutoff=.95, cutoff_method
     return plot
 
 def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='default',
-                        width=1000, title=''):
+                        width=1000, color_sequence=False, title=''):
     """Plot sequence view of binders """
 
     from bokeh.plotting import figure
-    from bokeh.models import ColumnDataSource, LinearAxis, Grid, Range1d, Text, Rect, CustomJS, Slider
+    from bokeh.models import ColumnDataSource, LinearAxis, Grid, Range1d, Text, Rect, CustomJS, Slider, RangeSlider
     from bokeh.layouts import gridplot, column
     
     colors = []    
@@ -351,7 +351,10 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
             f = list(b[b.allele==a].pos)         
             for i in f: 
                 pos.extend(np.arange(i,i+l))
-            c = ['white' for i in seq]
+            if color_sequence is True:
+                c = plotting.get_sequence_colors(seq)
+            else:
+                c = ['white' for i in seq]
      
             for i in pos:
                 c[i] = pcolors[P.name]               
@@ -371,45 +374,59 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     plot_height = len(seqs)*15+60
     x_range = Range1d(0,N+1, bounds='auto')
     view_range = (0,100)
-    viewlen = 100
-    #entire sequence view (no text, with zoom)
-    p1 = figure(title=None, plot_width=width, plot_height=50, x_range=x_range, y_range=(0,S), tools=[],
-                    min_border=0)
+    viewlen = view_range[1]-view_range[0]
+    #preview view (no text)
+    p1 = figure(title=None, plot_width=width, plot_height=60, x_range=x_range, y_range=(0,S), tools=[],
+                    min_border=0, lod_factor=10, lod_threshold = 10)
     rects = Rect(x="x", y="recty",  width=1, height=1, fill_color="colors", line_color=None, fill_alpha=0.6)
+    previewrect = Rect(x=viewlen/2,y=S/2, width=viewlen, height=S-1, line_color='darkblue', fill_color=None)
     p1.add_glyph(source, rects)
-    #p.xaxis.visible = False
+    p1.add_glyph(source, previewrect)    
     p1.yaxis.visible = False
     p1.grid.visible = False    
     
     fontsize="9pt"
-    tools="xpan, xwheel_zoom, reset, save"
+    tools="xpan, reset, save"
     p = figure(title=title, plot_width=width, plot_height=plot_height, x_range=view_range, y_range=alleles, tools=tools,
-                    min_border=0)
-    glyph = Text(x="x", y="y", text="text", text_align='center',text_color="black", text_font="monospace",text_font_size=fontsize)
+               min_border=0, sizing_mode='stretch_both', lod_factor=1,  lod_interval =10)
+    seqtext = Text(x="x", y="y", text="text", text_align='center',text_color="black", 
+                 text_font="monospace", text_font_size=fontsize)
     
     rects = Rect(x="x", y="recty", width=1, height=1, fill_color="colors", line_color='gray', fill_alpha=0.6)
-    p.add_glyph(source, rects)
-    p.add_glyph(source, glyph)
+        
+    p.add_glyph(source, rects)    
+    p.add_glyph(source, seqtext)
     p.xaxis.major_label_text_font_style = "bold"
     p.grid.visible = False
     p.toolbar.logo = None
     
     #callback for slider move
     jscode="""
-        var start = cb_obj.value;
-        x_range.setv({"start": start, "end": start+l})
+        var start = cb_obj.value[0];  
+        var end = cb_obj.value[1];        
+        x_range.setv({"start": start, "end": end})
+        rect.width = end-start;
+        rect.x = start+rect.width/2;     
+        console.log(text.text_font_size);
+        if (rect.width>150) { fontsize = 0;}  
+        else { fontsize = 9; }
+        text.text_font_size=fontsize+"pt";
     """
     callback = CustomJS(
-        args=dict(x_range=p.x_range,l=viewlen), code=jscode)
-    slider = Slider (start=0, end=N, value=1, step=10)
+        args=dict(x_range=p.x_range,rect=previewrect,text=seqtext), code=jscode)
+    slider = RangeSlider (start=0, end=N, value=(0,100), step=10)
     slider.js_on_change('value', callback)
-    #callback fro plot drag
+    
+    #callback for plot drag
     jscode="""        
-        var start = range.start;        
-        slider.value = parseInt(start);
-    """ 
-    p.x_range.callback = CustomJS(
-        args=dict(slider=slider, range=p.x_range), code=jscode)
+        start = parseInt(range.start);
+        end = parseInt(range.end);
+        slider.value[0] = start;
+        rect.width = end-start;
+        rect.x = start+rect.width/2;
+    """
+    p.x_range.callback = CustomJS(args=dict(slider=slider, range=p.x_range, rect=previewrect),
+                                  code=jscode)
     
     p = gridplot([[p1],[p],[slider]])
     return p

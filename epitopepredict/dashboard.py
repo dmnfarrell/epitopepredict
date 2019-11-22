@@ -47,8 +47,10 @@ def predictions_dashboard(path):
     cutoff_slider = pnw.FloatSlider(name='cutoff', value=.95,start=.75,end=.99,step=0.01)
     cutoff_method = pnw.Select(name='cutoff method', value='default', options=['default','rank'])
     n_select = pnw.FloatSlider(name='n',value=1,start=1,end=8,step=1)
-    plot_select = pnw.Select(name='plot view', value='tracks', options=['tracks', 'grid', 'text'])
+    plot_select = pnw.Select(name='plot view', value='tracks', options=['tracks', 'sequence'])
     table_select = pnw.Select(name='table view', value='promiscuous', options=['promiscuous','binders'])
+    colorseq_box = pnw.Checkbox(name='color sequences', value=False)
+    
     header = pn.pane.Markdown('__total sequences: %s__' %len(names), css_classes=['main'])
     tables = pn.Tabs(width=900)
     plot = pn.pane.Bokeh(width=800)
@@ -79,18 +81,11 @@ def predictions_dashboard(path):
         """Plot data view"""
 
         if kind == 'tracks':
-            p = plotting.bokeh_plot_tracks(preds,name=name,cutoff=cutoff,n=n,width=1000,title=name) 
-            #p=plotting.plot_tracks([P],name=name,cutoff=cutoff,n=n,width=700,height=250)   
+            p = plotting.bokeh_plot_tracks(preds,name=name,cutoff=cutoff,n=n,width=1000,title=name)           
             plot.object = p
-        elif kind == 'text':
-            p = plotting.bokeh_plot_tracks(preds,name=name,cutoff=cutoff,n=n,width=1000,title=name)
+        elif kind == 'sequence':
+            p = plotting.bokeh_plot_sequence(preds,name=name,cutoff=cutoff,n=n,width=1000)
             plot.object = p
-        elif kind == 'grid':   
-            for P in preds:
-                p = plotting.bokeh_plot_grid(P,name=name,width=1000,height=250)
-                grid = gridplot(plots, ncols=1, merge_tools=True, sizing_mode='scale_width',
-                            toolbar_options=dict(logo=None))
-            plot.object = grid
         return p
 
     def update_tables(preds,name,n):
@@ -113,11 +108,11 @@ def predictions_dashboard(path):
     def update(event):
         """Update all elements"""
 
-        name = seqname.value          
+        name = seqname.value
         n = n_select.value
         cutoff = cutoff_slider.value
-        kind = plot_select.value        
-        debug.object = name        
+        kind = plot_select.value
+        debug.object = name
         preds = web.get_predictors(path,name=name)
         update_plot(preds,name=name,cutoff=cutoff,n=n,kind=kind)
         update_tables(preds,name,n)
@@ -165,7 +160,7 @@ def predictions_dashboard(path):
     top = pn.Row(header)#,download_link)
     left = pn.Column(plot,tables,margin=10)
     right = pn.Column(seqname,cutoff_slider,cutoff_method,n_select,plot_select,
-                      table_select,css_classes=['widget-box'],width=200)
+                      table_select,colorseq_box,css_classes=['widget-box'],width=200)
     center = pn.Row(left,right)
     #bottom = pn.Row(table)
     main = pn.Column(top,center)
