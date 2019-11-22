@@ -335,11 +335,11 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
         seq = base.sequence_from_peptides(df)
         l = base.get_length(df)
         b = P.get_binders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
-        pb = P.promiscuous_binders(name=name, cutoff=cutoff, cutoff_method=cutoff_method)
+        pb = P.promiscuous_binders(name=name, cutoff=cutoff, n=n, cutoff_method=cutoff_method)
         b = b[b.pos.isin(pb.pos)] #only promiscuous
         
         grps = b.groupby('allele')
-        al = list(grps.groups)
+        al = list(grps.groups)        
         alleles.extend(al)
         currseq=[seq for i in al]
         seqs.extend(currseq)
@@ -355,14 +355,14 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
                 c = plotting.get_sequence_colors(seq)
             else:
                 c = ['white' for i in seq]
-     
+
             for i in pos:
                 c[i] = pcolors[P.name]               
             colors.extend(c)
         
-    #put into columndatasource for plotting    
+    #put into columndatasource for plotting
     N = len(seqs[0])
-    S = len(alleles)    
+    S = len(alleles)  
     x = np.arange(1, N+1)
     y = np.arange(0,S,1)
     xx, yy = np.meshgrid(x, y)
@@ -373,19 +373,13 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     source = ColumnDataSource(dict(x=gx, y=gy, recty=recty, text=text, colors=colors))
     plot_height = len(seqs)*15+60
     x_range = Range1d(0,N+1, bounds='auto')
-    view_range = (0,100)
+    L=100
+    if len(seq)<100:
+        L=len(seq)
+    view_range = (0,L)
     viewlen = view_range[1]-view_range[0]
-    #preview view (no text)
-    p1 = figure(title=None, plot_width=width, plot_height=60, x_range=x_range, y_range=(0,S), tools=[],
-                    min_border=0, lod_factor=10, lod_threshold = 10)
-    rects = Rect(x="x", y="recty",  width=1, height=1, fill_color="colors", line_color=None, fill_alpha=0.6)
-    previewrect = Rect(x=viewlen/2,y=S/2, width=viewlen, height=S-1, line_color='darkblue', fill_color=None)
-    p1.add_glyph(source, rects)
-    p1.add_glyph(source, previewrect)    
-    p1.yaxis.visible = False
-    p1.grid.visible = False    
     
-    fontsize="9pt"
+    fontsize="8.5pt"
     tools="xpan, reset, save"
     p = figure(title=title, plot_width=width, plot_height=plot_height, x_range=view_range, y_range=alleles, tools=tools,
                min_border=0, sizing_mode='stretch_both', lod_factor=1,  lod_interval =10)
@@ -399,6 +393,17 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     p.xaxis.major_label_text_font_style = "bold"
     p.grid.visible = False
     p.toolbar.logo = None
+
+    #preview view (no text)
+    p1 = figure(title=None, plot_width=width, plot_height=S*3+5, x_range=x_range, y_range=(0,S), tools=[],
+                    min_border=0, sizing_mode='stretch_width', lod_factor=10, lod_threshold = 10)
+    rects = Rect(x="x", y="recty",  width=1, height=1, fill_color="colors", line_color=None, fill_alpha=0.6)
+    previewrect = Rect(x=viewlen/2,y=S/2, width=viewlen, height=S*.99, line_color='darkblue', fill_color=None)
+    p1.add_glyph(source, rects)
+    p1.add_glyph(source, previewrect)    
+    p1.yaxis.visible = False
+    p1.grid.visible = False    
+    p1.toolbar_location = None
     
     #callback for slider move
     jscode="""
@@ -408,13 +413,13 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
         rect.width = end-start;
         rect.x = start+rect.width/2;     
         console.log(text.text_font_size);
-        if (rect.width>150) { fontsize = 0;}  
+        if (rect.width>130) { fontsize = 0;}  
         else { fontsize = 9; }
         text.text_font_size=fontsize+"pt";
     """
     callback = CustomJS(
         args=dict(x_range=p.x_range,rect=previewrect,text=seqtext), code=jscode)
-    slider = RangeSlider (start=0, end=N, value=(0,100), step=10)
+    slider = RangeSlider (start=0, end=N, value=(0,L), step=10)
     slider.js_on_change('value', callback)
     
     #callback for plot drag
@@ -428,7 +433,7 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     p.x_range.callback = CustomJS(args=dict(slider=slider, range=p.x_range, rect=previewrect),
                                   code=jscode)
     
-    p = gridplot([[p1],[p],[slider]])
+    p = gridplot([[p1],[p],[slider]], toolbar_location="below", merge_tools=False)
     return p
 
 def bokeh_plot_grid(pred, name=None, width=None, palette='Blues', **kwargs):

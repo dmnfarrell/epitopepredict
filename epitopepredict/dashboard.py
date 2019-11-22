@@ -84,7 +84,8 @@ def predictions_dashboard(path):
             p = plotting.bokeh_plot_tracks(preds,name=name,cutoff=cutoff,n=n,width=1000,title=name)           
             plot.object = p
         elif kind == 'sequence':
-            p = plotting.bokeh_plot_sequence(preds,name=name,cutoff=cutoff,n=n,width=1000)
+            p = plotting.bokeh_plot_sequence(preds,name=name,cutoff=cutoff,n=n,width=1000,
+                                             title=name,color_sequence=colorseq_box.value)
             plot.object = p
         return p
 
@@ -158,7 +159,7 @@ def predictions_dashboard(path):
     seqname.param.trigger('options', 'value')
 
     top = pn.Row(header)#,download_link)
-    left = pn.Column(plot,tables,margin=10)
+    left = pn.Column(plot,tables,margin=10,sizing_mode='stretch_width')
     right = pn.Column(seqname,cutoff_slider,cutoff_method,n_select,plot_select,
                       table_select,colorseq_box,css_classes=['widget-box'],width=200)
     center = pn.Row(left,right)
