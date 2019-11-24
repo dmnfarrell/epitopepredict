@@ -319,13 +319,14 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     """Plot sequence view of binders """
 
     from bokeh.plotting import figure
-    from bokeh.models import ColumnDataSource, LinearAxis, Grid, Range1d, Text, Rect, CustomJS, Slider, RangeSlider
+    from bokeh.models import ColumnDataSource, LinearAxis, Grid, Range1d, Text, Rect, CustomJS, Slider, RangeSlider, FactorRange
     from bokeh.layouts import gridplot, column
     
     colors = []    
     seqs = []
     text = []
     alleles = []
+    ylabels = []
     pcolors = get_bokeh_colors()
     
     for P in preds:
@@ -341,6 +342,7 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
         grps = b.groupby('allele')
         al = list(grps.groups)        
         alleles.extend(al)
+        ylabels.extend([P.name+' '+i for i in al])
         currseq=[seq for i in al]
         seqs.extend(currseq)
         t = [i for s in currseq for i in s]          
@@ -381,11 +383,10 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     
     fontsize="8.5pt"
     tools="xpan, reset, save"
-    p = figure(title=title, plot_width=width, plot_height=plot_height, x_range=view_range, y_range=alleles, tools=tools,
-               min_border=0, sizing_mode='stretch_both', lod_factor=1,  lod_interval =10)
+    p = figure(title=title, plot_width=width, plot_height=plot_height, x_range=view_range, y_range=ylabels, tools=tools,
+               min_border=0, sizing_mode='stretch_both', lod_factor=10,  lod_threshold=1000)
     seqtext = Text(x="x", y="y", text="text", text_align='center',text_color="black", 
-                 text_font="monospace", text_font_size=fontsize)
-    
+                 text_font="monospace", text_font_size=fontsize)    
     rects = Rect(x="x", y="recty", width=1, height=1, fill_color="colors", line_color='gray', fill_alpha=0.6)
         
     p.add_glyph(source, rects)    
@@ -396,7 +397,7 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
 
     #preview view (no text)
     p1 = figure(title=None, plot_width=width, plot_height=S*3+5, x_range=x_range, y_range=(0,S), tools=[],
-                    min_border=0, sizing_mode='stretch_width', lod_factor=10, lod_threshold = 10)
+                    min_border=0, sizing_mode='stretch_width', lod_factor=10, lod_threshold=10)
     rects = Rect(x="x", y="recty",  width=1, height=1, fill_color="colors", line_color=None, fill_alpha=0.6)
     previewrect = Rect(x=viewlen/2,y=S/2, width=viewlen, height=S*.99, line_color='darkblue', fill_color=None)
     p1.add_glyph(source, rects)
@@ -406,21 +407,22 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     p1.toolbar_location = None
     
     #callback for slider move
-    jscode="""
+    jscode="""        
         var start = cb_obj.value[0];  
         var end = cb_obj.value[1];        
         x_range.setv({"start": start, "end": end})
         rect.width = end-start;
-        rect.x = start+rect.width/2;     
-        console.log(text.text_font_size);
-        if (rect.width>130) { fontsize = 0;}  
-        else { fontsize = 9; }
+        rect.x = start+rect.width/2;
+        var fac = rect.width/width;
+        console.log(fac);
+        if (fac>=.14) { fontsize = 0;}  
+        else { fontsize = 8.5; }
         text.text_font_size=fontsize+"pt";
     """
     callback = CustomJS(
-        args=dict(x_range=p.x_range,rect=previewrect,text=seqtext), code=jscode)
-    slider = RangeSlider (start=0, end=N, value=(0,L), step=10)
-    slider.js_on_change('value', callback)
+        args=dict(x_range=p.x_range,rect=previewrect,text=seqtext,width=p.plot_width), code=jscode)
+    slider = RangeSlider (start=0, end=N, value=(0,L), step=10, callback_policy="throttle")
+    slider.js_on_change('value_throttled', callback)
     
     #callback for plot drag
     jscode="""        

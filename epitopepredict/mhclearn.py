@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    Basic mhc binding prediction predictors
+    Basic MHC binding prediction predictors
     Created October 2018
     Copyright (C) Damien Farrell
     This program is free software; you can redistribute it and/or
