@@ -907,9 +907,11 @@ class Predictor(object):
         This is a wrapper for _predictSequences with the same args.
           Args:
             recs: list or dataframe with sequences
+            path: if provided, save results to this file
             cpus: number of processors
             key: seq/protein name key
             seqkey: key for sequence column
+            length: length of peptide to split sequence into
           Returns:
             a dataframe of predictions over multiple proteins
         """
@@ -942,7 +944,7 @@ class Predictor(object):
         a dataframe and supplied to this method as the first argument.
             Args:
                 recs: protein sequences in a pandas DataFrame
-                path: if results are to be saved to disk provide a path, otherwise results
+                path: if results are to be saved to disk provide a path
                 overwrite: over write existing protein files in path if present
                 alleles: allele list
                 length: length of peptides to predict
@@ -1346,21 +1348,15 @@ class NetMHCIIPanPredictor(Predictor):
         #load precalculated quantiles for sample peptides
         self.qf = self.get_quantile_data()
 
-    def read_result(self, res):
+    def read_result(self, temp):
         """Read raw results from netMHCIIpan output"""
 
-        data=[]
-        res = res.decode()
-        res = res.split('\n')
-        ignore=['Protein','pos','Number','#']
-        for r in res:
-            if r.startswith('-'): continue
-            row = re.split('\s*',r.strip())[:9]
-            if len(row)!=9 or row[0] in ignore:
-                continue
-            #print (row)
-            data.append(dict(zip(self.colnames,row)))
-        return data
+        ignore = ['Pos','#','Protein','']
+        cols = self.colnames
+        res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep='\s+',
+                          error_bad_lines=False, skiprows=16).dropna(subset=['peptide'])
+        res = res[~res.pos.isin(ignore)]
+        return res
 
     def prepare_data(self, df, name):
         """Prepare netmhciipan results as a dataframe"""
@@ -1399,7 +1395,7 @@ class NetMHCIIPanPredictor(Predictor):
         try:
             temp = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
         except Exception as e:
-            #print (e)
+            print (e)
             return
         rows = self.read_result(temp)
         res = pd.DataFrame(rows)

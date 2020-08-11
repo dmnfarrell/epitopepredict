@@ -15,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-"""    
+"""
 
 from __future__ import absolute_import, print_function
 import sys, os, shutil, string, types
@@ -63,7 +63,7 @@ def _center_nmer(x, n):
     """Get n-mer sequence for a peptide centered in the middle.
     This should be applied to a dataframe per row.
     Returns: a single sequence centred on the peptide
-    
+
     """
 
     seq = x['translation']
@@ -461,17 +461,18 @@ def find_clusters(binders, dist=None, min_binders=2, min_size=12, max_size=50,
     x = x[x['length']<=max_size]
     x=x.sort_values(['binders','length'],ascending=False)
 
-    '''cols = ['locus_tag','translation']
-    if 'gene' in genome.columns:
-        cols.append('gene')
     if genome is not None:
+        cols = ['locus_tag','translation']
+        if 'gene' in genome.columns:
+            cols.append('gene')
         x = x.merge(genome[cols],
                     left_on='name',right_on='locus_tag')
         x[colname] = x.apply(lambda r: r.translation[r.start:r.end], 1)
         x = x.drop(['locus_tag','translation'],1)
         x = x.drop_duplicates(colname)
-    x = x.sort_values(by=['binders'],ascending=False)
-    x = x.reset_index(drop=True)'''
+        x = x.sort_values(by=['binders'],ascending=False)
+        x = x.reset_index(drop=True)
+
     #print ('%s clusters found in %s proteins' %(len(x),len(x.groupby('name'))))
     #print
     return x
