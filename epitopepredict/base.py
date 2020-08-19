@@ -667,7 +667,8 @@ class Predictor(object):
         return res
 
     def promiscuous_binders(self, binders=None, name=None, cutoff=.95,
-                           cutoff_method='default', n=1, unique_core=True, **kwargs):
+                           cutoff_method='default', n=1, unique_core=True, limit=None,
+                            **kwargs):
         """
         Use params for getbinders if no binders provided?
         Args:
@@ -678,6 +679,7 @@ class Predictor(object):
             cutoff: percentile cutoff for get_binders
             n: min number of alleles
             unique_core: removes peptides with duplicate cores and picks the most
+            limit: limit the number of peptides per protein, default None
             promiscuous and highest ranked, used for mhc-II predictions
         Returns:
             a pandas dataframe
@@ -706,14 +708,6 @@ class Predictor(object):
         s.rename(columns={skname: self.scorekey, 'count': 'alleles','median':'median_rank',
                          'first':'core'}, inplace=True)
         s = s.reset_index()
-
-        '''if keep_columns == True:
-            x = binders.drop_duplicates(['name','peptide','allele'])
-            s = s.merge(x, on=['name','peptide','pos'], how='inner', suffixes=('', '_y'))
-            cols = s.columns[~s.columns.str.contains('_y')]
-            s = s[cols]
-            s = s.drop('allele',1)'''
-
         s = s.sort_values(['alleles','median_rank',self.scorekey],
                           ascending=[False,True,self.rankascending])
         #if we just want unique cores, drop duplicates takes most promiscuous in each group
@@ -721,6 +715,8 @@ class Predictor(object):
         if unique_core == True:
             s = s.drop_duplicates('core')
         s = s[s.alleles>=n]
+        if limit != None:
+            s = s.groupby('name').head(limit)
         return s
 
     def ranked_binders(self, names=None, how='median', cutoff=None):
