@@ -23,7 +23,7 @@ import numpy as np
 import shutil
 import pandas as pd
 from collections import OrderedDict
-from epitopepredict import base, config, analysis, sequtils, plotting, neo
+from epitopepredict import base, config, analysis, sequtils, plotting, dashboard
 
 defaultpath = os.getcwd()
 
@@ -47,10 +47,10 @@ class WorkFlow(object):
         set_defaults(self.__dict__)
         self.sequences = None
         self.peptides = None
-        if self.sequence_file is not '':
+        if self.sequence_file != '':
             self.sequences = get_sequences(self.sequence_file, header_sep=self.fasta_header_sep)
             print ('input is %s protein sequences' %len(self.sequences))
-        elif self.peptide_file is not '':
+        elif self.peptide_file != '':
             self.peptides = read_names(self.peptide_file)
             print ('input is %s peptides' %len(self.peptides))
         if self.sequences is None and self.peptides is None:
@@ -464,7 +464,7 @@ def main():
     parser.add_option("-s", "--server", dest="server", action="store_true",
                         default=False, help="Run web app")
     parser.add_option("-o", "--output", dest="output",
-                        help="Results folder", metavar="FILE")    
+                        help="Results folder", metavar="FILE")
     parser.add_option("-x", "--port", dest="port", default=8000,
                         help="Port for web app, default 8000")
     parser.add_option("-v", "--version", dest="version", action="store_true",
@@ -505,10 +505,10 @@ def main():
             if st == True:
                 W.run()
     elif opts.server == True:
-        from . import dashboard
+        from epitopepredict import dashboard
         dashboard.run_server(opts.output, opts.port)
-        
-    elif opts.test == True:        
+
+    elif opts.test == True:
         test_run()
     elif opts.version == True:
         from . import __version__

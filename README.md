@@ -12,8 +12,14 @@ Documentation is at http://epitopepredict.readthedocs.io
 
 ### Installation
 
+current release:
+
 `pip install epitopepredict`
 
-or for snap package
+from github repository:
+
+`pip install -e git+https://github.com/dmnfarrell/epitopepredict.git#egg=epitopepredict`
+
+or for snap package:
 
 `snap install epitopepredict`

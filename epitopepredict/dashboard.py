@@ -34,10 +34,10 @@ pn.config.js_files=js_files
 
 def predictions_dashboard(path):
     """Dashboard for viewing results from epitopepredict runs."""
-    
+
     #folder_input = pn.widgets.TextInput(name='path', value='../zaire_test', width=400,width_policy='fit')
-    #reload_btn = pn.widgets.Button(name='reload',width=100,button_type='primary')    
-    
+    #reload_btn = pn.widgets.Button(name='reload',width=100,button_type='primary')
+
     names = web.get_file_lists(path)
     if names is None:
         return
@@ -50,7 +50,7 @@ def predictions_dashboard(path):
     plot_select = pnw.Select(name='plot view', value='tracks', options=['tracks', 'sequence'])
     table_select = pnw.Select(name='table view', value='promiscuous', options=['promiscuous','binders'])
     colorseq_box = pnw.Checkbox(name='color sequences', value=False)
-    
+
     header = pn.pane.Markdown('__total sequences: %s__' %len(names), css_classes=['main'])
     tables = pn.Tabs(width=900)
     plot = pn.pane.Bokeh(width=800)
@@ -58,21 +58,21 @@ def predictions_dashboard(path):
     summary_plot = pn.pane.Bokeh()
     summary_table_tabs = pn.Tabs()
     recalc_button = pnw.Button(name='recalculate',width=200)
-    
+
     def update_banner():
         """Update the banner"""
-        
+
         fullpath = os.path.abspath(path)
         banner = pn.Row(pn.pane.Markdown('<h4>epitopepredict: %s</h4> [help](%s) version %s' %(fullpath,helppage,__version__),
                                          css_classes=['divheader'],
                                          sizing_mode='stretch_width'))
         return banner
-    
+
     def update_header(target, event):
         names = web.get_file_lists(event.new)
-        target.object = "_total sequences: %s_" %str(len(names))        
+        target.object = "_total sequences: %s_" %str(len(names))
         return
-    
+
     def callback_getpath(event):
         path = os.path.getcwd()
         folder.value = path
@@ -81,7 +81,7 @@ def predictions_dashboard(path):
         """Plot data view"""
 
         if kind == 'tracks':
-            p = plotting.bokeh_plot_tracks(preds,name=name,cutoff=cutoff,n=n,width=1000,title=name)           
+            p = plotting.bokeh_plot_tracks(preds,name=name,cutoff=cutoff,n=n,width=1000,title=name)
             plot.object = p
         elif kind == 'sequence':
             p = plotting.bokeh_plot_sequence(preds,name=name,cutoff=cutoff,n=n,width=1000,
@@ -93,7 +93,7 @@ def predictions_dashboard(path):
         """Tabular views of results"""
 
         P = preds[0]
-        view = table_select.value        
+        view = table_select.value
         tables.clear()
         for P in preds:
             if view == 'promiscuous':
@@ -103,8 +103,8 @@ def predictions_dashboard(path):
             res = df.to_html(classes="tinytable sortable")
             div = '<div class="scrollingArea">%s</div>' %res
             tables.append((P.name, div))
-            #tables.append((P.name,pn.pane.HTML('<p>hddsadsadsasda</p>',width=700))) 
-        return 
+            #tables.append((P.name,pn.pane.HTML('<p>hddsadsadsasda</p>',width=700)))
+        return
 
     def update(event):
         """Update all elements"""
@@ -118,14 +118,14 @@ def predictions_dashboard(path):
         update_plot(preds,name=name,cutoff=cutoff,n=n,kind=kind)
         update_tables(preds,name,n)
         return
-    
+
     def update_summary(path):
         """Summary info for folder"""
-        
+
         data = web.get_summary_tables(path)
         df = pd.concat(data, sort=True).reset_index()
-        #plot = plotting.bokeh_summary_plot(df)   
-        #summary_plot.object = plot        
+        #plot = plotting.bokeh_summary_plot(df)
+        #summary_plot.object = plot
         summary_table_tabs.clear()
         a = web.aggregate_summary(data)
         div = web.get_scrollable_table(a)
@@ -137,11 +137,11 @@ def predictions_dashboard(path):
             div = '<div class="scrollingArea">%s</div>' %res
             summary_table_tabs.append((n, div))
         return
-        
+
     @pn.depends(seqname.param.value,n_select.param.value)
     def download_link(name,n):
         if preds is None:
-            return 
+            return
         df = preds[0].promiscuous_binders(n=n,name=name)
         df.to_csv()
         return pn.Pane(HTML('<a>download</a>'),width=700)
@@ -151,7 +151,7 @@ def predictions_dashboard(path):
     update_summary(path)
     #reload_btn.param.watch(load_predictors, 'clicks')
     #reload_btn.param.trigger()
-    seqname.param.watch(update, 'value')  
+    seqname.param.watch(update, 'value')
     cutoff_slider.param.watch(update, 'value')
     n_select.param.watch(update, 'value')
     table_select.param.watch(update, 'value')
@@ -172,12 +172,15 @@ def predictions_dashboard(path):
     return app
 
 def run_server(path, port):
-    
-    app = predictions_dashboard(path)    
+
+    if path == None:
+        print ('provide a folder')
+        return
+    app = predictions_dashboard(path)
     from bokeh.server.server import Server
-    def modify_doc(doc):               
+    def modify_doc(doc):
         return app.server_doc(doc=doc, title='epitopepredict: %s' %path)
-    
+
     print('Opening application on http://localhost:%s/' %port)
     server = Server({'/': modify_doc}, port=port)
     server.start()
@@ -190,10 +193,10 @@ if __name__ == '__main__':
     from optparse import OptionParser
     parser = OptionParser()
     parser.add_option("-i", "--results", dest="results",
-                        help="Results folder", metavar="FILE")    
+                        help="Results folder", metavar="FILE")
     parser.add_option("-x", "--port", dest="port", default=8000,
                         help="Port for web app, default 8000")
-        
+
     opts, remainder = parser.parse_args()
     if opts.results == None:
         print ('please provide a results folder')

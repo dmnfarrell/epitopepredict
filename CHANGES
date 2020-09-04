@@ -7,6 +7,9 @@ CHANGES
 ------
 
 replaced tornado web app with panel dashboard
+added sequence plot with Bokeh
+added limit kwd to promiscuous_binders
+fix to netmhciipan read_results
 
 ------
 0.4.0

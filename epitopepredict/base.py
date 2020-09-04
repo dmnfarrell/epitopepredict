@@ -44,11 +44,12 @@ from . import utilities, peptutils, sequtils, tepitope, config, mhclearn
 #write a default config if not present
 config_file = config.write_default_config()
 home = os.path.expanduser("~")
+config_path = os.path.join(home, '.config/epitopepredict')
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'mhcdata')
-predictors = ['basicmhc1','tepitope','netmhciipan','netmhcpan','mhcflurry','mhcnuggets','iedbmhc1','iedbmhc2']
+predictors = ['basicmhc1','tepitope','netmhciipan','netmhcpan','mhcflurry','iedbmhc1','iedbmhc2']
 iedbmhc1_methods = ['ann', 'IEDB_recommended', 'comblib_sidney2008', 'consensus', 'smm', 'smmpmbec']
-mhc1_predictors = ['basicmhc1','netmhcpan','iedbmhc1','mhcflurry','mhcnuggets'] + iedbmhc1_methods
+mhc1_predictors = ['basicmhc1','netmhcpan','iedbmhc1','mhcflurry'] + iedbmhc1_methods
 iedbsettings = {'cutoff_type': 'none', 'pred_method': 'IEDB_recommended',
             'output_format': 'ascii', 'sort_output': 'position_in_sequence',
             'sequence_format': 'auto', 'allele': 'HLA-DRB1*01:01', 'length':'11',
@@ -917,6 +918,7 @@ class Predictor(object):
             recs = recs[recs[key].isin(names)]
         if verbose == True:
             self.print_heading()
+        print (cpus)
         if cpus == 1:
             results = self._predict_sequences(recs, alleles=alleles, path=path, verbose=verbose, **kwargs)
         else:
@@ -1204,7 +1206,7 @@ class Predictor(object):
         return True
 
 class NetMHCPanPredictor(Predictor):
-    """netMHCpan 4.0 predictor
+    """netMHCpan 4.1b predictor
     see http://www.cbs.dtu.dk/services/NetMHCpan/
     Default scoring is affinity predictions.
     To get newer scoring behaviour pass scoring='ligand' to constructor.
@@ -1233,7 +1235,19 @@ class NetMHCPanPredictor(Predictor):
             self.basecmd = set_netmhcpan_cmd()
 
     def read_result(self, temp):
-        """Read raw results from netMHCpan output"""
+        """Read raw results from netMHCpan 4.1b output"""
+
+        ignore = ['Pos','#','Protein','']
+        cols = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
+                 'Identity','Score_EL','%Rank_EL','Score_BA','%Rank_BA','ic50','BindLevel']
+        res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep='\s+',
+                          error_bad_lines=False, skiprows=46).dropna(subset=['peptide'])
+        res = res[~res.pos.isin(ignore)]
+        #print (res)
+        return res
+
+    def read_result_legacy(self, temp):
+        """Read raw results from netMHCpan 4.0 output"""
 
         ignore = ['Pos','#','Protein','']
         if self.scoring == 'affinity':
@@ -1243,9 +1257,10 @@ class NetMHCPanPredictor(Predictor):
             cols = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
                     'Identity','Score','%Rank','X','BindLevel']
         res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep='\s+',
-                          error_bad_lines=False, skiprows=45).dropna(subset=['peptide'])
+                          error_bad_lines=False, skiprows=46).dropna(subset=['peptide'])
         res = res.drop(columns='X')
         res = res[~res.pos.isin(ignore)]
+        #print (res)
         return res
 
     def prepare_data(self, df, name):
@@ -1256,7 +1271,7 @@ class NetMHCPanPredictor(Predictor):
         if self.scoring =='affinity':
             df['score'] = df.ic50
         else:
-            df['score'] = df.Score
+            df['score'] = df.Score_EL
         df=df.reset_index(drop=True)
         df['pos'] = df.index.copy()
         df = df.dropna(how='all')
@@ -1843,35 +1858,33 @@ class MHCFlurryPredictor(Predictor):
         if self.check_install() == False:
             return
         self._check_models()
-        from mhcflurry import Class1AffinityPredictor
-        self.predictor = Class1AffinityPredictor.load()
+
         #load precalculated quantiles for sample peptides
         self.qf = self.get_quantile_data()
         return
 
-    def predict(self, peptides=None, overlap=1,
+    def predict(self, peptides=None, overlap=1, show_cmd=False,
                       allele='HLA-A0101', name='', **kwargs):
         """Uses mhcflurry python classes for prediction"""
 
+        p =' '.join(peptides)
+        tmp = tempfile.mkstemp()[1]
         try:
-            df = self.predictor.predict_to_dataframe(peptides=peptides, allele=allele)
-        except:
+            cmd = 'mhcflurry-predict --alleles {a} --peptides {p} --out {t}'.format(a=allele,p=p,t=tmp)
+            if show_cmd==True:
+                print (cmd)
+            subprocess.check_output(cmd, shell=True)
+        except Exception as e:
             print ('failed to predict for allele %s' %allele)
+            print (e)
             return
-        #print (df[:5])
-        df = self.prepare_data(df, name, allele)
-        self.data = df
-        return df
-
-    def prepare_data(self, df, name, allele):
-        """Post process dataframe to alter some column names"""
-
-        df = df.rename(columns={'Allele':'allele','Peptide':'peptide'})
+        df = pd.read_csv(tmp)
+        df['score'] = df.mhcflurry_affinity
+        df['pos'] = df.index+1
         df['name'] = name
-        df['pos'] = df.index
-        df['score'] = df.prediction
-        df = df.drop(columns=['prediction_low', 'prediction_high'])
         self.get_ranking(df)
+        self.data = df
+        os.remove(tmp)
         return df
 
     def convert_allele_name(self, r):
@@ -1904,6 +1917,20 @@ class MHCFlurryPredictor(Predictor):
             subprocess.check_output('mhcflurry-downloads fetch models_class1', shell=True)
             return True
         return False
+
+    def predict_sequences(self, recs, **kwargs):
+        """Override so we can switch off multi threading."""
+
+        kwargs['cpus'] = 1
+        results = Predictor.predict_sequences(self, recs, **kwargs)
+        return results
+
+    def predict_peptides(self, peptides, **kwargs):
+        """Override so we can call train models before predictions."""
+
+        kwargs['cpus'] = 1
+        data = Predictor.predict_peptides(self, peptides, **kwargs)
+        return data
 
     @classmethod
     def _get_name(self):
@@ -2004,25 +2031,30 @@ class BasicMHCIPredictor(Predictor):
         self.operator = '<'
         self.rankascending = 1
         self.qf = self.get_quantile_data()
+        self.encoder = mhclearn.one_hot_encode
         return
 
     def predict(self, peptides, allele='HLA-A*01:01', name='temp', **kwargs):
-        """Encode and predict peptides with daved regressor"""
+        """Encode and predict peptides with saved regressor"""
 
-        encoder = mhclearn.blosum_encode
+        length = len(peptides[0])
+        if length <9 and length>11:
+            return
+        encoder = self.encoder
         if type(peptides) is list:
             s = pd.Series(peptides)
         else:
             s = peptides
         #encode
         X = s.apply(lambda x: pd.Series(encoder(x)),1)
-        reg = mhclearn.get_model(allele)
+        reg = mhclearn.get_model(allele, length, encoder)
         if reg is None:
             print ('no model for this allele')
             return
         sc = reg.predict(X).round(4)
         res = pd.DataFrame(np.column_stack([peptides,sc]),columns=['peptide','log50k'])
-        res['score'] = res.log50k.astype('float').apply(lambda x: mhclearn.log50k2aff(x)).round(2)
+        res['log50k'] = res.log50k.astype('float')
+        res['score'] = res.log50k.apply(lambda x: mhclearn.log50k2aff(x)).round(2)
         #print(res.dtypes)
         df = self.prepare_data(res,name,allele)
         return df
@@ -2033,6 +2065,7 @@ class BasicMHCIPredictor(Predictor):
            custom data."""
 
         df['name'] = name
+        df['pos'] = df.index+1
         df['allele'] = allele
         self.get_ranking(df)
         return df
@@ -2051,6 +2084,20 @@ class BasicMHCIPredictor(Predictor):
         if reg is None:
             return False
         return True
+
+    def predict_peptides(self, peptides, **kwargs):
+        """Override so we can call train models before predictions."""
+
+        mhclearn.train_models(alleles=kwargs['alleles'])
+        data = Predictor.predict_peptides(self, peptides, **kwargs)
+        return data
+
+    def predict_sequences(self, recs, **kwargs):
+        """Override so we can call train models before predictions."""
+
+        mhclearn.train_models(alleles=kwargs['alleles'])
+        results = Predictor.predict_sequences(self, recs, **kwargs)
+        return results
 
     @classmethod
     def _get_name(self):

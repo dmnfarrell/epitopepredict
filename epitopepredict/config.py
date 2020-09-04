@@ -30,7 +30,7 @@ except:
 path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(path, 'data')
 home = os.path.expanduser("~")
-config_path = os.path.join(home, '.epitopepredict')
+config_path = os.path.join(home, '.config/epitopepredict')
 
 baseoptions = OrderedDict()
 baseoptions['base'] = {'predictors': 'tepitope',
@@ -63,12 +63,8 @@ def write_default_config():
     """Write a default config to users .config folder. Used to add global settings."""
 
     fname = os.path.join(config_path, 'default.conf')
+    os.makedirs(config_path, exist_ok=True)
     if not os.path.exists(fname):
-        try:
-            #os.mkdir(config_path)
-            os.makedirs(config_path)
-        except:
-            pass
         write_config(conffile=fname, defaults=baseoptions)
     return fname
 

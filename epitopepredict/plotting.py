@@ -33,7 +33,7 @@ from . import base
 
 colormaps={'tepitope':'Greens','netmhciipan':'Oranges','iedbmhc2':'Pinks',
             'iedbmhc1':'Blues'}
-defaultcolors = {'tepitope':'green','netmhciipan':'orange',
+defaultcolors = {'tepitope':'green','netmhciipan':'orange','basicmhc1':'yellow',
                  'iedbmhc1':'blue','iedbmhc2':'pink'}
 
 
@@ -912,6 +912,7 @@ def plot_binder_map(P, name, values='rank', cutoff=20, chunks=1, cmap=None):
         chunks: number of plots to split the sequence into
     """
 
+    import pylab as plt
     import seaborn as sns
     df = P.data[P.data.name==name].sort_values('pos')
     w = 10

@@ -24,11 +24,20 @@ import pandas as pd
 from collections import OrderedDict
 from epitopepredict import peptutils, sequtils
 
+home = os.path.expanduser("~")
+config_path = os.path.join(home, '.config/epitopepredict')
 module_path = os.path.dirname(os.path.abspath(__file__))
 datadir = os.path.join(module_path, 'mhcdata')
-modelspath = os.path.join(module_path, 'models')
+models_path = os.path.join(config_path, 'models')
 nlf = pd.read_csv(os.path.join(datadir,'NLF.csv'),index_col=0)
 blosum62 = pd.read_csv(os.path.join(datadir,'blosum62.csv'))
+codes = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
+         'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
+
+def check_valid_prot_seq(seq):
+    for i in seq:
+        if i not in mhclearn.codes:
+            return False
 
 def aff2log50k(a):
     return 1 - (math.log(a) / math.log(50000))
@@ -37,9 +46,27 @@ def log50k2aff(a):
     return np.power(50000,1-a)
 
 def random_encode(p):
+    """Random encoding of a peptide for testing"""
+
     return [np.random.randint(20) for i in pep]
 
+def one_hot_encode(seq):
+    """One hot encoding of peptide"""
+
+    o = list(set(codes) - set(seq))
+    s = pd.DataFrame(list(seq))
+    x = pd.DataFrame(np.zeros((len(seq),len(o)),dtype=int),columns=o)
+    a = s[0].str.get_dummies(sep=',')
+    a = a.join(x)
+    a = a.sort_index(axis=1)
+    #a = a.set_index([a.index,list(seq)])
+    #show_matrix(a)
+    e = a.values.flatten()
+    return e
+
 def blosum_encode(seq):
+    """Blosum62 encoding of peptide"""
+
     s=list(seq)
     x = pd.DataFrame([blosum62[i] for i in seq]).reset_index(drop=True)
     #show_matrix(x)
@@ -47,8 +74,9 @@ def blosum_encode(seq):
     return e
 
 def nlf_encode(seq):
+    """NLF encoding of a peptide (from Nanni and Lumini)"""
+
     x = pd.DataFrame([nlf[i] for i in seq]).reset_index(drop=True)
-    #print (x)
     e = x.values.flatten()
     return e
 
@@ -71,7 +99,7 @@ def get_training_set(allele=None, length=None):
     """Get training set for MHC-I data."""
 
     b = pd.read_csv(os.path.join(datadir, 'curated_training_data.no_mass_spec.zip'))
-    eval1 = get_evaluation_set()
+    eval1 = get_evaluation_set1()
     df = b.loc[~b.peptide.isin(eval1.peptide)].copy()
     if allele is not None:
         df = b.loc[b.allele==allele].copy()
@@ -85,7 +113,7 @@ def get_training_set(allele=None, length=None):
     #df['binder'] = df.loc[df.ic50<500].astype(int)
     return df
 
-def get_evaluation_set(allele=None, length=None):
+def get_evaluation_set1(allele=None, length=None):
     """Get eval set of peptides"""
 
     e = pd.read_csv(os.path.join(datadir, 'eval_set1.csv'))
@@ -98,39 +126,87 @@ def get_evaluation_set(allele=None, length=None):
     e['ic50'] = e.log50k.apply(log50k2aff)
     return e
 
+def get_evaluation_set2(allele=None, length=None):
+    """Get eval set of peptides"""
+
+    e = pd.read_csv(os.path.join(datadir, 'binding_data_2013.zip'),comment='#')
+    if allele is not None:
+        e = e[e.allele==allele]
+    if length != None:
+        e = e[(e.length==length) ]
+    e['log50k'] = e.ic50.apply(lambda x: aff2log50k(x)).round(2)
+    return e
+
 def get_allele_names():
+    """Get allele names from training set"""
 
     b = get_training_set()
     a = b.allele.value_counts()
     a = a[a>200]
     return list(a.index)
 
-def build_predictor(allele):
+def build_predictor(allele, length=9, encoder=None):
     """Build a regression model using peptide encoder and test data"""
 
+    from sklearn.neural_network import MLPRegressor
     #get allele specific predictor
-    encoder=nlf_encode
-    #encoder=pc19_encode
-    data = get_test_data(allele)
-    from sklearn.linear_model import LinearRegression
-    reg = LinearRegression()
-    X = data.sequence.apply(lambda x: pd.Series(encoder(x)),1)
+    if encoder==None:
+        encoder=one_hot_encode
+    data = get_training_set(allele, length=length)
+    if len(data)<100:
+        return
+    reg = MLPRegressor(hidden_layer_sizes=(1,), alpha=0.0005, max_iter=1500,
+                        activation='logistic', solver='lbfgs', random_state=2)
+    #reg = LinearRegression()
+    X = data.peptide.apply(lambda x: pd.Series(encoder(x)),1)
     y = data.log50k
-    print (allele, len(X))
+    print ('trained model:', allele, len(X), length)
     reg.fit(X,y)
     return reg
 
-def get_model(allele):
+def train_models(overwrite=False, alleles=None, encoder=None):
+    """Train and save models. May be needed if version of joblib is different."""
+
+    os.makedirs(models_path, exist_ok=True)
+    encoders = {'blosum':blosum_encode, 'onehot':one_hot_encode, 'nlf':nlf_encode}
+    import joblib
+    if alleles == None:
+        alleles = get_allele_names()
+    if type(alleles) is str:
+        alleles = [alleles]
+    if encoder == None:
+        encoder = one_hot_encode
+    else:
+        encoder = encoders[encoder]
+
+    lengths = [9,10,11]
+    for a in alleles:
+        for l in lengths:
+            fname = os.path.join(models_path, a+'_'+str(l)+'.joblib')
+            #print (fname)
+            if os.path.exists(fname) and overwrite == False:
+                continue
+            reg = build_predictor(a, l, encoder)
+            if reg is not None:
+                joblib.dump(reg, fname, protocol=2)
+    return
+
+def get_model(allele, length, encoder):
     """Get a regression model."""
 
     try:
         import sklearn
     except:
         print ('you need scikit-learn to use this predictor')
-    from sklearn.externals import joblib
-    fname = os.path.join(modelspath, allele+'.joblib')
-    if os.path.exists(fname):
-        reg = joblib.load(fname)
+    import joblib
+    os.makedirs(models_path, exist_ok=True)
+    fname = os.path.join(models_path, allele+'_'+str(length)+'.joblib')
+    if not os.path.exists(fname):
+        print ('training model for %s' %allele)
+        reg = build_predictor(allele, length, encoder)
+        if reg is not None:
+            joblib.dump(reg, fname, protocol=2)
         return reg
     else:
-        return
+        reg = joblib.load(fname)
+        return reg

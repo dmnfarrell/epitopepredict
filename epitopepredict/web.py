@@ -41,6 +41,8 @@ def get_file_lists(path):
     """Get list of available prediction results in the given path. Tries
        to check for each possible predictor."""
 
+    if path == None or not os.path.exists(path):
+        return []
     names = []
     for p in predictors:
         files = glob.glob(os.path.join(path, p, '*.csv'))
@@ -306,9 +308,9 @@ def aggregate_summary(data):
 def get_scrollable_table(df):
     """Return a scrollable table as a div element to be placed in
     web page"""
-    
+
     res = df.to_html(classes="tinytable sortable")
-    div = '<div class="scrollingArea">%s</div>' %res    
+    div = '<div class="scrollingArea">%s</div>' %res
     return div
 
 def dataframes_to_html(data, classes=''):
