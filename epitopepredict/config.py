@@ -48,7 +48,7 @@ baseoptions['base'] = {'predictors': 'tepitope',
                 'verbose':'no',
                 'names': '', #subset of protein names
                 'overwrite': 'no',
-                'cpus': 1,
+                'threads': 1,
                 'compression': '',
                 'fasta_header_sep': ' '}
 

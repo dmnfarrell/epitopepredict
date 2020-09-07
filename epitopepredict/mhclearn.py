@@ -69,7 +69,7 @@ def blosum_encode(seq):
 
     s=list(seq)
     x = pd.DataFrame([blosum62[i] for i in seq]).reset_index(drop=True)
-    #show_matrix(x)
+    x = x.iloc[:,:-4]
     e = x.values.flatten()
     return e
 
@@ -168,7 +168,7 @@ def train_models(overwrite=False, alleles=None, encoder=None):
     """Train and save models. May be needed if version of joblib is different."""
 
     os.makedirs(models_path, exist_ok=True)
-    encoders = {'blosum':blosum_encode, 'onehot':one_hot_encode, 'nlf':nlf_encode}
+    #encoders = {'blosum':blosum_encode, 'onehot':one_hot_encode, 'nlf':nlf_encode}
     import joblib
     if alleles == None:
         alleles = get_allele_names()
@@ -176,8 +176,8 @@ def train_models(overwrite=False, alleles=None, encoder=None):
         alleles = [alleles]
     if encoder == None:
         encoder = one_hot_encode
-    else:
-        encoder = encoders[encoder]
+    #else:
+    #    encoder = encoders[encoder]
 
     lengths = [9,10,11]
     for a in alleles:
@@ -191,7 +191,7 @@ def train_models(overwrite=False, alleles=None, encoder=None):
                 joblib.dump(reg, fname, protocol=2)
     return
 
-def get_model(allele, length, encoder):
+def get_model(allele, length):
     """Get a regression model."""
 
     try:
@@ -199,14 +199,8 @@ def get_model(allele, length, encoder):
     except:
         print ('you need scikit-learn to use this predictor')
     import joblib
-    os.makedirs(models_path, exist_ok=True)
+    #os.makedirs(models_path, exist_ok=True)
     fname = os.path.join(models_path, allele+'_'+str(length)+'.joblib')
-    if not os.path.exists(fname):
-        print ('training model for %s' %allele)
-        reg = build_predictor(allele, length, encoder)
-        if reg is not None:
-            joblib.dump(reg, fname, protocol=2)
-        return reg
-    else:
+    if os.path.exists(fname):
         reg = joblib.load(fname)
         return reg

@@ -10,6 +10,12 @@ replaced tornado web app with panel dashboard
 added sequence plot with Bokeh
 added limit kwd to promiscuous_binders
 fix to netmhciipan read_results
+changed cpus to threads kwd
+fixed position value in results dataframe
+improvements to basicmhc1 predictor
+changed cpus to threads kwd
+updated netmhcpan to support 4.1b
+removed refs to Bio Alphabet
 
 ------
 0.4.0

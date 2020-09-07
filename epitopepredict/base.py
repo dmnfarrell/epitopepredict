@@ -578,8 +578,6 @@ class Predictor(object):
             if a not in cuts:
                 print ('%s not in cutoffs' %a)
                 continue
-            #print (cuts[a])
-            #print (g[value])
             if self.rankascending == 0:
                 b = g[g[value]>=cuts[a]]
             else:
@@ -817,7 +815,7 @@ class Predictor(object):
         self.data = data
         return data
 
-    def predict_peptides(self, peptides, cpus=1, path=None, overwrite=True, name=None, **kwargs):
+    def predict_peptides(self, peptides, threads=1, path=None, overwrite=True, name=None, **kwargs):
         """Predict a set of individual peptides without splitting them.
         This is a wrapper for _predict_peptides to allow multiprocessing.
         Args:
@@ -840,11 +838,11 @@ class Predictor(object):
         s = pd.DataFrame(peptides, columns=['peptide'])
         s['pos'] = s.index.copy()
 
-        if cpus == 1:
+        if threads == 1:
             data = self._predict_peptides(peptides, **kwargs)
         else:
             data = self._run_multiprocess(peptides, worker=predict_peptides_worker,
-                                          cpus=cpus, **kwargs)
+                                          threads=threads, **kwargs)
         if data is None or len(data) == 0:
             print ('empty result returned')
             return
@@ -897,15 +895,15 @@ class Predictor(object):
         return results
 
     def predict_sequences(self, recs, alleles=[], path=None, verbose=False,
-                          names=None, key='locus_tag', seqkey='translation', cpus=1, **kwargs):
+                          names=None, key='locus_tag', seqkey='translation', threads=1, **kwargs):
         """
         Get predictions for a set of proteins over multiple alleles that allows
-        running in parallel using the cpus parameter.
+        running in parallel using the threads parameter.
         This is a wrapper for _predictSequences with the same args.
           Args:
             recs: list or dataframe with sequences
             path: if provided, save results to this file
-            cpus: number of processors
+            threads: number of processors
             key: seq/protein name key
             seqkey: key for sequence column
             length: length of peptide to split sequence into
@@ -918,11 +916,13 @@ class Predictor(object):
             recs = recs[recs[key].isin(names)]
         if verbose == True:
             self.print_heading()
-        print (cpus)
-        if cpus == 1:
-            results = self._predict_sequences(recs, alleles=alleles, path=path, verbose=verbose, **kwargs)
+        #print (threads)
+        if threads == 1:
+            results = self._predict_sequences(recs, alleles=alleles, path=path,
+                    verbose=verbose, **kwargs)
         else:
-            results = self._run_multiprocess(recs, alleles=alleles, path=path, verbose=verbose, cpus=cpus, **kwargs)
+            results = self._run_multiprocess(recs, alleles=alleles, path=path,
+                    verbose=verbose, threads=threads, **kwargs)
 
         print ('predictions done for %s sequences in %s alleles' %(len(recs),len(alleles)))
         if path is None:
@@ -1022,13 +1022,13 @@ class Predictor(object):
                            .format(x['name'], x.allele, x.peptide, x[self.scorekey] ))
         return s
 
-    def _run_multiprocess(self, recs, cpus=2, worker=None, **kwargs):
+    def _run_multiprocess(self, recs, threads=2, worker=None, **kwargs):
         """
         Call function with multiprocessing pools. Used for running predictions
         in parallel where the main input is a pandas dataframe.
         Args:
             recs: input dataframe
-            cpus: number of cores to use
+            threads: number of cores to use
             worker: function to be run in parallel
         Returns:
             concatenated result, a pandas dataframe
@@ -1039,14 +1039,14 @@ class Predictor(object):
             #print (worker)
         import multiprocessing as mp
         maxcpu = mp.cpu_count()
-        if cpus == 0 or cpus > maxcpu:
-            cpus = maxcpu
-        if cpus >= len(recs):
-            cpus = len(recs)
-        pool = mp.Pool(cpus)
+        if threads == 0 or threads > maxcpu:
+            threads = maxcpu
+        if threads >= len(recs):
+            threads = len(recs)
+        pool = mp.Pool(threads)
         funclist = []
         st = time.time()
-        chunks = np.array_split(recs,cpus)
+        chunks = np.array_split(recs,threads)
         #print ([len(i) for i in chunks])
 
         for recs in chunks:
@@ -1273,7 +1273,7 @@ class NetMHCPanPredictor(Predictor):
         else:
             df['score'] = df.Score_EL
         df=df.reset_index(drop=True)
-        df['pos'] = df.index.copy()
+        df['pos'] = df.index.copy()+1
         df = df.dropna(how='all')
         self.get_ranking(df)
         self.data = df
@@ -1345,14 +1345,14 @@ class NetMHCPanPredictor(Predictor):
         return 'netmhcpan'
 
 class NetMHCIIPanPredictor(Predictor):
-    """netMHCIIpan predictor"""
+    """netMHCIIpan v3.0 predictor"""
 
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'netmhciipan'
         self.colnames = ['pos','HLA','peptide','Identity','Pos','Core',
                          '1-log50k(aff)','Affinity','Rank']
-        self.scorekey = 'Affinity' #'1-log50k(aff)'
+        self.scorekey = 'score'
         self.cutoff = 500 #.426
         self.operator = '<'
         self.rankascending = 1
@@ -1379,6 +1379,7 @@ class NetMHCIIPanPredictor(Predictor):
         df = df.drop(['Pos','Identity','Rank'],1)
         df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         df['score'] = pd.to_numeric(df.Affinity,errors='coerce')
+        #print (df[:3])
         df = df.dropna()
         self.get_ranking(df)
         self.data = df
@@ -1921,14 +1922,14 @@ class MHCFlurryPredictor(Predictor):
     def predict_sequences(self, recs, **kwargs):
         """Override so we can switch off multi threading."""
 
-        kwargs['cpus'] = 1
+        kwargs['threads'] = 1
         results = Predictor.predict_sequences(self, recs, **kwargs)
         return results
 
     def predict_peptides(self, peptides, **kwargs):
         """Override so we can call train models before predictions."""
 
-        kwargs['cpus'] = 1
+        kwargs['threads'] = 1
         data = Predictor.predict_peptides(self, peptides, **kwargs)
         return data
 
@@ -2047,7 +2048,7 @@ class BasicMHCIPredictor(Predictor):
             s = peptides
         #encode
         X = s.apply(lambda x: pd.Series(encoder(x)),1)
-        reg = mhclearn.get_model(allele, length, encoder)
+        reg = mhclearn.get_model(allele, length)
         if reg is None:
             print ('no model for this allele')
             return
@@ -2080,7 +2081,7 @@ class BasicMHCIPredictor(Predictor):
 
     def check_install(self):
 
-        reg = mhclearn.get_predictor('HLA-A*01:01')
+        reg = mhclearn.build_predictor('HLA-A*01:01')
         if reg is None:
             return False
         return True
@@ -2088,14 +2089,14 @@ class BasicMHCIPredictor(Predictor):
     def predict_peptides(self, peptides, **kwargs):
         """Override so we can call train models before predictions."""
 
-        mhclearn.train_models(alleles=kwargs['alleles'])
+        mhclearn.train_models(alleles=kwargs['alleles'], encoder=self.encoder)
         data = Predictor.predict_peptides(self, peptides, **kwargs)
         return data
 
     def predict_sequences(self, recs, **kwargs):
         """Override so we can call train models before predictions."""
 
-        mhclearn.train_models(alleles=kwargs['alleles'])
+        mhclearn.train_models(alleles=kwargs['alleles'], encoder=self.encoder)
         results = Predictor.predict_sequences(self, recs, **kwargs)
         return results
 

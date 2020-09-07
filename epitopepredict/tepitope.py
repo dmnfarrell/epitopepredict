@@ -22,7 +22,7 @@
     GNU General Public License for more details.
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA   
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 from __future__ import absolute_import, print_function
@@ -35,7 +35,7 @@ from Bio import SeqIO, AlignIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import PDB
-from Bio.Alphabet import IUPAC, _verify_alphabet
+#from Bio.Alphabet import IUPAC, _verify_alphabet
 from . import peptutils, utilities
 
 refalleles = ['HLA-DRB1*0101','HLA-DRB1*0301','HLA-DRB1*0401','HLA-DRB1*0402',
@@ -221,10 +221,10 @@ def similarity_score(matrix, ref, query):
     if type(ref) is not str or type(query) is not str:
         return
     r=ref; q=query
-    s = Seq(q, alphabet=IUPAC.IUPACProtein)
+    s = Seq(q)#, alphabet=IUPAC.IUPACProtein)
     #check protein sequence of query
-    if _verify_alphabet(s) is False:
-        return
+    #if _verify_alphabet(s) is False:
+    #    return
     sim = sum([matrix[i][j] for i,j in zip(r,q) if (i!= '-' and j!='-')])
     sim1 = sum([matrix[i][j] for i,j in zip(r,r) if (i!= '-' and j!='-')])
     sim2 = sum([matrix[i][j] for i,j in zip(q,q) if (i!= '-' and j!='-')])

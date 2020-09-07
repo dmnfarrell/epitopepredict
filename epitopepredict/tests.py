@@ -32,19 +32,31 @@ class PredictorTests(unittest.TestCase):
             os.mkdir(self.testdir)
         return
 
+    def test_peptide_utils(self):
+
+        s = peptutils.create_random_sequences(100)
+        print (s)
+        seq = 'MTDDPGSGFTTVWNAVVSELNGDPKVDDGP'
+        f = peptutils.get_fragments(seq=seq)
+        print (f)
+        return
+
     def test_classes(self):
+
         cl = base.get_predictor_classes()
         for c in cl:
             P=base.get_predictor(c)
             print (P)
 
     def test_cutoffs(self):
+
         cl = base.get_predictor_classes()
         for c in cl:
             P=base.get_predictor(c)
             P.get_allele_cutoffs()
 
     def test_basicmhc1(self):
+
         P=base.get_predictor('basicmhc1')
         print (P)
         allele='HLA-A*01:01'
@@ -73,7 +85,7 @@ class PredictorTests(unittest.TestCase):
         P = base.get_predictor('netmhcpan')
         print (P)
         seqs = peptutils.create_random_sequences(10)
-        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
+        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], threads=1)
         print (len(P.data))
         return
 
@@ -120,7 +132,7 @@ class PredictorTests(unittest.TestCase):
 
     def test_multiproc(self):
         P = base.get_predictor('tepitope')
-        x = P.predict_peptides(self.peptides, alleles=self.m2alleles, cpus=2)
+        x = P.predict_peptides(self.peptides, alleles=self.m2alleles, threads=2)
         return
 
     def test_fasta(self):
@@ -155,17 +167,7 @@ class PredictorTests(unittest.TestCase):
         P = base.get_predictor('mhcflurry')
         print (P)
         seqs = peptutils.create_random_sequences(10)
-        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
-        print (len(P.data))
-        return
-
-    def test_mhcnuggets(self):
-        """Test mhcflurry predictor"""
-
-        P = base.get_predictor('mhcnuggets')
-        print (P)
-        seqs = peptutils.create_random_sequences(10)
-        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
+        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], threads=1)
         print (len(P.data))
         return
 
@@ -177,7 +179,7 @@ class PredictorTests(unittest.TestCase):
         if P.check_install() == 0:
             return
         seqs = peptutils.create_random_sequences(10, length=11)
-        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], cpus=1)
+        P.predict_peptides(seqs, alleles=['HLA-A*02:02'], threads=1)
         print (len(P.data))
         return
 

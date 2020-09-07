@@ -11,7 +11,6 @@ Contents:
    cli
    webapp
    examples
-   neoepitope
    nomenclature
    formats
    modules

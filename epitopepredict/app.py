@@ -119,7 +119,7 @@ class WorkFlow(object):
             print ('predictor:', p)
             print ('alleles:',', '.join(a))
             print ('length:',length)
-            print ('cpus:', self.cpus)
+            print ('threads:', self.threads)
             if 'iedb' in p:
                 if iedb_checks(method) == False:
                     continue
@@ -127,7 +127,7 @@ class WorkFlow(object):
             if self.peptides is not None:
                 P.predict_peptides(self.peptides, length=length, alleles=a,
                                 path=self.path, overwrite=self.overwrite, verbose=self.verbose,
-                                method=method, cpus=self.cpus, compression=self.compression)
+                                method=method, threads=self.threads, compression=self.compression)
                 #load the results into the predictor
                 P.load()
             else:
@@ -135,7 +135,7 @@ class WorkFlow(object):
                 #data saved to disk to avoid large memory usage
                 P.predict_proteins(self.sequences, length=length, alleles=a, names=self.names,
                                 path=savepath, overwrite=self.overwrite, verbose=self.verbose,
-                                method=method, cpus=self.cpus, compression=self.compression)
+                                method=method, threads=self.threads, compression=self.compression)
                 #keep reference to path where results saved
                 P.path = savepath
                 #clear data as we will reload during analysis from disk
@@ -495,7 +495,6 @@ def main():
     elif opts.neoepitope == True:
         if opts.test == True:
             neo.test_run()
-            #neo.varcode_test()
         else:
             print (options)
             release = options['ensembl_release']

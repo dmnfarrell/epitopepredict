@@ -71,9 +71,9 @@ run predictions for a list of peptides::
     p = ep.get_predictor('tepitope')
     x = p.predict_peptides(seqs, alleles=alleles)
 
-run with multiple cpus::
+run with multiple threads::
 
-    x = p.predict_peptides(seqs, alleles=alleles, cpus=4)
+    x = p.predict_peptides(seqs, alleles=alleles, threads=4)
 
 load previous results into a predictor::
 

@@ -14,16 +14,17 @@
     GNU General Public License for more details.
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA    
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 from __future__ import absolute_import, print_function
 import os, random, csv
 import pandas as pd
+from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.SeqUtils.ProtParam import ProteinAnalysis
-from Bio.Alphabet import IUPAC
+#from Bio.Alphabet import IUPAC
 from . import utilities
 
 AAletters = ['A', 'C', 'E', 'D', 'G', 'F', 'I', 'H', 'K', 'M', 'L', 'N', 'Q', 'P',\
@@ -35,7 +36,8 @@ AAcodes3 ={'V':'VAL', 'I':'ILE', 'L':'LEU', 'E':'GLU', 'Q':'GLN', \
 
 def create_random_sequences(size=100,length=9):
     """Create library of all possible peptides given length"""
-    aa = list(IUPAC.IUPACProtein.letters)
+
+    aa = AAletters
     vals=[]
     for i in range(0, size):
         seq = ""
