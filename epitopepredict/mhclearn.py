@@ -31,6 +31,7 @@ datadir = os.path.join(module_path, 'mhcdata')
 models_path = os.path.join(config_path, 'models')
 nlf = pd.read_csv(os.path.join(datadir,'NLF.csv'),index_col=0)
 blosum62 = pd.read_csv(os.path.join(datadir,'blosum62.csv'))
+blosum50 = pd.read_csv(os.path.join(datadir,'blosum50.csv'))
 codes = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L',
          'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
 
@@ -116,19 +117,6 @@ def get_training_set(allele=None, length=None):
 def get_evaluation_set1(allele=None, length=None):
     """Get eval set of peptides"""
 
-    e = pd.read_csv(os.path.join(datadir, 'eval_set1.csv'))
-    #remove evaluation peptides
-    if allele is not None:
-        e = e[e.allele==allele]
-    e['length'] = e.peptide.str.len()
-    if length != None:
-        e = e[(e.length==length) ]
-    e['ic50'] = e.log50k.apply(log50k2aff)
-    return e
-
-def get_evaluation_set2(allele=None, length=None):
-    """Get eval set of peptides"""
-
     e = pd.read_csv(os.path.join(datadir, 'binding_data_2013.zip'),comment='#')
     if allele is not None:
         e = e[e.allele==allele]
@@ -142,7 +130,7 @@ def get_allele_names():
 
     b = get_training_set()
     a = b.allele.value_counts()
-    a = a[a>200]
+    a = a[a>100]
     return list(a.index)
 
 def build_predictor(allele, length=9, encoder=None):

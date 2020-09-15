@@ -597,7 +597,7 @@ def prediction_coverage(expdata, binders, key='sequence', perc=50, verbose=False
         if len(peptides) == 0:
             continue
         if verbose == True: print (name)
-        #print binders[binders.name==name][:5]
+        #print (binders[binders.name==name][:5])
         c = getcoverage(data, peptides, key)
         total += c
 

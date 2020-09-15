@@ -66,6 +66,9 @@ testsequence = ('MRRVILPTAPPEYMEAIYPVRSNSTIARGGNSNTGFLTPESVNGDTPSNPLRPIADDTIDHAS
                'GQPIIPVLLPKYIGLDPVAPGDLTMVITQDCDTCHSPASLPAVIEK')
 presets_dir = os.path.join(module_path, 'presets')
 
+#genome for testing
+mtb_genome = os.path.join(datadir, 'MTB-H37Rv.gb')
+
 def read_defaults():
     """Get some global settings such as program paths from config file"""
 
@@ -607,7 +610,7 @@ class Predictor(object):
         return sc
 
     def get_binders(self, cutoff=.95, cutoff_method='default', path=None,
-                    name=None, drop_columns=False, **kwargs):
+                    name=None, drop_columns=False, limit=None, **kwargs):
         """
         Get the top scoring binders. If using default cutoffs are derived
         from the pre-defined percentile cutoffs for some known antigens. For
@@ -663,6 +666,8 @@ class Predictor(object):
             if name != None and name in names:
                 res = res[res.name == name]
 
+        if limit != None:
+            res = res.groupby('name').head(limit)
         return res
 
     def promiscuous_binders(self, binders=None, name=None, cutoff=.95,
@@ -914,6 +919,9 @@ class Predictor(object):
         recs = self._convert_to_dataframe(recs)
         if names is not None:
             recs = recs[recs[key].isin(names)]
+        if len(recs) == 0:
+            print ('no records to predict')
+            return
         if verbose == True:
             self.print_heading()
         #print (threads)
@@ -1379,7 +1387,7 @@ class NetMHCIIPanPredictor(Predictor):
         df = df.drop(['Pos','Identity','Rank'],1)
         df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         df['score'] = pd.to_numeric(df.Affinity,errors='coerce')
-        #print (df[:3])
+        df['pos'] = df.index.copy()
         df = df.dropna()
         self.get_ranking(df)
         self.data = df
@@ -1937,7 +1945,7 @@ class MHCFlurryPredictor(Predictor):
     def _get_name(self):
         return 'mhcflurry'
 
-class MHCNuggetsPredictor(Predictor):
+'''class MHCNuggetsPredictor(Predictor):
     """
     Predictor using MHCNuggets for MHC-I predictions. Requires you to
     install the package locally from https://github.com/KarchinLab/mhcnuggets
@@ -1996,6 +2004,7 @@ class MHCNuggetsPredictor(Predictor):
     @classmethod
     def _get_name(self):
         return 'mhcnuggets'
+'''
 
 class DummyPredictor(Predictor):
     """Returns random scores. Used for testing"""
@@ -2073,7 +2082,7 @@ class BasicMHCIPredictor(Predictor):
 
     def supported_lengths(self):
         """Return supported peptide lengths"""
-        return [9]
+        return [9,10,11]
 
     def get_alleles(self):
         p = mhclearn.get_allele_names()
