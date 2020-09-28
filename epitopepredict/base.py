@@ -679,8 +679,8 @@ class Predictor(object):
             binders: can provide a precalculated list of binders
             name: specific protein, optional
             value: to pass to get_binders
-            cutoff_method: 'default', 'score' or 'rank'
-            cutoff: percentile cutoff for get_binders
+            cutoff_method: 'rank', 'score' or 'global'
+            cutoff: cutoff for get_binders (rank, score or percentile)
             n: min number of alleles
             unique_core: removes peptides with duplicate cores and picks the most
             limit: limit the number of peptides per protein, default None

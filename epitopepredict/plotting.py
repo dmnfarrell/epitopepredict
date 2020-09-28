@@ -421,7 +421,7 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
     """
     callback = CustomJS(
         args=dict(x_range=p.x_range,rect=previewrect,text=seqtext,width=p.plot_width), code=jscode)
-    slider = RangeSlider (start=0, end=N, value=(0,L), step=10, callback_policy="throttle")
+    slider = RangeSlider (start=0, end=N, value=(0,L), step=10)#, callback_policy="throttle")
     slider.js_on_change('value_throttled', callback)
 
     #callback for plot drag
@@ -659,7 +659,7 @@ def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default', regions=N
             h = round(h*.1+2)
             figsize = (w,h)
         #plt.clf()
-        fig = plt.figure(figsize=figsize)
+        fig = plt.figure(figsize=figsize,facecolor='white')
         ax = fig.add_subplot(111)
 
     p = len(preds)
