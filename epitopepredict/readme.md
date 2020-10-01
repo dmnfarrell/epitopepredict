@@ -6,7 +6,7 @@
 
 ### Background
 
-**epitopepredict** provides a standardized programmatic interface and command line tool for executing multiple epitope prediction methods. Currently this largely consists of interfaces to several MHC binding prediction, the results of which can then be processed and visualized in a consistent manner. The Tepitope module implements the TEPITOPEPan method is provided as a 'built in' method. The IEDB tools and netMHCIIpan and mhcflurry are also supported. All of these tools are free for academic use. This software runs on most linux systems. Users are recommended to use the snap package for convenience. This software is under active development particularly with a view to improve the command line and web tools.
+**epitopepredict** provides a standardized programmatic interface and command line tool for executing multiple epitope prediction methods. Currently this largely consists of interfaces to several MHC binding prediction, the results of which can then be processed and visualized in a consistent manner. There is a built-in method for MHC-class I prediction and the TEPITOPEPan method is provided as a 'built in' method for MHC-class II. The IEDB tools and netMHCpan, netMHCIIpan and MHCFlurry are also supported. Those tools are free for academic use but have to be installed separately. This software runs on most linux systems. 
 
 Documentation is at http://epitopepredict.readthedocs.io
 
@@ -14,7 +14,6 @@ Documentation is at http://epitopepredict.readthedocs.io
 
 `pip install epitopepredict`
 
-or for snap package
+or for latest version on github:
 
-`snap install epitopepredict`
-
+`pip install -e git+https://github.com/dmnfarrell/epitopepredict.git#egg=epitopepredict`

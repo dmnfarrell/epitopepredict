@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 from epitopepredict import plotting, base, peptutils, web, config
 from epitopepredict import __version__
-from IPython.display import HTML
+#from IPython.display import HTML
 import panel as pn
 import panel.widgets as pnw
 helppage = 'http://epitopepredict.readthedocs.io/en/latest/webapp.html'

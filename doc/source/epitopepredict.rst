@@ -92,14 +92,6 @@ epitopepredict.tests module
     :undoc-members:
     :show-inheritance:
 
-epitopepredict.tornado\_serve module
-------------------------------------
-
-.. automodule:: epitopepredict.tornado_serve
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 epitopepredict.utilities module
 -------------------------------
 
@@ -115,7 +107,6 @@ epitopepredict.web module
     :members:
     :undoc-members:
     :show-inheritance:
-
 
 Module contents
 ---------------

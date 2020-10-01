@@ -128,16 +128,17 @@ def _split_nmer(x, n, key, margin=3, colname='peptide'):
         return d
 
 def create_nmers(df, genome, length=20, seqkey='translation', key='nmer', how='split', margin=0):
-    """
-    Get n-mer peptide surrounding a set of sequences using the host
-    protein sequence.
+    """Get n-mer peptide surrounding a set of sequences using the host
+        protein sequence.
+
     Args:
         df: input dataframe with sequence name and start/end coordinates
         genome: genome dataframe with host sequences
         length: length of nmer to return
         seqkey: column name of sequence to be processed
-        how: method to create the n-mer, 'split' will try to split up
+        how: method to create the n-mer, split will try to split up
             the sequence into overlapping n-mes of length is larger than size
+            center will center the peptide
         margin: do not split sequences below length+margin
     Returns:
         pandas Series with nmer values
@@ -176,6 +177,7 @@ def get_overlaps(df1, df2, label='overlap', how='inside'):
     """
     Overlaps for 2 sets of sequences where the positions in host sequence are stored
     in each dataframe as 'start' and 'end' columns
+
     Args:
         df1 : first set of sequences, a pandas dataframe with columns called
                 start/end or pos
@@ -220,6 +222,7 @@ def get_orthologs(seq, db=None, expect=1, hitlist_size=400, equery=None,
     """
     Fetch orthologous sequences using remote or local blast and return the records
     as a dataframe.
+
     Args:
         seq: sequence to blast
         db: the name of a local blast db

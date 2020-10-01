@@ -236,6 +236,7 @@ def pickpocket(pos, allele):
     """Derive weights for a query allele using pickpocket method. This uses the
      pocket pseudosequences to determine similarity to the reference. This relies on
      the DRB alignment present in the tepitope folder.
+     
     Args:
         pos: pocket position
         allele: query allele

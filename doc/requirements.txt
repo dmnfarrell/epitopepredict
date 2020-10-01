@@ -4,5 +4,3 @@ pandas
 matplotlib
 biopython
 bokeh
-wtforms
-tornado

@@ -103,9 +103,11 @@ def get_all_fragments(exp, length=11):
     return allseqs
 
 def get_AAsubstitutions(template):
-    """Get all the possible sequences from substituting every AA
+    """
+    Get all the possible sequences from substituting every AA
       into the given sequence at each position. This gives a total of
-       19aa * n positions """
+       19 by n amino acid positions.
+    """
 
     aas = AAletters
     seqs = []

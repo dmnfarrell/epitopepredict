@@ -25,6 +25,7 @@ metrics = ['score', 'matched_score', 'binding_diff','perc_rank',
 
 class NeoEpitopeWorkFlow(object):
     """Class for implementing a neo epitope workflow."""
+
     def __init__(self, opts={}):
         for i in opts:
             self.__dict__[i] = opts[i]
@@ -207,6 +208,7 @@ def read_names(filename):
 
 def variants_from_csv(csv_file, sample_id=None, reference=None):
     """Variants from csv file.
+    
     Args:
         csv_file: csv file with following column names-
             chromosome, position, reference_allele, alt_allele, gene_name, transcript_id, sample_id
@@ -252,6 +254,7 @@ def dataframe_to_vcf(df, outfile):
     return
 
 def get_variant_class(effect):
+
     import varcode
     v = effect.variant
     if v.is_deletion:
@@ -480,6 +483,7 @@ def predict_binding(df, predictor='netmhcpan', alleles=[],
                      verbose=False, cpus=1, cutoff=.95, cutoff_method='default'):
     """
     Predict binding scores for mutated and wt peptides (if present) from supplied variants.
+
     Args:
         df: pandas dataframe with peptide sequences, requires at least 2 columns
             'peptide' - the mutant peptide

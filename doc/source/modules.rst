@@ -1,5 +1,5 @@
 epitopepredict
-===========
+==============
 
 .. toctree::
    :maxdepth: 4

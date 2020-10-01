@@ -166,6 +166,7 @@ def get_blast_results(filename):
 def blast_sequences(database, seqs, labels=None, **kwargs):
     """
     Blast a set of sequences to a local or remote blast database
+    
     Args:
         database: local or remote blast db name
                   'nr', 'refseq_protein', 'pdb', 'swissprot' are valide remote dbs

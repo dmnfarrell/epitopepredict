@@ -905,6 +905,7 @@ class Predictor(object):
         Get predictions for a set of proteins over multiple alleles that allows
         running in parallel using the threads parameter.
         This is a wrapper for _predictSequences with the same args.
+        
           Args:
             recs: list or dataframe with sequences
             path: if provided, save results to this file

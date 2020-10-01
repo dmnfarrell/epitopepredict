@@ -14,7 +14,6 @@ By default the text before the first space is used as the identifier for each pr
 
 * make sure the /translation qualifier is present in the features of the genbank file. Some files might not have it and therefore no sequence is present. A typical genbank feature looks like this::
 
-
      CDS             360172..360507
                      /locus_tag="lmo0332"
                      /experiment="EXISTENCE:[PMID:19448609]"
@@ -27,4 +26,3 @@ By default the text before the first space is used as the identifier for each pr
                      /translation="MIYYICALYTFISALVSFGFSLDALLKSRKVNGDALINAKYAVS
                      RSLSLLIVALGLFIFKSDAFLVALSLVMIGAQLFDGIIGIKISTFKTVGPLLTAVGNV
                      IMLILFLTI"
-`
