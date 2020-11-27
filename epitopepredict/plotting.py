@@ -432,8 +432,8 @@ def bokeh_plot_sequence(preds, name=None, n=2, cutoff=.95, cutoff_method='defaul
         rect.width = end-start;
         rect.x = start+rect.width/2;
     """
-    p.x_range.callback = CustomJS(args=dict(slider=slider, range=p.x_range, rect=previewrect),
-                                  code=jscode)
+    #p.x_range.callback = CustomJS(args=dict(slider=slider, range=p.x_range, rect=previewrect),
+    #                              code=jscode)
 
     p = gridplot([[p1],[p],[slider]], toolbar_location="below", merge_tools=False)
     return p

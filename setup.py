@@ -14,20 +14,18 @@ setup(
     author = 'Damien Farrell',
     author_email = 'farrell.damien@gmail.com',
     packages = ['epitopepredict'],
-    package_data={'epitopepredict': ['mhcdata/*.csv', 'mhcdata/*.zip', 'presets/*.csv',
+    package_data={'epitopepredict': ['mhcdata/*.csv', 'mhcdata/*.zip', 'mhcdata/*.gb',
+                  'presets/*.csv',
                   'tepitope/*.txt', 'tepitope/pssm/*', 'testing/*',
                   'templates/*.html','static/*',
                   'description.txt']
                  },
     install_requires=['numpy>=1.10',
                       'pandas>=0.22',
+                      'matplotlib',
                       'biopython>=1.78',
                       'scikit-learn>=0.23.2',
                       'joblib>=0.16.0',
-                      #'bokeh>=1.4.0',
-                      #'panel>=0.6.4',
-                      #'wtforms>=2.1',
-                      #'wtforms_tornado',
                       'future'],
     entry_points = {
         'console_scripts': [

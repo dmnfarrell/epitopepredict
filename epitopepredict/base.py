@@ -94,6 +94,7 @@ def predict_peptides_worker(P, recs, kwargs):
     return df
 
 def get_preset_alleles(name):
+    """A list of the possible preset alleles """
     df = pd.read_csv(os.path.join(presets_dir, name+'.csv'),comment='#')
     return list(df.allele)
 
@@ -180,7 +181,8 @@ def seq_from_binders(df):
     return ''.join(x.str[0])
 
 def write_fasta(sequences, id=None, filename='tempseq.fa'):
-
+    """Write a fasta file of sequences"""
+    
     if isinstance(sequences, basestring):
         sequences = [sequences]
     out = open(filename, 'w')
@@ -905,7 +907,7 @@ class Predictor(object):
         Get predictions for a set of proteins over multiple alleles that allows
         running in parallel using the threads parameter.
         This is a wrapper for _predictSequences with the same args.
-        
+
           Args:
             recs: list or dataframe with sequences
             path: if provided, save results to this file
