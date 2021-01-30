@@ -166,7 +166,7 @@ def get_blast_results(filename):
 def blast_sequences(database, seqs, labels=None, **kwargs):
     """
     Blast a set of sequences to a local or remote blast database
-    
+
     Args:
         database: local or remote blast db name
                   'nr', 'refseq_protein', 'pdb', 'swissprot' are valide remote dbs
@@ -259,8 +259,8 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
 
     seqs=[]
     for i,row in df.iterrows():
-        if descrkey in df.columns:
-            d=row[descrkey]
+        if descrkey in df.columns and type(row[descrkey]) is str:
+            d = row[descrkey]
         else:
             d=''
         rec = SeqRecord(Seq(row[seqkey]),id=row[idkey],
