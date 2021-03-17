@@ -23,7 +23,7 @@ import numpy as np
 import shutil
 import pandas as pd
 from collections import OrderedDict
-from epitopepredict import base, config, analysis, sequtils, plotting, dashboard
+from epitopepredict import base, config, analysis, sequtils, plotting, dashboard, neo
 
 defaultpath = os.getcwd()
 
