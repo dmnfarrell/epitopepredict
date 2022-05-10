@@ -26,7 +26,7 @@ try:
     matplotlib.use('agg', warn=False)
     import pylab as plt
 except:
-    pass
+    import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from . import base
