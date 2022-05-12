@@ -46,9 +46,9 @@ create a Predictor object::
 get sequence data::
 
     #get data in genbank format into a dataframe
-    df = sequtils.genbank2Dataframe(genbankfile, cds=True)
+    df = sequtils.genbank_to_dataframe(genbankfile, cds=True)
     #get sequences from fasta file
-    df = sequtils.fasta2Dataframe(fastafile)
+    df = sequtils.fasta_to_dataframe(fastafile)
 
 run predictions for a protein sequence::
 
