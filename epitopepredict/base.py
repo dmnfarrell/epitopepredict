@@ -79,6 +79,11 @@ def read_defaults():
 #get defaults
 defaults = read_defaults()
 
+def recursive_subclasses(klass):
+    for subclass in klass.__subclasses__():
+        yield subclass
+        yield from recursive_subclasses(subclass)
+
 def predict_proteins_worker(P, recs, kwargs):
     try:
         df = P._predict_sequences(recs, **kwargs)
@@ -131,7 +136,7 @@ def get_predictor_classes():
     """Get predictor classes in this module."""
 
     cl={}
-    for o in Predictor.__subclasses__():
+    for o in list(recursive_subclasses(Predictor)):
         cl[o._get_name()] = o
     return cl
 
@@ -182,7 +187,7 @@ def seq_from_binders(df):
 
 def write_fasta(sequences, id=None, filename='tempseq.fa'):
     """Write a fasta file of sequences"""
-    
+
     if isinstance(sequences, basestring):
         sequences = [sequences]
     out = open(filename, 'w')
@@ -708,8 +713,8 @@ class Predictor(object):
             skname = 'max'
 
         s = binders.groupby(['peptide','pos','name']).agg({'allele': pd.Series.count,
-                            'core': first, self.scorekey:[func,np.mean],
-                            'rank': np.median})
+                            'core': first, self.scorekey:[skname,'mean'],
+                            'rank': 'median'})
         s.columns = s.columns.get_level_values(1)
         s.rename(columns={skname: self.scorekey, 'count': 'alleles','median':'median_rank',
                          'first':'core'}, inplace=True)
@@ -936,6 +941,7 @@ class Predictor(object):
                     verbose=verbose, threads=threads, **kwargs)
 
         print ('predictions done for %s sequences in %s alleles' %(len(recs),len(alleles)))
+
         if path is None:
             #if no path we assign results to the data attribute
             self.data = results
@@ -1252,7 +1258,7 @@ class NetMHCPanPredictor(Predictor):
         cols = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
                  'Identity','Score_EL','%Rank_EL','Score_BA','%Rank_BA','ic50','BindLevel']
         res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep='\s+',
-                          error_bad_lines=False, skiprows=46).dropna(subset=['peptide'])
+                          on_bad_lines='skip', skiprows=46).dropna(subset=['peptide'])
         res = res[~res.pos.isin(ignore)]
         #print (res)
         return res
@@ -1268,7 +1274,7 @@ class NetMHCPanPredictor(Predictor):
             cols = ['pos','allele','peptide','core','Of','Gp','Gl','Ip','Il','Icore',
                     'Identity','Score','%Rank','X','BindLevel']
         res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep='\s+',
-                          error_bad_lines=False, skiprows=46).dropna(subset=['peptide'])
+                          on_bad_lines='skip', skiprows=46).dropna(subset=['peptide'])
         res = res.drop(columns='X')
         res = res[~res.pos.isin(ignore)]
         #print (res)
@@ -1356,15 +1362,15 @@ class NetMHCPanPredictor(Predictor):
         return 'netmhcpan'
 
 class NetMHCIIPanPredictor(Predictor):
-    """netMHCIIpan v3.0 predictor"""
+    """netMHCIIpan v4.* predictor"""
 
     def __init__(self, data=None):
         Predictor.__init__(self, data=data)
         self.name = 'netmhciipan'
-        self.colnames = ['pos','HLA','peptide','Identity','Pos','Core',
-                         '1-log50k(aff)','Affinity','Rank']
+        self.colnames = ['Pos','MHC','peptide','Of','Core','Core_Rel','Inverted','Identity','Score_EL',
+            'Rank_EL','Exp_Bind','Score_BA','Rank_BA','Affinity','BindLevel']
         self.scorekey = 'score'
-        self.cutoff = 500 #.426
+        self.cutoff = 500
         self.operator = '<'
         self.rankascending = 1
         #load precalculated quantiles for sample peptides
@@ -1376,35 +1382,31 @@ class NetMHCIIPanPredictor(Predictor):
         ignore = ['Pos','#','Protein','']
         cols = self.colnames
         res = pd.read_csv(io.BytesIO(temp), comment='#', names=cols, sep='\s+',
-                          error_bad_lines=False, skiprows=16).dropna(subset=['peptide'])
-        res = res[~res.pos.isin(ignore)]
+                          on_bad_lines='skip', skiprows=15).dropna(subset=['peptide'])
+        res = res[~res.Pos.isin(ignore)]
+        res = res[:-1]
         return res
 
     def prepare_data(self, df, name):
         """Prepare netmhciipan results as a dataframe"""
 
-        #df = df.convert_objects(convert_numeric=True)
-        df = df.apply( lambda x: pd.to_numeric(x, errors='ignore').dropna())
+        #df = df.apply( lambda x: pd.to_numeric(x).dropna())
         df['name'] = name
-        df.rename(columns={'Core': 'core','HLA':'allele'}, inplace=True)
-        df = df.drop(['Pos','Identity','Rank'],1)
-        df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
+        df.rename(columns={'Core': 'core','MHC':'allele'}, inplace=True)
+        df = df.drop(['Pos','Identity'],axis=1)
+        #df['allele'] = df.allele.apply( lambda x: self.convert_allele_name(x) )
         df['score'] = pd.to_numeric(df.Affinity,errors='coerce')
-        df['pos'] = df.index.copy()
-        df = df.dropna()
+        df['pos'] = df.index.copy()+1
+        #df = df.dropna()
         self.get_ranking(df)
         self.data = df
         return
 
     def predict(self, peptides, allele='HLA-DRB1*0101', name='temp',
                 pseudosequence=None, show_cmd=False, **kwargs):
-        """Call netMHCIIpan command line."""
+        """Call netMHCIIpan 4 command line."""
 
-        #assume allele names are in standard format HLA-DRB1*0101
-        #if allele.startswith('HLA-'):
-        #    allele=allele[4:]
         allele = self.allele_mapping(allele)
-        #print (allele)
         #write peptides to temp file
         pepfile = tempfile.mktemp()+'.pep'
         with open(pepfile ,'w') as f:
@@ -1412,7 +1414,7 @@ class NetMHCIIPanPredictor(Predictor):
                 f.write(p+'\n')
         f.close()
 
-        cmd = 'netMHCIIpan -f %s -inptype 1 -a %s' %(pepfile , allele)
+        cmd = 'netMHCIIpan -BA -f %s -inptype 1 -a %s' %(pepfile , allele)
         if show_cmd is True:
             print (cmd)
         try:
@@ -1466,6 +1468,7 @@ class NetMHCIIPanPredictor(Predictor):
     @classmethod
     def _get_name(self):
         return 'netmhciipan'
+
 
 class IEDBMHCIPredictor(Predictor):
     """Using IEDB tools method, requires iedb-mhc1 tools. Tested with version 2.17"""

@@ -170,7 +170,7 @@ def create_nmers(df, genome, length=20, seqkey='translation', key='nmer', how='s
         #print (res)
         res = temp.merge(res,left_index=True,right_index=True,how='right').reset_index(drop=True)
         #print (res)
-    res=res.drop([seqkey],1)
+    res=res.drop([seqkey],axis=1)
     return res
 
 def get_overlaps(df1, df2, label='overlap', how='inside'):

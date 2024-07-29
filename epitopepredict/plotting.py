@@ -727,7 +727,7 @@ def plot_tracks(preds, name, n=1, cutoff=.95, cutoff_method='default', regions=N
     ax.set_yticks(np.arange(.5,len(alleles)+.5))
     fsize = 14-1*len(alleles)/40.
     ax.set_yticklabels(alleles, fontsize=fsize )
-    ax.grid(b=True, which='major', alpha=0.5)
+    ax.grid(which='major', alpha=0.5)
     ax.set_title(name, fontsize=16, loc='right')
     if regions is not None:
         r = regions[regions.name==name]

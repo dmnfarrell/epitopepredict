@@ -21,7 +21,7 @@ setup(
                   'description.txt']
                  },
     install_requires=['numpy>=1.10',
-                      'pandas>=0.22',
+                      'pandas>=2.0',
                       'matplotlib',
                       'biopython>=1.78',
                       'scikit-learn>=0.23.2',

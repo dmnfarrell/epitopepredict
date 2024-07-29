@@ -1,6 +1,5 @@
 name: epitopepredict
-version: 'latest'
-version-script: git describe --abbrev=1 --tags
+version: '0.5.0'
 summary: python package for MHC binding prediction
 description: |
  epitopepredict is a python package and command line interface that provides a standardized
@@ -10,20 +9,30 @@ description: |
 base: core18
 grade: stable
 confinement: strict
-icon: gui/icon.png
+icon: snap/gui/icon.png
 
 apps:
   epitopepredict:
     command: bin/epitopepredict
-    plugs: [home,network-bind]
+    plugs:
+      - home
+      - opengl
+      - network
+      - network-bind
+      - network-control
+      - mount-observe
+      - removable-media
     environment:
-      LD_LIBRARY_PATH: $SNAP/usr/lib/ncbi-blast+  
+      LD_LIBRARY_PATH: $SNAP/usr/lib/ncbi-blast+
 parts:
   epitopepredict:
     plugin: python
-    python-version: python3
-    source: ../
+    source: .
     python-packages:
-      [mhcflurry]#,gtfparse==1.2,pyensembl==1.7.3,varcode==0.8.0]
+      - bokeh
+      - panel
+      #- mhcflurry
     stage-packages:
-      [gawk,ncbi-blast+]
+      - gawk
+      - ncbi-blast+
+      - tcsh
